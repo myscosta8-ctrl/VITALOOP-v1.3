@@ -1,0 +1,40 @@
+# VITALOOP 1.3 — .gitignore (preparação Fase 0B)
+
+# Dependências (ainda não instaladas nesta etapa)
+node_modules/
+.pnpm-store/
+
+# Build / artefatos
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Ambiente / segredos — NUNCA versionar (Doc 2 §60)
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+
+# Supabase local (PENDENTE — não configurado nesta etapa)
+.supabase/
+
+# Logs
+*.log
+logs/
+
+# Sistema operacional
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Editores / IDE
+.vscode/
+.idea/
+*.swp
+
+# Rascunhos temporarios
+scratch/
+

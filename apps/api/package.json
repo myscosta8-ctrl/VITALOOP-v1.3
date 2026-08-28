@@ -1,0 +1,24 @@
+{
+  "name": "@vitaloop/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc --build",
+    "dev": "node --watch --experimental-strip-types src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@vitaloop/config": "*",
+    "@vitaloop/domain": "*",
+    "@vitaloop/shared": "*",
+    "fastify": "^4.28.0",
+    "jose": "^5.9.0",
+    "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.0"
+  }
+}

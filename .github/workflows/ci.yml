@@ -1,0 +1,72 @@
+name: CI
+
+# Pipeline de integração (Doc 2 §57; Doc 4 §45).
+# NÃO faz deploy. NÃO publica. Gates: lint -> typecheck -> test -> build.
+# Testes de integração/RLS rodam contra um Postgres efêmero do runner (LOCAL),
+# nunca contra Supabase remoto.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: vitaloop
+          POSTGRES_PASSWORD: vitaloop
+          POSTGRES_DB: vitaloop_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vitaloop"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://vitaloop:vitaloop@localhost:5432/vitaloop_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Apply migrations (local test DB)
+        run: npm run db:migrate
+
+      - name: Test (unit + integration + RLS)
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  # Verificação de segredos ausentes no código (Doc 2 §60). Bloqueia se encontrar.
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Basic secret pattern scan
+        run: |
+          if git grep -nE 'SUPABASE_SERVICE_ROLE=.+|BEGIN (RSA|OPENSSH) PRIVATE KEY|service_role' -- ':!*.md' ':!.env.example'; then
+            echo "Possível segredo versionado encontrado."; exit 1;
+          fi
+          echo "Nenhum padrão de segredo encontrado."

@@ -1,0 +1,43 @@
+-- =====================================================================
+-- VITALOOP 1.3 — Migration 0023 (Fase 2, Etapa 4/6 — correção de bloqueio crítico)
+--
+-- ACHADO (auditoria cruzada de fechamento da Etapa 4, confirmado por teste
+-- real): `app.timeline` e `app.patient_timeline` (criadas nas migrations
+-- 0008/0017, não alteradas aqui) são de propriedade de `postgres`
+-- (rolbypassrls=true) e nunca tiveram `security_invoker` habilitado. Por
+-- semântica padrão do PostgreSQL, uma view sem `security_invoker=true`
+-- executa a consulta à tabela subjacente com o privilégio do DONO da view,
+-- não de quem a consultou — logo a policy `domain_events_read`
+-- (`using (app.is_authenticated())`, migration 0010) NUNCA era avaliada
+-- para leituras feitas através dessas views: bypass total, não apenas
+-- "escopo insuficiente". Confirmado empiricamente: um SELECT direto em
+-- `app.domain_events` sem nenhum contexto de sessão retornava 0 linhas
+-- (RLS correta); o MESMO SELECT via `app.timeline`/`app.patient_timeline`
+-- retornava a linha.
+--
+-- A migration 0022 (mesma etapa) tornou esse caminho alcançável via HTTP
+-- pela primeira vez, ao conceder `SELECT` nas views a `vitaloop_app` —
+-- antes dela a rota falharia por falta de privilégio. A causa raiz é
+-- anterior (0008/0017), mas só se tornou um risco explorável nesta etapa.
+--
+-- CORREÇÃO: `security_invoker = true` nas duas views. A partir de agora,
+-- toda leitura por elas executa com o privilégio E a RLS do papel que
+-- consultou — a mesma garantia que já vale para leitura direta de
+-- `app.domain_events`. Nenhum GRANT adicional é necessário:
+-- `vitaloop_app` já tem SELECT direto em `app.domain_events` desde a
+-- migration 0010 (grant genérico da Fase 0).
+--
+-- NÃO resolve, e não tenta resolver, a limitação já registrada desde a
+-- Fase 0/1 (RLS de `domain_events` no baseline "autenticado", sem
+-- Need-to-Know por paciente) — essa é uma decisão institucional pendente,
+-- fora do escopo desta correção, e continua valendo tal como documentada.
+-- Esta migration elimina apenas o BYPASS TOTAL, não estreita o escopo.
+--
+-- Sem dependências: nenhuma outra view/objeto depende de `timeline` ou
+-- `patient_timeline` (verificado via pg_depend antes desta correção).
+--
+-- Aditiva; não edita 0001-0022.
+-- =====================================================================
+
+alter view app.timeline set (security_invoker = true);
+alter view app.patient_timeline set (security_invoker = true);

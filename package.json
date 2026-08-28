@@ -1,0 +1,31 @@
+{
+  "name": "vitaloop-1.3",
+  "version": "0.0.0",
+  "private": true,
+  "description": "VITALOOP 1.3 — PEP orientado ao fluxo assistencial de UPA 24h. Construído do zero.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "tsc --build && npm run build --workspace=apps/web",
+    "typecheck": "tsc --build --force && npm run typecheck --workspace=apps/web",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:migrate": "node --experimental-strip-types scripts/migrate.ts",
+    "db:migrate:status": "node --experimental-strip-types scripts/migrate.ts --status"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^20.14.0",
+    "eslint": "^9.0.0",
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^2.0.0"
+  }
+}
