@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { loadConfig } from './env.js';
+import { loadConfig, validateProductionEnv } from './env.js';
 
 describe('loadConfig', () => {
   it('applies safe defaults with empty source', () => {
@@ -30,5 +30,12 @@ describe('loadConfig', () => {
     expect(loadConfig({}).supabaseAuthConfigured).toBe(false);
     const cfg = loadConfig({ SUPABASE_URL: 'https://x.supabase.co' });
     expect(cfg.supabaseAuthConfigured).toBe(true);
+  });
+
+  it('exige DATABASE_URL e CORS_ALLOWED_ORIGINS em produção (PRD-003, PRD-004)', () => {
+    expect(() => loadConfig({ NODE_ENV: 'production' })).not.toThrow();
+    expect(() => validateProductionEnv({ NODE_ENV: 'production' })).toThrow(/DATABASE_URL é obrigatória em produção/);
+    expect(() => validateProductionEnv({ NODE_ENV: 'production', DATABASE_URL: 'postgres://u:p@localhost:5432/db' })).toThrow(/CORS_ALLOWED_ORIGINS é obrigatória em produção/);
+    expect(() => validateProductionEnv({ NODE_ENV: 'production', DATABASE_URL: 'postgres://u:p@localhost:5432/db', CORS_ALLOWED_ORIGINS: 'https://app.vitaloop.com.br' })).not.toThrow();
   });
 });

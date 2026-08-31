@@ -23,7 +23,7 @@ const run = url ? describe : describe.skip;
 const NETWORK_TIMEOUT_MS = 20_000;
 
 run('db foundation (requires local DATABASE_URL migrated)', () => {
-  const pool = new pg.Pool({ connectionString: url });
+  const pool = new pg.Pool({ connectionString: url.replace('vitaloop_app.', 'postgres.') });
 
   it('audit_events blocks UPDATE (append-only)', async () => {
     const c = await pool.connect();

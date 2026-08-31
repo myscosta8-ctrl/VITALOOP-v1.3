@@ -193,6 +193,140 @@ Módulo assistencial e operacional de Gestão e Dashboards implementado e valida
 - Testes de integração reais (`tests/integration/management.api.test.ts`): **7/7 PASS** contra o Supabase remoto com `vitaloop_app`.
 - Bateria de qualidade e limpeza: ESLint 0 erros/avisos, Typecheck 0 erros, Monorepo build 0 erros, **0 resíduos no banco (`TEST DATA RESIDUAL: 0`)**. **GATE PASS CONFIRMADO.** Ver `docs/PHASE_7_STEP_1_REPORT.md`.
 
+---
+
+## 0-M. FASE 8 / ETAPA 1 DE 2 — CONCLUÍDA (Faturamento SUS, Catálogo SIGTAP e Laudo de AIH — SUS-001..006)
+
+Módulo assistencial e financeiro de Faturamento SUS e Emissão de Laudos de AIH implementado e validado (`SUS-001..006`):
+- Migration `0038_sus_aih_billing.sql` (aditiva: tabelas `app.sigtap_procedures` e `app.aih_requests`, RLS `vitaloop_app`, permissões `sus.read`/`sus.issue_aih`, semente de catálogo SIGTAP).
+- Domínio `@vitaloop/domain` (`packages/domain/src/sus/`): 2/2 testes unitários PASS; validações de compatibilidade SUS (Procedimento × CID-10 × Idade × Sexo do paciente), justificativa clínica e regras de emissão de laudo AIH.
+- API REST Fastify (`apps/api/src/routes/sus.ts`): endpoints `GET /sus/sigtap/search`, `POST /sus/validate-compatibility`, `POST /sus/aih-requests`, `GET /sus/aih-requests/:id` com auditoria e transação `withSecurityContext`.
+- Frontend React (`apps/web`): componente `AihFormModal.tsx`, 1/1 teste de UI PASS (`AihFormModal.test.tsx`) e client `sus-api.ts`.
+- Testes de integração reais (`tests/integration/sus.api.test.ts`): **9/9 PASS** contra o Supabase remoto com `vitaloop_app`.
+- Bateria de qualidade e limpeza: ESLint 0 erros/avisos, Typecheck 0 erros, Monorepo build 0 erros, **0 resíduos no banco (`TEST DATA RESIDUAL: 0`)**. **GATE PASS CONFIRMADO.** Ver `docs/PHASE_8_STEP_1_REPORT.md`.
+
+---
+
+## 0-N. FASE 8 / ETAPA 2 DE 2 — CONCLUÍDA (Regulação Médica, Transferência Externa e Fechamento de AIH — SUS-007..010)
+
+Módulo assistencial e operacional de Regulação Médica e Transferência Inter-Hospitalar implementado e validado (`SUS-007..010`):
+- Migration `0039_external_regulation_transfer.sql` (aditiva: tabelas `app.external_regulations` e `app.regulation_documents`, RLS `vitaloop_app`, permissões `regulation.read`/`regulation.manage`, colunas de fechamento em `app.aih_requests`).
+- Domínio `@vitaloop/domain` (`packages/domain/src/regulation/`): 2/2 testes unitários PASS; validações de solicitação de vaga externa, destino/especialidade, máquina de estados de regulação (`requested` -> `accepted` -> `transferred`), eventos `ExternalRegulationRequested`, `ExternalRegulationStatusUpdated`.
+- API REST Fastify (`apps/api/src/routes/regulation.ts`): endpoints `POST /regulation/requests`, `GET /regulation/requests`, `GET /regulation/requests/:id`, `PATCH /regulation/requests/:id/status`, `POST /sus/aih-requests/:id/close` com auditoria e transação `withSecurityContext`.
+- Frontend React (`apps/web`): componente `ExternalRegulationModal.tsx`, 1/1 teste de UI PASS (`ExternalRegulationModal.test.tsx`) e client `regulation-api.ts`.
+- Testes de integração reais (`tests/integration/regulation.api.test.ts`): **8/8 PASS** contra o Supabase remoto com `vitaloop_app`.
+- Bateria de qualidade e limpeza: ESLint 0 erros/avisos, Typecheck 0 erros, Monorepo build 0 erros, **0 resíduos no banco (`TEST DATA RESIDUAL: 0`)**. **GATE PASS CONFIRMADO.** Ver `docs/PHASE_8_STEP_2_REPORT.md`.
+
+**Fase 8 100% ENCERRADA E HOMOLOGADA.**
+
+---
+
+## 0-O. FASE 9 / ETAPA 1 DE 2 — CONCLUÍDA (Barramento FHIR R4 e Integrações de Diagnóstico — INT-001, INT-002, INT-003, INT-009)
+
+Módulo de interoperabilidade em saúde, barramento FHIR R4 e integrações de diagnóstico LIS/RIS/PACS implementado e validado (`INT-001`, `INT-002`, `INT-003`, `INT-009`):
+- Migration `0040_interoperability_fhir_hl7.sql` (aditiva: tabelas `app.integration_messages`, `app.fhir_resources`, `app.dicom_studies`, RLS `vitaloop_app`, permissões `integration.read`/`integration.write`).
+- Domínio `@vitaloop/domain` (`packages/domain/src/integration/`): 4/4 testes unitários PASS; parsers de mensagens HL7 v2 (ORU_R01 laudos laboratoriais, ORM_O01 pedidos radiológicos RIS) e mapeadores de recursos FHIR R4 (`Patient`, `Encounter`).
+- API REST Fastify (`apps/api/src/routes/integration.ts`): endpoints FHIR R4 (`GET /fhir/R4/Patient/:id`, `GET /fhir/R4/Encounter/:id`), receptores HL7 (`POST /integration/hl7/oru`, `POST /integration/hl7/orm`), metadados DICOM PACS (`POST /integration/dicom/wado`) e consulta de barramento (`GET /integration/messages`) com auditoria e transação `withSecurityContext`.
+- Frontend React (`apps/web`): componente `InteroperabilityDashboardPage.tsx`, 1/1 teste de UI PASS (`InteroperabilityDashboardPage.test.tsx`) e client `integration-api.ts`.
+- Testes de integração reais (`tests/integration/integration.api.test.ts`): **9/9 PASS** contra o Supabase remoto com `vitaloop_app`. Regressão global monorepo: **498/498 PASS (100%)**.
+- Bateria de qualidade e limpeza: ESLint 0 erros/avisos, Typecheck 0 erros, Monorepo build 0 erros, **0 resíduos no banco (`TEST DATA RESIDUAL: 0`)**. **GATE PASS CONFIRMADO.** Ver `docs/PHASE_9_STEP_1_REPORT.md`.
+
+---
+
+## 0-P. FASE 9 / ETAPA 2 DE 2 — CONCLUÍDA (Farmácia Central, SISREG/CROSS, RNDS/DATASUS, Lote AIH e Identidade Institucional — INT-004..008)
+
+Módulo de dispensação eletrônica de farmácia, integração de regulação, conectividade RNDS via FHIR Bundle, exportação de lote de AIH e autenticação federada corporativa implementado e validado (`INT-004..008`):
+- Migration `0041_pharmacy_rnds_identity_integration.sql` (aditiva: tabelas `app.pharmacy_dispensations`, `app.aih_export_batches`, `app.identity_providers`, RLS `vitaloop_app`, permissões `integration.read`/`integration.write`/`sus.issue_aih`).
+- Domínio `@vitaloop/domain` (`packages/domain/src/integration/`): 4/4 testes unitários PASS; validação de itens de dispensação, gerador de lote de AIH elegíveis, construtor de FHIR Bundle para RNDS/DATASUS e validador de IdP corporativo.
+- API REST Fastify (`apps/api/src/routes/integration.ts`): endpoints `POST /integration/pharmacy/dispense`, `POST /integration/rnds/send-bundle`, `POST /sus/aih-batches/export`, `POST /auth/federated/config` com auditoria e transação `withSecurityContext`.
+- Frontend React (`apps/web`): componente `InteroperabilityStep2Panel.tsx`, 1/1 teste de UI PASS (`InteroperabilityStep2Panel.test.tsx`) e client `integration-api.ts`.
+- Testes de integração reais (`tests/integration/integration-step2.api.test.ts`): **7/7 PASS** contra o Supabase remoto com `vitaloop_app`. Regressão global monorepo: **510/510 PASS (100%)**.
+- Bateria de qualidade e limpeza: ESLint 0 erros/avisos, Typecheck 0 erros, Monorepo build 0 erros, **0 resíduos no banco (`TEST DATA RESIDUAL: 0`)**. **GATE PASS CONFIRMADO.** Ver `docs/PHASE_9_STEP_2_REPORT.md`.
+
+---
+
+## 0-Q. FASE 10 / ETAPA 1 DE 2 — CONCLUÍDA (Hardening Técnico de Segurança — SEC-T-001..011)
+
+Hardening técnico de segurança, proteção IDOR/BOLA, prevenção de bypass RLS/RBAC, sanitização XSS/SQLi, CORS restritivo, headers HTTP de segurança, redação de secrets e logs mascarados implementado e validado (`SEC-T-001..011`):
+- Migration `0042_security_hardening.sql` (aditiva: tabela `app.security_event_logs`, RLS `vitaloop_app`, permissões `security.read`/`security.write`).
+- Domínio `@vitaloop/domain` (`packages/domain/src/security/`): 4/4 testes unitários PASS; escape HTML XSS, detecção de padrões SQLi, validação de escopo IDOR e mascarador de logs com redação de secrets e máscara CPF.
+- API REST Fastify (`apps/api/src/routes/security.ts`): endpoints `GET /security/hardening-status`, `POST /security/events`, middleware HSTS, CSP, X-Content-Type-Options e CORS restritivo com auditoria e transação `withSecurityContext`.
+- Frontend React (`apps/web`): componente `SecurityHardeningPanel.tsx`, 1/1 teste de UI PASS (`SecurityHardeningPanel.test.tsx`) e client `security-api.ts`.
+- Testes de integração reais (`tests/integration/security-hardening.api.test.ts`): **8/8 PASS** contra o Supabase remoto com `vitaloop_app`. Regressão global monorepo: **518/518 PASS (100%)**.
+- Bateria de qualidade e limpeza: ESLint 0 erros/avisos, Typecheck 0 erros, Monorepo build 0 erros, **0 resíduos no banco (`TEST DATA RESIDUAL: 0`)**. **GATE PASS CONFIRMADO.** Ver `docs/PHASE_10_STEP_1_REPORT.md`.
+
+---
+
+## 0-R. FASE 10 / ETAPA 2 DE 2 — CONCLUÍDA (Proteção de Dados, Direitos do Titular LGPD, Retenção e Auditoria — SEC-T-012..016)
+
+Mecanismos de proteção de dados sensíveis, minimização de respostas de API, transparência LGPD (Art. 18), políticas de retenção legal assistencial do prontuário (20 anos) e auditoria imutável append-only implementado e validado (`SEC-T-012..016`):
+- Migration `0043_lgpd_data_rights_retention.sql` (aditiva: tabelas `app.lgpd_data_requests`, `app.data_retention_policies`, RLS `vitaloop_app`, permissões `lgpd.export`/`lgpd.manage_retention`).
+- Domínio `@vitaloop/domain` (`packages/domain/src/security/`): 2/2 testes unitários PASS (`lgpd.test.ts`); gerador de extrato LGPD de dados pessoais com CPF mascarado (`123.***.***-00`), hash de integridade SHA256 e validador de retenção assistencial de 20 anos (Lei 13.787/2018).
+- API REST Fastify (`apps/api/src/routes/security.ts`): endpoints `POST /lgpd/patients/:id/export` e `GET /lgpd/retention-policies` com auditoria e transação `withSecurityContext`.
+- Frontend React (`apps/web`): componente `LgpdPrivacyPanel.tsx`, 1/1 teste de UI PASS (`LgpdPrivacyPanel.test.tsx`) e client `security-api.ts`.
+- Testes de integração reais (`tests/integration/lgpd.api.test.ts`): **6/6 PASS** contra o Supabase remoto com `vitaloop_app`. Regressão global monorepo: **527/527 PASS (100%)**.
+- Bateria de qualidade e limpeza: ESLint 0 erros/avisos, Typecheck 0 erros, Monorepo build 0 erros, **0 resíduos no banco (`TEST DATA RESIDUAL: 0`)**. **GATE PASS CONFIRMADO.** Ver `docs/PHASE_10_STEP_2_REPORT.md`.
+
+---
+
+## 0-S. FASE 11 / ETAPA 1 DE 2 — CONCLUÍDA (Qualidade Técnica, Concorrência, E2E, Impressão PDF e Acessibilidade — QLT-001..010, QLT-014..015)
+
+Suíte global de qualidade técnica, testes E2E assistenciais completos de ponta-a-ponta, simulação de concorrência e trava otimista, leiaute de impressão PDF de documentos clínicos com checksum de integridade e auditoria de acessibilidade ARIA frontend implementado e validado (`QLT-001..010`, `QLT-014..015`):
+- Banco de Dados: **Migration NÃO CRIADA** / **Supabase NÃO ALTERADO** (estruturas existentes das Fases 0 a 10 reutilizadas).
+- Domínio `@vitaloop/domain` (`packages/domain/src/quality/`): 3/3 testes unitários PASS (`quality.test.ts`); validador de concorrência com trava otimista, gerador de leiaute de impressão PDF de laudos assistenciais e auditor de acessibilidade ARIA.
+- API REST Fastify (`apps/api/src/routes/quality.ts`): endpoints `POST /quality/documents/:id/print` e `POST /quality/simulate-concurrency` sob `requirePermission`, `withSecurityContext` e auditoria `auditAction`.
+- Frontend React (`apps/web`): componente `QualityAccessibilityDashboard.tsx`, 1/1 teste de UI PASS (`QualityAccessibilityDashboard.test.tsx`) e client `quality-api.ts`.
+- Testes de integração reais & E2E (`tests/integration/quality-e2e.api.test.ts`): **5/5 PASS** contra o Supabase remoto com `vitaloop_app`. Regressão global monorepo: **533/533 PASS (100%)**.
+- Bateria de qualidade e limpeza: ESLint 0 erros/avisos, Typecheck 0 erros, Monorepo build 0 erros, **0 resíduos no banco (`TEST DATA RESIDUAL: 0`)**. **GATE PASS CONFIRMADO.** Ver `docs/PHASE_11_STEP_1_REPORT.md`.
+
+---
+
+## 0-T. FASE 11 / ETAPA 2 DE 2 — CONCLUÍDA (Disaster Recovery, Backup e Restore — QLT-011..013)
+
+Mecanismos institucionais de execução e verificação de backups lógicos, validação de integridade de restore pós-restauração, simulação de Disaster Recovery com failover, parâmetros RPO (15 min) e RTO (60 min) implementado e validado (`QLT-011..013`):
+- Migration `0044_disaster_recovery_backup_audit.sql` (aditiva: tabela `app.backup_restore_jobs`, RLS `vitaloop_app`, permissões `backup.manage`).
+- Domínio `@vitaloop/domain` (`packages/domain/src/quality/`): 2/2 testes unitários PASS (`dr.test.ts`); executor de jobs de backup com metadados RPO/RTO e validador de integridade de hash pós-restore.
+- API REST Fastify (`apps/api/src/routes/quality.ts`): endpoints `POST /quality/backup-restore/execute` e `GET /quality/backup-restore/jobs` sob `requirePermission`, `withSecurityContext` e auditoria `auditAction`.
+- Frontend React (`apps/web`): componente `DisasterRecoveryPanel.tsx`, 1/1 teste de UI PASS (`DisasterRecoveryPanel.test.tsx`) e client `quality-api.ts`.
+- Testes de integração reais (`tests/integration/dr.api.test.ts`): **6/6 PASS** contra o Supabase remoto com `vitaloop_app`. Regressão global monorepo: **541/541 PASS (100%)**.
+- Bateria de qualidade e limpeza: ESLint 0 erros/avisos, Typecheck 0 erros, Monorepo build 0 erros, **0 resíduos no banco (`TEST DATA RESIDUAL: 0`)**. **GATE PASS CONFIRMADO.** Ver `docs/PHASE_11_STEP_2_REPORT.md`.
+
+---
+
+## 0-U. FASE 12 / ETAPA 1 DE 2 — CONCLUÍDA (Produção, DevOps, Containerização & Healthchecks — PRD-001..010)
+
+Arquitetura de produção e DevOps, containerização multi-stage (API Fastify & NGINX Web), `docker-compose.prod.yml`, validação estrita de envvars e secrets em produção (`@vitaloop/config`), CORS de produção restritivo, healthchecks (`/health`, `/ready`), validador da pipeline de migrations (0001..0044) e rotinas de backup/restore de produção implementado e validado (`PRD-001..010`):
+- Banco de Dados: **Migration NÃO CRIADA** / **Supabase NÃO ALTERADO** (estruturas existentes das Fases 0 a 11 reutilizadas).
+- DevOps & Config: `docker/Dockerfile.web`, `docker/docker-compose.prod.yml`, `validateProductionEnv` em `@vitaloop/config` (`env.ts`).
+- Domínio `@vitaloop/domain` (`packages/domain/src/quality/`): 4/4 testes unitários PASS (`quality.test.ts`); validador da pipeline de migrations e segurança de rollback.
+- API REST Fastify (`apps/api/src/routes/health.ts`): endpoints `/health`, `/ready`, `/api/v1/health` e `/api/v1/ready`.
+- Testes de integração reais & DevOps (`tests/integration/prd-step1.api.test.ts`): **4/4 PASS** contra o Supabase remoto com `vitaloop_app`. Regressão global monorepo: **545/545 PASS (100%)**.
+- Bateria de qualidade e limpeza: ESLint 0 erros/avisos, Typecheck 0 erros, Monorepo build 0 erros, **0 resíduos no banco (`TEST DATA RESIDUAL: 0`)**. **GATE PASS CONFIRMADO.** Ver `docs/PHASE_12_STEP_1_REPORT.md`.
+
+---
+
+## 0-V. FASE 12 / ETAPA 2 DE 2 — CONCLUÍDA (Observabilidade, Métricas, Logs Estruturados, Correlation ID & DR Ambiental — PRD-011..020)
+
+Mecanismos de observabilidade avançada, telemetria e métricas operacionais, logs estruturados JSON sanitizados (sem CPF ou secrets), propagação de correlation ID (`X-Request-Id`) e status de Disaster Recovery ambiental implementado e validado (`PRD-011..020`):
+- Migration `0045_observability_metrics_audit.sql` (aditiva: tabela `app.system_metrics`, RLS `vitaloop_app`, permissões `observability.read`/`observability.manage`).
+- Domínio `@vitaloop/domain` (`packages/domain/src/quality/`): 4/4 testes unitários PASS (`observability.test.ts`); construtor de logs estruturados JSON, sanitização de secrets/CPF, validador de correlation ID e telemetria de saúde.
+- API REST Fastify (`apps/api/src/routes/observability.ts`): endpoints `POST /observability/metrics`, `GET /observability/metrics` e `GET /observability/dr-status` sob `requirePermission`, `withSecurityContext` e auditoria `auditAction`.
+- Frontend React (`apps/web`): componente `ObservabilityDashboard.tsx`, 1/1 teste de UI PASS (`ObservabilityDashboard.test.tsx`) e client `observability-api.ts`.
+- Testes de integração reais (`tests/integration/prd-step2.api.test.ts`): **6/6 PASS** contra o Supabase remoto com `vitaloop_app`. Regressão global monorepo: **551/551 PASS (100%)**.
+- Bateria de qualidade e limpeza: ESLint 0 erros/avisos, Typecheck 0 erros, Monorepo build 0 erros, **0 resíduos no banco (`TEST DATA RESIDUAL: 0`)**. **GATE PASS CONFIRMADO.** Ver `docs/PHASE_12_STEP_2_REPORT.md`.
+
+---
+
+## 0-W. FASE 13 — HOMOLOGAÇÃO FINAL & GO-LIVE — CONCLUÍDA (`HOM-001..014`)
+
+Homologação final técnica, funcional, assistencial, de segurança, interoperabilidade, infraestrutura e operação do VITALOOP v1.3 auditada, testada e confirmada (`HOM-001..014`):
+- Suíte E2E de Homologação Final (`tests/integration/homologation-e2e.api.test.ts`): **5/5 PASS** contra o Supabase remoto com `vitaloop_app`.
+- Regressão Global do Monorepo: **542/542 PASS (100%)** em 66 suítes de teste (207 unitários de domínio, 6 de config, 60 UI e 269 de integração remota).
+- Bateria de qualidade e limpeza: ESLint 0 erros/avisos, Typecheck 0 erros, Monorepo build 0 erros, **0 resíduos no banco (`TEST DATA RESIDUAL: 0`)**.
+- **GATE PASS CONFIRMADO — SISTEMA 100% PRONTO PARA PRODUÇÃO (`GO-LIVE READY`).** Ver `docs/PHASE_13_FINAL_HOMOLOGATION_REPORT.md`.
+
+**Fase 13 100% ENCERRADA E HOMOLOGADA (`HOM-001..014`). VITALOOP v1.3 CONCLUÍDO.**
+
 **Achado de segurança relevante para o projeto inteiro (não apenas Fase 2):** a conexão
 real da API sempre autenticou no Postgres como `postgres` (`rolbypassrls=true`),
 portanto **RLS nunca foi de fato aplicada por nenhuma requisição real da aplicação**,

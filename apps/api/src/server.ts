@@ -32,6 +32,10 @@ import { registerBedRoutes } from './routes/beds.js';
 import { registerDocumentRoutes } from './routes/documents.js';
 import { registerSafetyRoutes } from './routes/safety.js';
 import { registerManagementRoutes } from './routes/management.js';
+import { registerSusRoutes } from './routes/sus.js';
+import { registerRegulationRoutes } from './routes/regulation.js';
+import { registerIntegrationRoutes } from './routes/integration.js';
+import { registerObservabilityRoutes } from './routes/observability.js';
 import { createSupabaseJwtVerifier, type JwtVerifier } from './security/jwt-verifier.js';
 import { createSupabaseAuthClient } from './security/supabase-auth-client.js';
 import { createRateLimiter } from './security/rate-limiter.js';
@@ -112,6 +116,10 @@ export const buildServer = (config: LoadedConfig): BuiltServer => {
   registerDocumentRoutes(app, db);
   registerSafetyRoutes(app, db);
   registerManagementRoutes(app, db);
+  registerSusRoutes(app, db);
+  registerRegulationRoutes(app, db);
+  registerIntegrationRoutes(app, db);
+  registerObservabilityRoutes(app, db);
 
   // 404 padronizado.
   app.setNotFoundHandler((req, reply) => {

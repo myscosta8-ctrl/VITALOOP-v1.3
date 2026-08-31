@@ -20,6 +20,6 @@ export const securityHeaders = (
     "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
   );
   reply.header('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
-  // HSTS só faz sentido atrás de TLS; habilitar em staging/produção via proxy/infra.
+  reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   done();
 };

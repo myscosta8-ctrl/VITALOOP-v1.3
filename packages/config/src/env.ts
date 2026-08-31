@@ -76,3 +76,18 @@ export const loadConfig = (
     supabaseAuthConfigured: parsed.data.SUPABASE_URL !== undefined,
   };
 };
+
+export const validateProductionEnv = (
+  source: Record<string, string | undefined> = process.env,
+): LoadedConfig => {
+  const config = loadConfig(source);
+  if (config.env.NODE_ENV === 'production') {
+    if (!config.env.DATABASE_URL) {
+      throw new Error('Configuração de produção inválida: DATABASE_URL é obrigatória em produção.');
+    }
+    if (!config.env.CORS_ALLOWED_ORIGINS || config.env.CORS_ALLOWED_ORIGINS.length === 0) {
+      throw new Error('Configuração de produção inválida: CORS_ALLOWED_ORIGINS é obrigatória em produção.');
+    }
+  }
+  return config;
+};

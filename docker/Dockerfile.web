@@ -1,0 +1,17 @@
+# Imagem do Frontend Web (Doc 2 §58). Multi-stage build com NGINX unprivileged.
+
+FROM node:20-slim AS build
+WORKDIR /app
+COPY package.json package-lock.json* tsconfig*.json ./
+COPY packages ./packages
+COPY apps/web ./apps/web
+RUN npm ci
+RUN npm run build --workspace=@vitaloop/web
+
+FROM nginx:alpine-slim AS runtime
+ENV NODE_ENV=production
+COPY --from=build /app/apps/web/dist /usr/share/nginx/html
+EXPOSE 80
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://127.0.0.1:80/ || exit 1
+CMD ["nginx", "-g", "daemon off;"]

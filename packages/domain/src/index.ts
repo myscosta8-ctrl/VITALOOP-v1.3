@@ -14,6 +14,15 @@ export * from './bed/index.js';
 export * from './document/index.js';
 export * from './safety/index.js';
 export * from './management/index.js';
+export * from './sus/index.js';
+export * from './regulation/index.js';
+export * from './integration/index.js';
+export * from './security/index.js';
+export * from './quality/index.js';
+
+
+
+
 
 
 

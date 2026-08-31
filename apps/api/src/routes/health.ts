@@ -1,13 +1,11 @@
 /**
  * Health (liveness) e Readiness (Doc 2 §54; Doc 3 PRD-005/PRD-006; FND-019).
  *
- * - GET /health  : o processo está vivo (não depende de banco/auth).
- * - GET /ready   : dependências reais. Cada dependência reporta seu próprio
- *                  status ('ok' | 'down' | 'not_configured'); nunca expõe
- *                  connection string, secrets ou stack trace (Doc 4 §13).
+ * - GET /health & GET /api/v1/health : o processo está vivo (não depende de banco/auth).
+ * - GET /ready & GET /api/v1/ready   : dependências reais (Postgres Supabase DB + Auth JWKS).
  */
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { success } from '../http/envelope.js';
 import { pingDb, type Db } from '../db/pool.js';
 
@@ -64,11 +62,11 @@ export const registerHealthRoutes = (app: FastifyInstance, deps: ReadyDeps): voi
   const fetchImpl = deps.fetchImpl ?? fetch;
   const timeoutMs = deps.timeoutMs ?? 3000;
 
-  app.get('/health', (req, reply) => {
+  const handleHealth = (req: FastifyRequest, reply: FastifyReply) => {
     reply.code(200).send(success({ status: 'ok' }, req.id));
-  });
+  };
 
-  app.get('/ready', async (req, reply) => {
+  const handleReady = async (req: FastifyRequest, reply: FastifyReply) => {
     const [dbStatus, authStatus] = await Promise.all([
       checkDb(deps.db, timeoutMs),
       checkAuth(deps.supabaseUrl, fetchImpl, timeoutMs),
@@ -77,5 +75,11 @@ export const registerHealthRoutes = (app: FastifyInstance, deps: ReadyDeps): voi
     reply
       .code(ready ? 200 : 503)
       .send(success({ ready, db: dbStatus, auth: authStatus }, req.id));
-  });
+  };
+
+  app.get('/health', handleHealth);
+  app.get('/api/v1/health', handleHealth);
+
+  app.get('/ready', handleReady);
+  app.get('/api/v1/ready', handleReady);
 };
