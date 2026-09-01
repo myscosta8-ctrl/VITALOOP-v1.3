@@ -5,6 +5,26 @@
 
 ---
 
+> ## ⚠️ NOTA DE CORREÇÃO (31/08/2026)
+> As seções abaixo (§0 em diante) pararam de ser atualizadas depois do fechamento
+> formal da Fase 1 e passaram a descrever um estado defasado — "aguardando
+> autorização para Fase 2" — enquanto o repositório já tinha código e relatórios
+> de fechamento até a **Fase 13** (`docs/PHASE_13_FINAL_HOMOLOGATION_REPORT.md`)
+> e um gate de go-live já executado (`docs/GO_LIVE_REAL_VALIDATION_REPORT.md`,
+> resultado `CONDITIONAL`). Ninguém atualizou este arquivo a cada fase fechada,
+> e a defasagem só foi percebida numa auditoria externa comparando este
+> documento com o código real.
+>
+> O conteúdo original abaixo é mantido **como registro histórico do fechamento
+> formal da Fase 1** — não foi apagado nem reescrito. Para o estado real e atual
+> do projeto, ver `docs/GO_LIVE_REAL_VALIDATION_REPORT.md` (prontidão) e a lista
+> de `docs/PHASE_*_REPORT.md` (uma por fase, 0 a 13). Recomenda-se formalizar
+> este arquivo de novo a partir do go-live report antes de qualquer decisão de
+> produção — não é seguro decidir sobre um sistema clínico com base num status
+> desatualizado, mesmo que o motivo seja só falta de manutenção do documento.
+
+---
+
 ## 0. HOMOLOGAÇÃO FORMAL — FASE 1
 
 **FASE 1 — HOMOLOGADA em 2026-08-19.** Gate de saída: **PASS**. Base congelada em

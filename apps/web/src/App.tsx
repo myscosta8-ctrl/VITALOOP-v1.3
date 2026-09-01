@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { SessionProvider, useSession } from './context/session-context.js';
+import { AppShell } from './components/AppShell.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { ProfilePage } from './pages/ProfilePage.js';
 import { PasswordRecoveryPage } from './pages/PasswordRecoveryPage.js';
@@ -43,7 +44,7 @@ const RequireSession = ({ children }: { children: JSX.Element }): JSX.Element =>
   if (!identity) {
     return <AccessDeniedPage reason="unauthenticated" />;
   }
-  return children;
+  return <AppShell>{children}</AppShell>;
 };
 
 const Shell = (): JSX.Element => {

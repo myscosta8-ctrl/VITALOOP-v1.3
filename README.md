@@ -8,10 +8,27 @@ Prontuário Eletrônico do Paciente (PEP) orientado ao fluxo assistencial de uma
 
 ## Estado atual
 
-**FASE 0 — Fundamentos.** Fundação arquitetural, segurança, dados e infraestrutura.
-Módulos clínicos ainda **não** implementados (fases 2+).
+> **Nota de correção (31/08/2026):** esta seção estava desatualizada — descrevia
+> apenas Fase 0/1 enquanto o repositório já contém código e relatórios até a
+> Fase 13, além do `docs/GO_LIVE_REAL_VALIDATION_REPORT.md` (gate `CONDITIONAL`).
+> `VITALOOP_1.3_STATUS.md` tem a mesma defasagem — ver nota equivalente no topo
+> daquele arquivo. Isso precisa ser tratado como item de processo: o hábito de
+> atualizar o status a cada fase parou de acontecer em algum ponto e ninguém
+> notou até uma auditoria externa (Claude) comparar o texto com o código.
 
-**SUPABASE — PENDENTE DE CONFIGURAÇÃO** (será usado; ainda não configurado).
+**Módulos clínicos implementados (Fases 0–13):** identidade/segurança, cadastro
+e busca de paciente, fila/triagem (Manchester), atendimento/consulta médica,
+registros de enfermagem/SAE, ocupação e transferência de leitos, AIH,
+regulação externa (SISREG/CROSS), eventos adversos, interoperabilidade
+(RNDS/DATASUS), painel de gestão, observabilidade, LGPD, disaster recovery.
+Ver `docs/PHASE_*_REPORT.md` para o detalhe de cada fase e
+`docs/GO_LIVE_REAL_VALIDATION_REPORT.md` para o estado de prontidão real.
+
+**SUPABASE — configurado e validado** (RLS ativa, advisors 0 alertas — ver
+`VITALOOP_1.3_STATUS.md` §7). Pendências de produção reais: certificado
+ICP-Brasil A3 (RNDS/DATASUS), credenciamento SISREG/CROSS, servidor PACS
+DICOM e Docker Engine no ambiente-alvo — todos bloqueados por infraestrutura
+externa, não por código (ver GO_LIVE_REAL_VALIDATION_REPORT.md §2).
 
 ## Estrutura
 
@@ -27,7 +44,9 @@ vitaloop-1.3/
 │   ├── migrations/     # SQL versionado (Postgres/Supabase-compatível)
 │   └── seeds/          # dados só de dev/teste
 ├── tests/
-│   └── integration/    # testes de banco/RLS (auto-skip sem DATABASE_URL)
+│   └── integration/    # testes de banco/RLS (falham alto sem DATABASE_URL —
+│                        # intencional, não silenciam testes de segurança;
+│                        # rode `npm run db:migrate` num Postgres local antes)
 ├── scripts/            # runner de migrations local
 ├── docker/             # Postgres local + Dockerfile.api (infra)
 ├── docs/               # ADRs, operações, rastreabilidade, relatório da fase

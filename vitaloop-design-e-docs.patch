@@ -1,0 +1,494 @@
+diff --git a/README.md b/README.md
+index fc731e9..e0dd26a 100644
+--- a/README.md
++++ b/README.md
+@@ -8,10 +8,27 @@ Prontuário Eletrônico do Paciente (PEP) orientado ao fluxo assistencial de uma
+ 
+ ## Estado atual
+ 
+-**FASE 0 — Fundamentos.** Fundação arquitetural, segurança, dados e infraestrutura.
+-Módulos clínicos ainda **não** implementados (fases 2+).
++> **Nota de correção (31/08/2026):** esta seção estava desatualizada — descrevia
++> apenas Fase 0/1 enquanto o repositório já contém código e relatórios até a
++> Fase 13, além do `docs/GO_LIVE_REAL_VALIDATION_REPORT.md` (gate `CONDITIONAL`).
++> `VITALOOP_1.3_STATUS.md` tem a mesma defasagem — ver nota equivalente no topo
++> daquele arquivo. Isso precisa ser tratado como item de processo: o hábito de
++> atualizar o status a cada fase parou de acontecer em algum ponto e ninguém
++> notou até uma auditoria externa (Claude) comparar o texto com o código.
+ 
+-**SUPABASE — PENDENTE DE CONFIGURAÇÃO** (será usado; ainda não configurado).
++**Módulos clínicos implementados (Fases 0–13):** identidade/segurança, cadastro
++e busca de paciente, fila/triagem (Manchester), atendimento/consulta médica,
++registros de enfermagem/SAE, ocupação e transferência de leitos, AIH,
++regulação externa (SISREG/CROSS), eventos adversos, interoperabilidade
++(RNDS/DATASUS), painel de gestão, observabilidade, LGPD, disaster recovery.
++Ver `docs/PHASE_*_REPORT.md` para o detalhe de cada fase e
++`docs/GO_LIVE_REAL_VALIDATION_REPORT.md` para o estado de prontidão real.
++
++**SUPABASE — configurado e validado** (RLS ativa, advisors 0 alertas — ver
++`VITALOOP_1.3_STATUS.md` §7). Pendências de produção reais: certificado
++ICP-Brasil A3 (RNDS/DATASUS), credenciamento SISREG/CROSS, servidor PACS
++DICOM e Docker Engine no ambiente-alvo — todos bloqueados por infraestrutura
++externa, não por código (ver GO_LIVE_REAL_VALIDATION_REPORT.md §2).
+ 
+ ## Estrutura
+ 
+@@ -27,7 +44,9 @@ vitaloop-1.3/
+ │   ├── migrations/     # SQL versionado (Postgres/Supabase-compatível)
+ │   └── seeds/          # dados só de dev/teste
+ ├── tests/
+-│   └── integration/    # testes de banco/RLS (auto-skip sem DATABASE_URL)
++│   └── integration/    # testes de banco/RLS (falham alto sem DATABASE_URL —
++│                        # intencional, não silenciam testes de segurança;
++│                        # rode `npm run db:migrate` num Postgres local antes)
+ ├── scripts/            # runner de migrations local
+ ├── docker/             # Postgres local + Dockerfile.api (infra)
+ ├── docs/               # ADRs, operações, rastreabilidade, relatório da fase
+diff --git a/VITALOOP_1.3_STATUS.md b/VITALOOP_1.3_STATUS.md
+index c9d015a..bbd7b7b 100644
+--- a/VITALOOP_1.3_STATUS.md
++++ b/VITALOOP_1.3_STATUS.md
+@@ -5,6 +5,26 @@
+ 
+ ---
+ 
++> ## ⚠️ NOTA DE CORREÇÃO (31/08/2026)
++> As seções abaixo (§0 em diante) pararam de ser atualizadas depois do fechamento
++> formal da Fase 1 e passaram a descrever um estado defasado — "aguardando
++> autorização para Fase 2" — enquanto o repositório já tinha código e relatórios
++> de fechamento até a **Fase 13** (`docs/PHASE_13_FINAL_HOMOLOGATION_REPORT.md`)
++> e um gate de go-live já executado (`docs/GO_LIVE_REAL_VALIDATION_REPORT.md`,
++> resultado `CONDITIONAL`). Ninguém atualizou este arquivo a cada fase fechada,
++> e a defasagem só foi percebida numa auditoria externa comparando este
++> documento com o código real.
++>
++> O conteúdo original abaixo é mantido **como registro histórico do fechamento
++> formal da Fase 1** — não foi apagado nem reescrito. Para o estado real e atual
++> do projeto, ver `docs/GO_LIVE_REAL_VALIDATION_REPORT.md` (prontidão) e a lista
++> de `docs/PHASE_*_REPORT.md` (uma por fase, 0 a 13). Recomenda-se formalizar
++> este arquivo de novo a partir do go-live report antes de qualquer decisão de
++> produção — não é seguro decidir sobre um sistema clínico com base num status
++> desatualizado, mesmo que o motivo seja só falta de manutenção do documento.
++
++---
++
+ ## 0. HOMOLOGAÇÃO FORMAL — FASE 1
+ 
+ **FASE 1 — HOMOLOGADA em 2026-08-19.** Gate de saída: **PASS**. Base congelada em
+diff --git a/apps/web/index.html b/apps/web/index.html
+index f576170..04afcb8 100644
+--- a/apps/web/index.html
++++ b/apps/web/index.html
+@@ -4,6 +4,12 @@
+     <meta charset="UTF-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>VITALOOP 1.3</title>
++    <link rel="preconnect" href="https://fonts.googleapis.com" />
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++    <link
++      href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@500&display=swap"
++      rel="stylesheet"
++    />
+   </head>
+   <body>
+     <div id="root"></div>
+diff --git a/apps/web/src/App.tsx b/apps/web/src/App.tsx
+index 48b3636..0e421db 100644
+--- a/apps/web/src/App.tsx
++++ b/apps/web/src/App.tsx
+@@ -8,6 +8,7 @@
+ 
+ import { useEffect, useState } from 'react';
+ import { SessionProvider, useSession } from './context/session-context.js';
++import { AppShell } from './components/AppShell.js';
+ import { LoginPage } from './pages/LoginPage.js';
+ import { ProfilePage } from './pages/ProfilePage.js';
+ import { PasswordRecoveryPage } from './pages/PasswordRecoveryPage.js';
+@@ -43,7 +44,7 @@ const RequireSession = ({ children }: { children: JSX.Element }): JSX.Element =>
+   if (!identity) {
+     return <AccessDeniedPage reason="unauthenticated" />;
+   }
+-  return children;
++  return <AppShell>{children}</AppShell>;
+ };
+ 
+ const Shell = (): JSX.Element => {
+diff --git a/apps/web/src/components/AppShell.tsx b/apps/web/src/components/AppShell.tsx
+new file mode 100644
+index 0000000..60d02f9
+--- /dev/null
++++ b/apps/web/src/components/AppShell.tsx
+@@ -0,0 +1,102 @@
++/**
++ * Casca de navegação persistente da aplicação autenticada.
++ *
++ * Antes: cada rota substituía a tela inteira (App.tsx trocava componente
++ * via hash-router sem nenhum header/menu fixo) — em um sistema onde o
++ * profissional alterna constantemente entre fila, paciente e atendimento,
++ * isso obrigava a memorizar URLs de hash em vez de navegar visualmente.
++ *
++ * Este componente só envolve rotas autenticadas (ver App.tsx). As páginas
++ * de login/recuperação de senha continuam de tela cheia, sem navegação.
++ */
++import type { ReactNode } from 'react';
++import { useSession } from '../context/session-context.js';
++
++const NAV_LINKS: ReadonlyArray<{ href: string; label: string }> = [
++  { href: '#/filas', label: 'Filas' },
++  { href: '#/pacientes', label: 'Pacientes' },
++  { href: '#/atendimentos', label: 'Atendimentos' },
++];
++
++export const AppShell = ({ children }: { children: ReactNode }): JSX.Element => {
++  const { identity, logout } = useSession();
++  const currentRoute = window.location.hash.replace(/^#/, '') || '/';
++
++  return (
++    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
++      <header
++        style={{
++          background: 'var(--color-surface)',
++          borderBottom: '1px solid var(--color-border)',
++          padding: '10px var(--space-5)',
++          display: 'flex',
++          alignItems: 'center',
++          justifyContent: 'space-between',
++          gap: 'var(--space-4)',
++        }}
++      >
++        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-5)' }}>
++          <a
++            href="#/filas"
++            style={{
++              fontWeight: 700,
++              fontSize: 'var(--text-lg)',
++              color: 'var(--color-text)',
++              textDecoration: 'none',
++            }}
++          >
++            VITALOOP
++          </a>
++          <nav aria-label="Navegação principal" style={{ display: 'flex', gap: 'var(--space-4)' }}>
++            {NAV_LINKS.map((link) => {
++              const isActive = currentRoute === link.href.replace(/^#/, '');
++              return (
++                <a
++                  key={link.href}
++                  href={link.href}
++                  aria-current={isActive ? 'page' : undefined}
++                  style={{
++                    fontSize: 'var(--text-sm)',
++                    fontWeight: 600,
++                    padding: '6px 4px',
++                    color: isActive ? 'var(--color-primary)' : 'var(--color-text-muted)',
++                    borderBottom: isActive ? '2px solid var(--color-primary)' : '2px solid transparent',
++                    textDecoration: 'none',
++                  }}
++                >
++                  {link.label}
++                </a>
++              );
++            })}
++          </nav>
++        </div>
++
++        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
++          {identity?.roles && identity.roles.length > 0 && (
++            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
++              {identity.roles.join(', ')}
++            </span>
++          )}
++          <a href="#/perfil" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
++            Perfil
++          </a>
++          <button
++            type="button"
++            onClick={() => void logout()}
++            style={{
++              marginTop: 0,
++              background: 'transparent',
++              color: 'var(--color-text-muted)',
++              border: '1px solid var(--color-border-strong)',
++              padding: '6px 12px',
++            }}
++          >
++            Sair
++          </button>
++        </div>
++      </header>
++
++      <div style={{ flex: 1 }}>{children}</div>
++    </div>
++  );
++};
+diff --git a/apps/web/src/main.tsx b/apps/web/src/main.tsx
+index f6f1e9e..b330a5d 100644
+--- a/apps/web/src/main.tsx
++++ b/apps/web/src/main.tsx
+@@ -1,6 +1,7 @@
+ import { StrictMode } from 'react';
+ import { createRoot } from 'react-dom/client';
+ import { App } from './App.js';
++import './styles/global.css';
+ 
+ const container = document.getElementById('root');
+ if (!container) throw new Error('Elemento #root não encontrado.');
+diff --git a/apps/web/src/styles/global.css b/apps/web/src/styles/global.css
+new file mode 100644
+index 0000000..135778a
+--- /dev/null
++++ b/apps/web/src/styles/global.css
+@@ -0,0 +1,253 @@
++/*
++ * VITALOOP — sistema de design base.
++ *
++ * Contexto de uso: profissionais de saúde em plantão de UPA 24h, muitas vezes
++ * sob pressão de tempo e cansaço visual. Prioridade: legibilidade, densidade
++ * de informação, contraste alto, zero ambiguidade — não decoração.
++ *
++ * As cores clínicas de risco (Protocolo de Manchester: vermelho/laranja/
++ * amarelo/verde/azul) são dado clínico, não tema visual — permanecem
++ * definidas onde são usadas (ex.: QueueDashboardPage) e nunca são
++ * redefinidas aqui, para não colidir com o significado clínico.
++ *
++ * Esta folha estiliza elementos HTML nativos (form, input, button, table...)
++ * para que toda tela que hoje não tem nenhum CSS próprio herde uma
++ * aparência consistente automaticamente, sem precisar editar cada arquivo.
++ * Estilos inline existentes (ex.: badges de risco, botões de ação semântica)
++ * continuam funcionando normalmente — inline sempre vence sobre estas regras.
++ */
++
++:root {
++  /* Cor — paleta clínica, fria, de alto contraste */
++  --color-bg: #f4f6f8;
++  --color-surface: #ffffff;
++  --color-surface-sunken: #eef2f4;
++  --color-border: #d7e0e6;
++  --color-border-strong: #aebdc7;
++  --color-text: #12232d;
++  --color-text-muted: #52707f;
++  --color-text-faint: #7c8f99;
++
++  --color-primary: #0e5c74;
++  --color-primary-hover: #0a4a5d;
++  --color-primary-soft: #e2eff2;
++
++  --color-danger: #a4241c;
++  --color-danger-soft: #fbe9e7;
++  --color-success: #1f6f45;
++  --color-success-soft: #e6f4ea;
++  --color-warning: #8a5a00;
++  --color-warning-soft: #fdf1dc;
++
++  --color-focus-ring: #0e5c74;
++
++  /* Tipografia */
++  --font-ui: 'Public Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
++  --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
++
++  --text-xs: 0.8125rem;
++  --text-sm: 0.875rem;
++  --text-base: 0.9375rem;
++  --text-lg: 1.0625rem;
++  --text-xl: 1.25rem;
++  --text-2xl: 1.5rem;
++
++  /* Espaçamento */
++  --space-1: 4px;
++  --space-2: 8px;
++  --space-3: 12px;
++  --space-4: 16px;
++  --space-5: 24px;
++  --space-6: 32px;
++
++  --radius-sm: 6px;
++  --radius-md: 8px;
++
++  --shadow-card: 0 1px 2px rgba(18, 35, 45, 0.06);
++}
++
++@media (prefers-reduced-motion: no-preference) {
++  :root {
++    --transition-fast: 120ms ease;
++  }
++}
++@media (prefers-reduced-motion: reduce) {
++  * {
++    animation-duration: 0.001ms !important;
++    transition-duration: 0.001ms !important;
++  }
++}
++
++*,
++*::before,
++*::after {
++  box-sizing: border-box;
++}
++
++html {
++  -webkit-text-size-adjust: 100%;
++}
++
++body {
++  margin: 0;
++  background: var(--color-bg);
++  color: var(--color-text);
++  font-family: var(--font-ui);
++  font-size: var(--text-base);
++  line-height: 1.5;
++  -webkit-font-smoothing: antialiased;
++}
++
++h1, h2, h3, h4 {
++  font-family: var(--font-ui);
++  font-weight: 700;
++  line-height: 1.25;
++  margin: 0 0 var(--space-3) 0;
++  color: var(--color-text);
++}
++h1 { font-size: var(--text-2xl); }
++h2 { font-size: var(--text-xl); }
++h3 { font-size: var(--text-lg); }
++h4 { font-size: var(--text-base); font-weight: 600; }
++
++p { margin: 0 0 var(--space-3) 0; }
++
++a {
++  color: var(--color-primary);
++  text-decoration: none;
++}
++a:hover { text-decoration: underline; }
++
++/* Foco visível sempre — essencial em ambiente clínico, teclado/leitor de tela */
++:focus-visible {
++  outline: 2px solid var(--color-focus-ring);
++  outline-offset: 2px;
++  border-radius: var(--radius-sm);
++}
++
++/* Conteúdo principal de cada rota — a maioria das páginas de hoje é
++   <main>...</main> direto, sem wrapper próprio; isso dá a moldura padrão. */
++main {
++  display: block;
++  max-width: 1120px;
++  margin: 0 auto;
++  padding: var(--space-5);
++}
++main > h1:first-child {
++  padding-bottom: var(--space-3);
++  border-bottom: 1px solid var(--color-border);
++  margin-bottom: var(--space-4);
++}
++
++form {
++  display: flex;
++  flex-direction: column;
++  gap: var(--space-1);
++  max-width: 480px;
++  background: var(--color-surface);
++  border: 1px solid var(--color-border);
++  border-radius: var(--radius-md);
++  padding: var(--space-5);
++  box-shadow: var(--shadow-card);
++}
++
++label {
++  font-size: var(--text-xs);
++  font-weight: 600;
++  color: var(--color-text-muted);
++  margin-top: var(--space-3);
++}
++
++input, select, textarea {
++  font-family: var(--font-ui);
++  font-size: var(--text-base);
++  color: var(--color-text);
++  background: var(--color-surface);
++  border: 1px solid var(--color-border-strong);
++  border-radius: var(--radius-sm);
++  padding: 8px 10px;
++  width: 100%;
++}
++input::placeholder, textarea::placeholder {
++  color: var(--color-text-faint);
++}
++input:focus, select:focus, textarea:focus {
++  border-color: var(--color-primary);
++}
++input:disabled, select:disabled, textarea:disabled {
++  background: var(--color-surface-sunken);
++  color: var(--color-text-faint);
++}
++
++button {
++  font-family: var(--font-ui);
++  font-size: var(--text-sm);
++  font-weight: 600;
++  color: #ffffff;
++  background: var(--color-primary);
++  border: none;
++  border-radius: var(--radius-sm);
++  padding: 9px 16px;
++  margin-top: var(--space-4);
++  cursor: pointer;
++  transition: background var(--transition-fast, 0ms);
++}
++button:hover:not(:disabled) { background: var(--color-primary-hover); }
++button:disabled { background: var(--color-border-strong); cursor: not-allowed; }
++
++/* Links de ação secundária que aparecem como <a> soltos após formulários
++   (ex.: "Esqueci minha senha") não devem herdar o espaçamento de form. */
++form + a, main > a {
++  display: inline-block;
++  margin-top: var(--space-3);
++  font-size: var(--text-sm);
++}
++
++table {
++  width: 100%;
++  border-collapse: collapse;
++  background: var(--color-surface);
++  border: 1px solid var(--color-border);
++  border-radius: var(--radius-md);
++  overflow: hidden;
++  box-shadow: var(--shadow-card);
++}
++thead {
++  background: var(--color-surface-sunken);
++}
++th {
++  text-align: left;
++  font-size: var(--text-xs);
++  font-weight: 700;
++  text-transform: none;
++  color: var(--color-text-muted);
++  padding: var(--space-3);
++  border-bottom: 1px solid var(--color-border);
++}
++td {
++  padding: var(--space-3);
++  border-bottom: 1px solid var(--color-border);
++  font-size: var(--text-sm);
++}
++tbody tr:last-child td { border-bottom: none; }
++tbody tr:hover { background: var(--color-surface-sunken); }
++
++/* Dado clínico/identificador — números de senha, IDs, CPF, timestamps */
++.vl-mono, td.vl-mono, .mono {
++  font-family: var(--font-mono);
++}
++
++[role='alert'] {
++  background: var(--color-danger-soft);
++  color: var(--color-danger);
++  border: 1px solid var(--color-danger);
++  border-radius: var(--radius-sm);
++  padding: var(--space-3);
++  font-size: var(--text-sm);
++  margin-bottom: var(--space-3);
++}
++
++[role='status'] {
++  color: var(--color-text-muted);
++  font-size: var(--text-sm);
++}
