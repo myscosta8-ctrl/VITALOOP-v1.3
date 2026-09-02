@@ -17,15 +17,15 @@ export const MedicationScheduleGrid: React.FC<MedicationScheduleGridProps> = ({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'administered':
-        return <span className="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded font-semibold">Administrado</span>;
+        return <span className="vl-badge vl-badge-success">Administrado</span>;
       case 'refused':
-        return <span className="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded font-semibold">Recusado</span>;
+        return <span className="vl-badge vl-badge-warning">Recusado</span>;
       case 'not_administered':
-        return <span className="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded font-semibold">Não Administrado</span>;
+        return <span className="vl-badge vl-badge-danger">Não Administrado</span>;
       case 'suspended':
-        return <span className="bg-gray-100 text-gray-800 text-xs px-2 py-0.5 rounded font-semibold">Suspenso</span>;
+        return <span className="vl-badge vl-badge-neutral">Suspenso</span>;
       default:
-        return <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-semibold">Pendente</span>;
+        return <span className="vl-badge vl-badge-info">Pendente</span>;
     }
   };
 
