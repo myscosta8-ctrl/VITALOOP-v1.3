@@ -80,15 +80,7 @@ export const BedMapPage: React.FC = () => {
           bed={allocationBed}
           sectors={sectors}
           onClose={() => setAllocationBed(null)}
-          onConfirmAllocation={async (bedId, regulationCode) => {
-            // Esta tela é o mapa geral de leitos (não escopada a um atendimento).
-            // Até existir um fluxo de seleção de atendimento em espera, pedimos o
-            // ID do atendimento/paciente diretamente — mesmo padrão de entrada
-            // manual de ID já usado em EncounterOpenPage nesta base de código.
-            const encounterId = window.prompt('ID do atendimento para o qual alocar este leito:');
-            if (!encounterId) return;
-            const patientId = window.prompt('ID do paciente:');
-            if (!patientId) return;
+          onConfirmAllocation={async (encounterId, bedId, patientId, regulationCode) => {
             await bedApi.allocateBed(encounterId, bedId, patientId, regulationCode);
             setAllocationBed(null);
             await load();

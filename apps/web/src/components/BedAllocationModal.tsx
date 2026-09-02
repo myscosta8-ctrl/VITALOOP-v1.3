@@ -5,9 +5,44 @@ interface BedAllocationModalProps {
   bed: BedData | null;
   sectors: BedSectorData[];
   onClose: () => void;
-  onConfirmAllocation: (bedId: string, regulationCode?: string | null) => Promise<void>;
+  onConfirmAllocation: (
+    encounterId: string,
+    bedId: string,
+    patientId: string,
+    regulationCode?: string | null
+  ) => Promise<void>;
   onCreateExtraBed?: (sectorId: string, bedNumber: string) => Promise<void>;
 }
+
+export const Overlay: React.FC<{ title: string; onClose: () => void; children: React.ReactNode }> = ({
+  title,
+  onClose,
+  children,
+}) => (
+  <div
+    style={{
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(18,35,45,.45)',
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'center',
+      padding: '40px 20px',
+      overflowY: 'auto',
+      zIndex: 100,
+    }}
+  >
+    <div style={{ background: '#fff', borderRadius: 10, padding: 24, width: 520, maxWidth: '100%' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <h2 style={{ margin: 0, fontSize: 16 }}>{title}</h2>
+        <button type="button" onClick={onClose} style={{ marginTop: 0 }}>
+          Fechar
+        </button>
+      </div>
+      {children}
+    </div>
+  </div>
+);
 
 export const BedAllocationModal: React.FC<BedAllocationModalProps> = ({
   bed,
@@ -16,6 +51,8 @@ export const BedAllocationModal: React.FC<BedAllocationModalProps> = ({
   onConfirmAllocation,
   onCreateExtraBed,
 }) => {
+  const [encounterId, setEncounterId] = useState('');
+  const [patientId, setPatientId] = useState('');
   const [regulationCode, setRegulationCode] = useState('');
   const [isExtraMode, setIsExtraMode] = useState(false);
   const [selectedSectorId, setSelectedSectorId] = useState(sectors[0]?.id || '');
@@ -25,114 +62,145 @@ export const BedAllocationModal: React.FC<BedAllocationModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
 
-    try {
-      if (isExtraMode) {
-        if (!extraBedNumber.trim()) {
-          setError('Informe a numeração/identificação do leito extra.');
-          setLoading(false);
-          return;
-        }
+    if (isExtraMode) {
+      if (!extraBedNumber.trim()) {
+        setError('Informe a numeração/identificação do leito extra.');
+        return;
+      }
+      setLoading(true);
+      try {
         if (onCreateExtraBed) {
           await onCreateExtraBed(selectedSectorId, extraBedNumber.trim());
         }
-      } else if (bed) {
-        await onConfirmAllocation(bed.id, regulationCode.trim() ? regulationCode.trim() : null);
+        onClose();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erro ao criar leito extra.');
+      } finally {
+        setLoading(false);
       }
+      return;
+    }
+
+    if (!encounterId.trim() || !patientId.trim()) {
+      setError('ID do atendimento e ID do paciente são obrigatórios.');
+      return;
+    }
+
+    if (!bed) return;
+
+    setLoading(true);
+    try {
+      await onConfirmAllocation(
+        encounterId.trim(),
+        bed.id,
+        patientId.trim(),
+        regulationCode.trim() ? regulationCode.trim() : null
+      );
       onClose();
     } catch (err) {
-      const errorObj = err as Error;
-      setError(errorObj?.message || 'Erro ao alocar leito.');
+      setError(err instanceof Error ? err.message : 'Erro ao alocar leito.');
     } finally {
       setLoading(false);
     }
   };
 
+  const title = isExtraMode ? 'Abertura de Leito Extra (BED-004)' : `Alocação de Leito: ${bed?.bedNumber || ''}`;
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full space-y-4 shadow-xl">
-        <div className="flex justify-between items-center border-b pb-2">
-          <h3 className="font-bold text-gray-900 text-lg">
-            {isExtraMode ? 'Abertura de Leito Extra (BED-004)' : `Alocação de Leito: ${bed?.bedNumber || ''}`}
-          </h3>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 font-bold text-xl">
-            &times;
-          </button>
-        </div>
+    <Overlay title={title} onClose={onClose}>
+      {error && <p role="alert">{error}</p>}
 
-        {error && <div className="p-3 bg-red-50 text-red-700 text-sm rounded border border-red-200">{error}</div>}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!isExtraMode ? (
+      <form onSubmit={handleSubmit} style={{ border: 'none', padding: 0, boxShadow: 'none', maxWidth: '100%' }}>
+        {!isExtraMode ? (
+          <>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Código de Regulação (CROSS/SISREG - Opcional):</label>
+              <label htmlFor="encounterId">ID do Atendimento *</label>
               <input
+                id="encounterId"
+                type="text"
+                value={encounterId}
+                onChange={(e) => setEncounterId(e.target.value)}
+                placeholder="Ex: ENC-12345"
+              />
+            </div>
+            <div>
+              <label htmlFor="patientId">ID do Paciente *</label>
+              <input
+                id="patientId"
+                type="text"
+                value={patientId}
+                onChange={(e) => setPatientId(e.target.value)}
+                placeholder="Ex: PAT-67890"
+              />
+            </div>
+            <div>
+              <label htmlFor="regulationCode">Código de Regulação (CROSS/SISREG - Opcional)</label>
+              <input
+                id="regulationCode"
                 type="text"
                 value={regulationCode}
                 onChange={(e) => setRegulationCode(e.target.value)}
                 placeholder="Ex: CROSS-994821"
-                className="w-full p-2 border rounded text-sm"
               />
             </div>
-          ) : (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Setor Assistencial:</label>
-                <select
-                  value={selectedSectorId}
-                  onChange={(e) => setSelectedSectorId(e.target.value)}
-                  className="w-full p-2 border rounded text-sm"
-                >
-                  {sectors.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Identificação do Leito Extra:</label>
-                <input
-                  type="text"
-                  value={extraBedNumber}
-                  onChange={(e) => setExtraBedNumber(e.target.value)}
-                  placeholder="Ex: Leito Extra 01"
-                  className="w-full p-2 border rounded text-sm"
-                />
-              </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <label htmlFor="sectorSelect">Setor Assistencial</label>
+              <select
+                id="sectorSelect"
+                value={selectedSectorId}
+                onChange={(e) => setSelectedSectorId(e.target.value)}
+              >
+                {sectors.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
             </div>
+            <div>
+              <label htmlFor="extraBedNumber">Identificação do Leito Extra</label>
+              <input
+                id="extraBedNumber"
+                type="text"
+                value={extraBedNumber}
+                onChange={(e) => setExtraBedNumber(e.target.value)}
+                placeholder="Ex: Leito Extra 01"
+              />
+            </div>
+          </>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+          {onCreateExtraBed && (
+            <button
+              type="button"
+              onClick={() => setIsExtraMode(!isExtraMode)}
+              style={{ background: 'transparent', color: 'var(--color-primary)', padding: 0, marginTop: 0 }}
+            >
+              {isExtraMode ? 'Voltar para Alocação Direta' : '+ Abrir Leito Extra'}
+            </button>
           )}
 
-          <div className="flex justify-between items-center pt-3 border-t">
-            {onCreateExtraBed && (
-              <button
-                type="button"
-                onClick={() => setIsExtraMode(!isExtraMode)}
-                className="text-xs text-indigo-600 hover:underline font-semibold"
-              >
-                {isExtraMode ? 'Voltar para Alocação Direta' : '+ Abrir Leito Extra'}
-              </button>
-            )}
-
-            <div className="flex gap-2 ml-auto">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 bg-gray-200 text-gray-800 rounded text-xs font-medium hover:bg-gray-300"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-4 py-2 bg-emerald-600 text-white rounded text-xs font-bold hover:bg-emerald-700 disabled:opacity-50"
-              >
-                {loading ? 'Confirmando...' : isExtraMode ? 'Criar Leito Extra' : 'Confirmar Alocação'}
-              </button>
-            </div>
+          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{ background: 'var(--color-surface-sunken)', color: 'var(--color-text)', marginTop: 0 }}
+            >
+              Cancelar
+            </button>
+            <button type="submit" disabled={loading} style={{ marginTop: 0 }}>
+              {loading ? 'Confirmando...' : isExtraMode ? 'Criar Leito Extra' : 'Confirmar Alocação'}
+            </button>
           </div>
-        </form>
-      </div>
-    </div>
+        </div>
+      </form>
+    </Overlay>
   );
 };
+
