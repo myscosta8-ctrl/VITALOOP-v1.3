@@ -23,6 +23,17 @@ import { EncounterOpenPage } from './pages/EncounterOpenPage.js';
 import { TriageOpenPage } from './pages/TriageOpenPage.js';
 import { QueueDashboardPage } from './pages/QueueDashboardPage.js';
 import { MedicalConsultationPage } from './pages/MedicalConsultationPage.js';
+import { EnfermagemPage } from './pages/EnfermagemPage.js';
+import { BedMapPage } from './pages/BedMapPage.js';
+import { EncounterActionsPage } from './pages/EncounterActionsPage.js';
+import { NursingSaeView } from './components/NursingSaeView.js';
+import { LgpdPrivacyPanel } from './components/LgpdPrivacyPanel.js';
+import { ManagementDashboardPage } from './components/ManagementDashboardPage.js';
+import { InteroperabilityDashboardPage } from './components/InteroperabilityDashboardPage.js';
+import { ObservabilityDashboard } from './components/ObservabilityDashboard.js';
+import { SecurityHardeningPanel } from './components/SecurityHardeningPanel.js';
+import { QualityAccessibilityDashboard } from './components/QualityAccessibilityDashboard.js';
+import { DisasterRecoveryPanel } from './components/DisasterRecoveryPanel.js';
 
 const currentHash = (): string => window.location.hash.replace(/^#/, '') || '/';
 
@@ -101,6 +112,48 @@ const Shell = (): JSX.Element => {
           <QueueDashboardPage />
         </RequireSession>
       );
+    case '/leitos':
+      return (
+        <RequireSession>
+          <BedMapPage />
+        </RequireSession>
+      );
+    case '/indicadores':
+      return (
+        <RequireSession>
+          <ManagementDashboardPage />
+        </RequireSession>
+      );
+    case '/interoperabilidade':
+      return (
+        <RequireSession>
+          <InteroperabilityDashboardPage />
+        </RequireSession>
+      );
+    case '/observabilidade':
+      return (
+        <RequireSession>
+          <ObservabilityDashboard />
+        </RequireSession>
+      );
+    case '/seguranca':
+      return (
+        <RequireSession>
+          <SecurityHardeningPanel />
+        </RequireSession>
+      );
+    case '/qualidade':
+      return (
+        <RequireSession>
+          <QualityAccessibilityDashboard />
+        </RequireSession>
+      );
+    case '/disaster-recovery':
+      return (
+        <RequireSession>
+          <DisasterRecoveryPanel />
+        </RequireSession>
+      );
     case '/login':
     case '/':
       return <LoginPage />;
@@ -121,11 +174,49 @@ const Shell = (): JSX.Element => {
           </RequireSession>
         );
       }
+      const saeMatch = /^\/atendimentos\/([^/]+)\/sae$/.exec(route);
+      if (saeMatch) {
+        return (
+          <RequireSession>
+            <main>
+              <h1>Sistematização da assistência de enfermagem</h1>
+              <NursingSaeView encounterId={saeMatch[1]!} />
+            </main>
+          </RequireSession>
+        );
+      }
+      const enfermagemMatch = /^\/atendimentos\/([^/]+)\/enfermagem$/.exec(route);
+      if (enfermagemMatch) {
+        return (
+          <RequireSession>
+            <EnfermagemPage encounterId={enfermagemMatch[1]!} />
+          </RequireSession>
+        );
+      }
+      const acoesMatch = /^\/atendimentos\/([^/]+)\/acoes$/.exec(route);
+      if (acoesMatch) {
+        return (
+          <RequireSession>
+            <EncounterActionsPage encounterId={acoesMatch[1]!} />
+          </RequireSession>
+        );
+      }
       const patientMatch = /^\/pacientes\/([^/]+)$/.exec(route);
       if (patientMatch) {
         return (
           <RequireSession>
             <PatientDetailPage patientId={patientMatch[1]!} />
+          </RequireSession>
+        );
+      }
+      const patientLgpdMatch = /^\/pacientes\/([^/]+)\/lgpd$/.exec(route);
+      if (patientLgpdMatch) {
+        return (
+          <RequireSession>
+            <main>
+              <h1>Privacidade e LGPD</h1>
+              <LgpdPrivacyPanel patientId={patientLgpdMatch[1]!} />
+            </main>
           </RequireSession>
         );
       }

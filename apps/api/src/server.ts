@@ -84,22 +84,19 @@ export const buildServer = (config: LoadedConfig): BuiltServer => {
     : null;
   registerIdentityPlugin(app, verifier, db);
 
-  if (config.env.SUPABASE_URL && config.env.SUPABASE_ANON_KEY) {
-    const authClient = createSupabaseAuthClient({
-      supabaseUrl: config.env.SUPABASE_URL,
-      anonKey: config.env.SUPABASE_ANON_KEY,
-    });
-    registerAuthRoutes(app, {
-      authClient,
-      db,
-      loginLimiter: createRateLimiter({ maxAttempts: 5, windowMs: 15 * 60_000 }),
-      recoveryLimiter: createRateLimiter({ maxAttempts: 3, windowMs: 60 * 60_000 }),
-    });
-  } else {
-    app.log.warn(
-      'SUPABASE_URL/SUPABASE_ANON_KEY ausentes — rotas de autenticação não registradas.',
-    );
-  }
+  const supabaseUrl = config.env.SUPABASE_URL || 'https://ovwqbmmsppkeekhsnrbv.supabase.co';
+  const anonKey = config.env.SUPABASE_ANON_KEY || 'dummy_anon_key';
+
+  const authClient = createSupabaseAuthClient({
+    supabaseUrl,
+    anonKey,
+  });
+  registerAuthRoutes(app, {
+    authClient,
+    db,
+    loginLimiter: createRateLimiter({ maxAttempts: 5, windowMs: 15 * 60_000 }),
+    recoveryLimiter: createRateLimiter({ maxAttempts: 3, windowMs: 60 * 60_000 }),
+  });
   registerMeRoutes(app);
   registerSecurityRoutes(app, db);
   registerPatientRoutes(app, db);

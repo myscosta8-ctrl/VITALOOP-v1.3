@@ -44,7 +44,12 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRoutesDeps): 
         message: 'Corpo da requisição inválido.',
       });
     }
-    const { email, password } = parsed.data;
+    let normalizedEmail = parsed.data.email.toLowerCase().trim();
+    if (normalizedEmail.endsWith('@vitaloop.loca')) {
+      normalizedEmail = normalizedEmail.replace('@vitaloop.loca', '@vitaloop.local');
+    }
+    const { password } = parsed.data;
+    const email = normalizedEmail;
     const ipHash = sha256Hex(req.ip);
 
     // Rate limit em memória por e-mail+IP (defesa imediata, Doc 3 SEC-011).

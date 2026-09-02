@@ -16,6 +16,13 @@ const NAV_LINKS: ReadonlyArray<{ href: string; label: string }> = [
   { href: '#/filas', label: 'Filas' },
   { href: '#/pacientes', label: 'Pacientes' },
   { href: '#/atendimentos', label: 'Atendimentos' },
+  { href: '#/leitos', label: 'Leitos' },
+  { href: '#/indicadores', label: 'Indicadores' },
+  { href: '#/interoperabilidade', label: 'Interoperabilidade' },
+  { href: '#/qualidade', label: 'Qualidade' },
+  { href: '#/seguranca', label: 'Segurança' },
+  { href: '#/observabilidade', label: 'Observabilidade' },
+  { href: '#/disaster-recovery', label: 'Disaster Recovery' },
 ];
 
 export const AppShell = ({ children }: { children: ReactNode }): JSX.Element => {

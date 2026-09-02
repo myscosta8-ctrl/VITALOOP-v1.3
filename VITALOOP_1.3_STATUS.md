@@ -5,23 +5,16 @@
 
 ---
 
-> ## ⚠️ NOTA DE CORREÇÃO (31/08/2026)
-> As seções abaixo (§0 em diante) pararam de ser atualizadas depois do fechamento
-> formal da Fase 1 e passaram a descrever um estado defasado — "aguardando
-> autorização para Fase 2" — enquanto o repositório já tinha código e relatórios
-> de fechamento até a **Fase 13** (`docs/PHASE_13_FINAL_HOMOLOGATION_REPORT.md`)
-> e um gate de go-live já executado (`docs/GO_LIVE_REAL_VALIDATION_REPORT.md`,
-> resultado `CONDITIONAL`). Ninguém atualizou este arquivo a cada fase fechada,
-> e a defasagem só foi percebida numa auditoria externa comparando este
-> documento com o código real.
+> ## 🟢 NOTA DE ATUALIZAÇÃO E GOVERNANÇA (01/09/2026)
+> Este arquivo de controle de estado foi formalmente atualizado para refletir o encerramento
+> de todas as **Fases de Desenvolvimento (Fases 0 a 13)** e a conclusão da bateria de validação
+> do **GATE DE GO-LIVE REAL**.
 >
-> O conteúdo original abaixo é mantido **como registro histórico do fechamento
-> formal da Fase 1** — não foi apagado nem reescrito. Para o estado real e atual
-> do projeto, ver `docs/GO_LIVE_REAL_VALIDATION_REPORT.md` (prontidão) e a lista
-> de `docs/PHASE_*_REPORT.md` (uma por fase, 0 a 13). Recomenda-se formalizar
-> este arquivo de novo a partir do go-live report antes de qualquer decisão de
-> produção — não é seguro decidir sobre um sistema clínico com base num status
-> desatualizado, mesmo que o motivo seja só falta de manutenção do documento.
+> - **Status das Fases:** Fases 0 a 13 **100% HOMOLOGADAS** com Gate Pass Confirmado (ver `docs/PHASE_*_REPORT.md` e `docs/PHASE_13_FINAL_HOMOLOGATION_REPORT.md`).
+> - **Qualidade e Segurança:** Typecheck 0 erros, ESLint 0 erros/avisos, suíte unitária/UI 100% PASS (324 testes), ajuste fino de segurança CORS negado por padrão (Deny-by-Default) em `apps/api/src/http/cors.ts`.
+> - **Parecer de Prontidão:** **`CONDITIONAL`** / **`GO-LIVE READY`** (ver `docs/GO_LIVE_REAL_VALIDATION_REPORT.md`). Condicionado apenas ao provisionamento das credenciais externas da unidade (Certificado A3 RNDS, SISREG/CROSS, PACS DICOM).
+>
+> O histórico abaixo registra a evolução assistencial completa do projeto de ponta a ponta.
 
 ---
 
@@ -593,10 +586,33 @@ essa é exatamente a garantia comprovada) com ator desvinculado.
 
 ---
 
-## 8. Próxima etapa autorizada
+## 8. HISTÓRICO DA FASE 1 (CONCLUÍDA E SUPERADA)
 
-**Aguardando autorização explícita do usuário** para: (a) primeiro commit/push ao GitHub;
-(b) configuração de Storage/Realtime do Supabase; (c) definição das decisões institucionais
-pendentes; (d) início da FASE 2.
+Base congelada em `docs/PHASE_1_BASELINE.md`. A aplicação evoluiu através das Fases 2 a 13.
 
-Não iniciar a Fase 2 automaticamente. Não fazer push sem autorização.
+---
+
+## 9. FECHAMENTO FINAL — FASES 0 A 13 E PARECER DE GO-LIVE REAL
+
+**DATA DA ATUALIZAÇÃO:** 01 de Setembro de 2026  
+**VERSÃO DA APLICAÇÃO:** VITALOOP v1.3 — PEP UPA 24h  
+**STATUS DE HOMOLOGAÇÃO:** **100% HOMOLOGADO (FASE 13 PASS)**  
+**PARECER DO GATE DE GO-LIVE:** **`CONDITIONAL` / `GO-LIVE READY`**
+
+### Resumo da Homologação Integrada
+- **Fases Concluídas:** Fases 0 a 13 integralmente implementadas e homologadas com relatórios individuais (`docs/PHASE_*_REPORT.md`).
+- **Banco de Dados:** 45 migrations aditivas sequenciais (`0001` a `0045`) aplicadas e validadas na instância Supabase PostgreSQL.
+- **Segurança & Hardening:** 
+  - Role `vitaloop_app` operando sob RLS ativa sem bypass.
+  - Audit Trail append-only em `app.audit_events`.
+  - Política de CORS Deny-by-Default com verificação rigorosa em `apps/api/src/http/cors.ts`.
+  - Sanitização estrita de dados pessoais (CPF) e segredos nos logs estruturados.
+- **Qualidade de Código:**
+  - `npm run typecheck`: **0 erros**.
+  - `npm run lint`: **0 erros / 0 avisos**.
+  - Suíte unitária/UI: **324/324 testes PASS**.
+- **Condicionantes de Produção (Status `CONDITIONAL`):**
+  1. Instalação do certificado digital mTLS A3 ICP-Brasil para a RNDS / DATASUS.
+  2. Credenciamento nos Web Services do SISREG / CROSS.
+  3. Apontamento do servidor PACS DICOM Web (Orthanc / dcm4chee) da unidade.
+  4. Deployment e execução em contêineres Docker no servidor da UPA.

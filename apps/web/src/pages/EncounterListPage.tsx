@@ -155,6 +155,32 @@ export const EncounterListPage: React.FC = () => {
                             Realizar Triagem
                           </a>
                         )}
+                        {enc.status === 'consultation_pending' && (
+                          <a
+                            href={`#/atendimentos/${enc.id}/consulta`}
+                            className="px-3 py-1 text-xs bg-blue-600 text-white font-medium rounded hover:bg-blue-700 inline-block"
+                          >
+                            Realizar Consulta
+                          </a>
+                        )}
+                        <a
+                          href={`#/atendimentos/${enc.id}/enfermagem`}
+                          className="px-3 py-1 text-xs bg-gray-200 text-gray-800 rounded hover:bg-gray-300 inline-block"
+                        >
+                          Enfermagem
+                        </a>
+                        <a
+                          href={`#/atendimentos/${enc.id}/sae`}
+                          className="px-3 py-1 text-xs bg-gray-200 text-gray-800 rounded hover:bg-gray-300 inline-block"
+                        >
+                          SAE
+                        </a>
+                        <a
+                          href={`#/atendimentos/${enc.id}/acoes`}
+                          className="px-3 py-1 text-xs bg-gray-200 text-gray-800 rounded hover:bg-gray-300 inline-block"
+                        >
+                          Ações
+                        </a>
                         <button
                           onClick={() => handleOpenStatusModal(enc)}
                           className="px-3 py-1 text-xs bg-gray-200 text-gray-800 rounded hover:bg-gray-300"

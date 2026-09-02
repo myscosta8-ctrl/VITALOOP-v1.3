@@ -113,6 +113,10 @@ export const PatientDetailPage = ({ patientId }: { patientId: string }): JSX.Ele
         />
       )}
 
+      <p>
+        <a href={`#/pacientes/${patient.id}/lgpd`}>Privacidade e LGPD</a>
+      </p>
+
       <ContactsSection patientId={patient.id} patientsApi={patientsApi} />
       <AllergiesSection patientId={patient.id} patientsApi={patientsApi} />
       <AntecedentsSection patientId={patient.id} patientsApi={patientsApi} />

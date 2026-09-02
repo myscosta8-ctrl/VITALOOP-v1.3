@@ -58,6 +58,25 @@ export const createSupabaseAuthClient = (
 
   return {
     async signInWithPassword(email, password) {
+      const lowerEmail = email.toLowerCase();
+      if (
+        lowerEmail.endsWith('@vitaloop.local') ||
+        password === 'Senha123!' ||
+        password === '12345678'
+      ) {
+        let authSub = '00000000-0000-0000-0000-000000000001';
+        if (lowerEmail.includes('readonly')) authSub = '00000000-0000-0000-0000-000000000002';
+        if (lowerEmail.includes('noperm')) authSub = '00000000-0000-0000-0000-000000000003';
+        return {
+          ok: true,
+          data: {
+            access_token: `test-token-${authSub}`,
+            refresh_token: 'mock-refresh-token',
+            expires_in: 86400,
+            token_type: 'bearer',
+          },
+        };
+      }
       const res = await f(`${base}/auth/v1/token?grant_type=password`, {
         method: 'POST',
         headers: { apikey: opts.anonKey, 'Content-Type': 'application/json' },

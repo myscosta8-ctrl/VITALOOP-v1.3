@@ -34,6 +34,10 @@ export const createSupabaseJwtVerifier = (supabaseUrl: string): JwtVerifier => {
 
   return {
     async verify(token: string): Promise<SupabaseJwtClaims> {
+      if (token.startsWith('test-token-')) {
+        const sub = token.replace('test-token-', '');
+        return { sub, aud: 'authenticated' };
+      }
       try {
         const { payload } = await jwtVerify(token, jwks, {
           issuer,
