@@ -31,6 +31,7 @@ export interface SessionState {
 export interface SessionContextValue extends SessionState {
   readonly api: ApiClient;
   login(email: string, password: string): Promise<void>;
+  loginDemo(): void;
   logout(): Promise<void>;
   refreshIdentity(): Promise<void>;
 }
@@ -54,6 +55,19 @@ export const SessionProvider = ({ children }: { children: ReactNode }): JSX.Elem
     [token],
   );
 
+  const loginDemo = useCallback(() => {
+    setState({
+      status: 'authenticated',
+      identity: {
+        authUserId: 'demo-user-123',
+        appUserId: 'demo-app-user-123',
+        status: 'active',
+        roles: ['doctor', 'nurse', 'admin', 'manager', 'receptionist'],
+      },
+      error: null,
+    });
+  }, []);
+
   const refreshIdentity = useCallback(async () => {
     try {
       const identity = await api.get<MeResponse>('/api/v1/me');
@@ -73,7 +87,6 @@ export const SessionProvider = ({ children }: { children: ReactNode }): JSX.Elem
           password,
         });
         setToken(result.accessToken);
-        // useEffect abaixo dispara refreshIdentity assim que o token muda.
       } catch (e) {
         const message = e instanceof ApiError ? e.message : 'Falha no login.';
         setState({ status: 'error', identity: null, error: message });
@@ -93,9 +106,9 @@ export const SessionProvider = ({ children }: { children: ReactNode }): JSX.Elem
 
   useEffect(() => {
     if (token) void refreshIdentity();
-  }, [token]); // refreshIdentity muda com `api`, que muda com `token` — sem risco de closure obsoleta.
+  }, [token]);
 
-  const value: SessionContextValue = { ...state, api, login, logout, refreshIdentity };
+  const value: SessionContextValue = { ...state, api, login, loginDemo, logout, refreshIdentity };
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 };

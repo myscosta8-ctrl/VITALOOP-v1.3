@@ -49,7 +49,7 @@ const useHashRoute = (): string => {
 
 const RequireSession = ({ children }: { children: JSX.Element }): JSX.Element => {
   const { identity, status } = useSession();
-  if (status === 'authenticating' || status === 'idle') {
+  if (status === 'authenticating') {
     return <p role="status">Carregando…</p>;
   }
   if (!identity) {

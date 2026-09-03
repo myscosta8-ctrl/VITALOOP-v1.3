@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useSession } from '../context/session-context.js';
 
 export const LoginPage = (): JSX.Element => {
-  const { login, status, error } = useSession();
+  const { login, loginDemo, status, error } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -35,6 +35,17 @@ export const LoginPage = (): JSX.Element => {
         />
         <button type="submit" disabled={status === 'authenticating'}>
           {status === 'authenticating' ? 'Entrando…' : 'Entrar'}
+        </button>
+        <button
+          type="button"
+          onClick={() => loginDemo()}
+          style={{
+            marginTop: 12,
+            background: 'var(--color-success)',
+            color: '#ffffff',
+          }}
+        >
+          🚀 Entrar em Modo de Demonstração (Liberar Todas as Telas)
         </button>
       </form>
       {status === 'error' && error && (
