@@ -14,6 +14,20 @@ import type { ClinicalFormSchema } from '../clinical-forms/types.js';
 // vez de dois tipos separados. Acompanhamento Farmacêutico é a evolução
 // repetida ao longo do seguimento (análise diária/periódica de prescrição),
 // mesmo conceito de `tipo_registro: 'evolucao'` já usado em Nutrição.
+//
+// Grupo "Checklist FAST HUG MAIDENS" (2026-09-08): campos complementares
+// baseados em metodologia real, publicada e validada de acompanhamento
+// farmacêutico — mnemônico FAST HUG (VINCENT, J. L. Give your patient a
+// fast hug (at least) once a day. Critical Care Medicine, 2005) estendido
+// para MAIDENS por MABASA, V. H. et al. A Standardized, Structured Approach
+// to Identifying Drug-Related Problems in the Intensive Care Unit:
+// FASTHUG-MAIDENS. Can J Hosp Pharm, 64(5), 2011. Adotado em protocolo
+// institucional real de hospital universitário brasileiro (HU-UNIVASF/
+// EBSERH, Protocolo de Acompanhamento Farmacoterapêutico, 2019, ISBN
+// 978-85-92656-18-8) — mesma metodologia usada aqui para complementar, não
+// substituir, os campos extraídos do impresso real do Marajó. Clearance de
+// creatinina segue a fórmula CKD-EPI, referência padrão para ajuste renal
+// de dose citada no mesmo protocolo.
 export const PHARMACY_FOLLOWUP_SCHEMA: ClinicalFormSchema = {
   schemaCode: 'PHARMACY_CLINICAL_FOLLOWUP',
   groups: [
@@ -103,6 +117,7 @@ export const PHARMACY_FOLLOWUP_SCHEMA: ClinicalFormSchema = {
             { code: '1', label: 'Faz uso de 1 medicamento' },
             { code: '2_ou_mais', label: '2 ou mais medicamentos' },
           ],
+          helpText: 'Referência: Lista de Medicamentos Potencialmente Perigosos do ISMP Brasil (ex.: insulinas, anticoagulantes, opioides, eletrólitos concentrados, quimioterápicos, sedativos/bloqueadores neuromusculares).',
         },
         {
           code: 'score_uso_sonda',
@@ -231,6 +246,67 @@ export const PHARMACY_FOLLOWUP_SCHEMA: ClinicalFormSchema = {
           required: true,
           visibleWhen: { fieldCode: 'tipo_registro', equals: ['evolucao'] },
           helpText: 'Ex.: seguimento do uso dos antimicrobianos, análise diária de prescrição.',
+        },
+      ],
+    },
+    {
+      title: 'Checklist FAST HUG MAIDENS (evolução, complementar)',
+      fields: [
+        {
+          code: 'sedacao',
+          label: 'Sedação',
+          type: 'text',
+          visibleWhen: { fieldCode: 'tipo_registro', equals: ['evolucao'] },
+          helpText: 'Fármaco e nível de sedação alvo (ex.: escala RASS).',
+        },
+        {
+          code: 'tromboprofilaxia',
+          label: 'Tromboprofilaxia (TEV)',
+          type: 'text',
+          visibleWhen: { fieldCode: 'tipo_registro', equals: ['evolucao'] },
+          helpText: 'Ex.: heparina ou enoxaparina, ou contraindicação/motivo de não realização.',
+        },
+        {
+          code: 'delirium',
+          label: 'Delirium',
+          type: 'code',
+          visibleWhen: { fieldCode: 'tipo_registro', equals: ['evolucao'] },
+          options: [
+            { code: 'ausente', label: 'Ausente' },
+            { code: 'hipoativo', label: 'Hipoativo' },
+            { code: 'hiperativo', label: 'Hiperativo' },
+          ],
+        },
+        {
+          code: 'controle_glicemico',
+          label: 'Controle glicêmico',
+          type: 'text',
+          visibleWhen: { fieldCode: 'tipo_registro', equals: ['evolucao'] },
+        },
+        {
+          code: 'conciliacao_medicamentosa',
+          label: 'Conciliação medicamentosa realizada',
+          type: 'code',
+          visibleWhen: { fieldCode: 'tipo_registro', equals: ['evolucao'] },
+          options: [
+            { code: 'sim', label: 'Sim' },
+            { code: 'nao', label: 'Não' },
+          ],
+          helpText: 'Comparação entre medicamentos em uso prévio (domiciliar) e os prescritos na internação, para identificar discrepâncias não intencionais.',
+        },
+        {
+          code: 'clearance_creatinina',
+          label: 'Clearance de creatinina estimado (mL/min/1,73m²)',
+          type: 'number',
+          visibleWhen: { fieldCode: 'tipo_registro', equals: ['evolucao'] },
+          helpText: 'Fórmula CKD-EPI — usado para ajuste de dose de medicamentos de excreção renal.',
+        },
+        {
+          code: 'interacoes_alergias_duplicidades',
+          label: 'Interações medicamentosas, alergias ou duplicidades identificadas',
+          type: 'text',
+          visibleWhen: { fieldCode: 'tipo_registro', equals: ['evolucao'] },
+          helpText: 'Deixe em branco se não houver nenhuma identificada na prescrição atual.',
         },
       ],
     },

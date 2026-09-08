@@ -442,6 +442,21 @@ este é o acompanhamento farmacoterapêutico contínuo do paciente. Implementado
 `PharmacyFollowUpModal`, `/api/v1/pharmacy-followup/pharmacy-followups`, tabela
 `app.pharmacy_followups` (migration 0066).
 
+**Melhoria baseada em evidência (2026-09-08)**: a pedido do usuário, o grupo de
+evolução foi complementado com um checklist **FAST HUG MAIDENS** — mnemônico
+padronizado e validado de acompanhamento farmacêutico (VINCENT, J. L. *Give your
+patient a fast hug (at least) once a day*. Critical Care Medicine, 2005; estendido por
+MABASA, V. H. et al. *A Standardized, Structured Approach to Identifying Drug-Related
+Problems in the Intensive Care Unit: FASTHUG-MAIDENS*. Can J Hosp Pharm, 64(5),
+2011), citado e adotado em protocolo institucional real de hospital universitário
+brasileiro (HU-UNIVASF/EBSERH, *Protocolo de Acompanhamento Farmacoterapêutico*,
+2019, ISBN 978-85-92656-18-8). Campos novos, complementares aos já extraídos do
+impresso real do Marajó: sedação, tromboprofilaxia, delirium, controle glicêmico,
+conciliação medicamentosa, clearance de creatinina (fórmula CKD-EPI) e interações/
+alergias/duplicidades identificadas. O campo de medicamentos potencialmente perigosos
+(admissão) também ganhou referência à Lista de Medicamentos Potencialmente Perigosos
+do ISMP Brasil. Nenhum campo do impresso real original foi removido ou alterado.
+
 ---
 
 ## Lacunas confirmadas (nenhum módulo/tela hoje)

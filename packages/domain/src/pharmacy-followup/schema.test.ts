@@ -35,6 +35,16 @@ describe('PHARMACY_FOLLOWUP_SCHEMA', () => {
     expect(visible).not.toContain('score_pontuacao_total');
   });
 
+  it('tipo_registro=evolucao mostra também o checklist FAST HUG MAIDENS complementar', () => {
+    const visible = visibleFields(PHARMACY_FOLLOWUP_SCHEMA, { tipo_registro: 'evolucao' }).map((f) => f.code);
+    expect(visible).toContain('sedacao');
+    expect(visible).toContain('tromboprofilaxia');
+    expect(visible).toContain('delirium');
+    expect(visible).toContain('conciliacao_medicamentosa');
+    expect(visible).toContain('clearance_creatinina');
+    expect(visible).toContain('interacoes_alergias_duplicidades');
+  });
+
   it('admissão completa não gera erros', () => {
     const errors = validateFormValues(PHARMACY_FOLLOWUP_SCHEMA, {
       tipo_registro: 'admissao',
