@@ -408,6 +408,40 @@ caráter. Corpo: texto clínico livre e extenso cobrindo admissão, monitorizaç
 dispositivos, sistemas orgânicos, dieta, eliminações — parecido em estilo com a Evolução
 do Enfermeiro, mas mais como relato único de admissão. Assinatura: nome + COREN.
 
+### 18. Acompanhamento Farmacêutico (Anamnese + Score + Evolução)
+Três impressos reais do Hospital Regional Público do Marajó, fornecidos pelo usuário em
+2026-09-08 e apagados de `DOC/` após extração (continham dado de paciente real):
+"ANAMNESE FARMACEUTICA", "SCORE DE CRITERIOS PARA DEFINICAO DO ACOMPANHAMENTO
+FARMACOTERAPEUTICO" e "ACOMPANHAMENTO FARMACEUTICO". Decisão do usuário: os três
+compartilham o mesmo motor de `tipo_registro` já usado em Nutrição/Fisioterapia —
+Anamnese + Score juntos formam o registro de **admissão** ao acompanhamento
+farmacêutico (feito uma vez), Acompanhamento Farmacêutico é a **evolução** repetida
+(análise periódica de prescrição).
+
+Anamnese (campos de admissão): hábitos de vida, alergias a medicamentos, medicamentos
+de uso contínuo, medicamentos de uso próprio (cada um sim/não + texto livre no impresso
+real; modelado aqui como texto livre — vazio equivale a "não").
+
+Score (campos de admissão): quantidade de medicamentos em uso, uso de medicamentos
+intravenosos, uso de medicamentos potencialmente perigosos, uso de sonda, faixa etária,
+problemas renais/hepáticos, problemas cardíacos/pulmonares, imunossupressão, pontuação
+total, classificação de risco, conduta definida. **Nota**: o impresso real só documenta
+o significado de pontuação 5-8 ("risco moderado"); as faixas de "baixo" e "alto" foram
+inferidas por não estarem no impresso — revisar se o farmacêutico confirmar limites
+diferentes.
+
+Acompanhamento (campos de evolução): antimicrobianos em uso (com início/previsão de
+término), tratamento antimicrobiano anterior, analgesia, profilaxia de úlcera de
+estresse, outras classes medicamentosas, projeto terapêutico/seguimento.
+
+Assinatura (sempre): farmacêutico responsável + CRF + data.
+
+Distinto de `app.antimicrobial_requests` (Formulário ATM, item 3 — solicitação pontual
+de antimicrobiano de uso restrito) e de `app.pharmacy_dispensations` (dispensação) —
+este é o acompanhamento farmacoterapêutico contínuo do paciente. Implementado em
+`PharmacyFollowUpModal`, `/api/v1/pharmacy-followup/pharmacy-followups`, tabela
+`app.pharmacy_followups` (migration 0066).
+
 ---
 
 ## Lacunas confirmadas (nenhum módulo/tela hoje)

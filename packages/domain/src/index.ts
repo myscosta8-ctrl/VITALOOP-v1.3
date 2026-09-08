@@ -32,6 +32,7 @@ export * from './nutrition/index.js';
 export * from './physiotherapy/index.js';
 export * from './fluid-balance/index.js';
 export * from './nursing-therapeutic-plan/index.js';
+export * from './pharmacy-followup/index.js';
 
 
 

@@ -22,6 +22,7 @@ import { SocialWorkAssessmentModal } from '../components/SocialWorkAssessmentMod
 import { NutritionAssessmentModal } from '../components/NutritionAssessmentModal.js';
 import { PhysiotherapyAssessmentModal } from '../components/PhysiotherapyAssessmentModal.js';
 import { FluidBalanceModal } from '../components/FluidBalanceModal.js';
+import { PharmacyFollowUpModal } from '../components/PharmacyFollowUpModal.js';
 
 interface Props {
   encounterId: string;
@@ -48,6 +49,7 @@ type OpenPanel =
   | 'nutricao'
   | 'fisioterapia'
   | 'balanco_hidrico'
+  | 'acompanhamento_farmaceutico'
   | null;
 
 type TabKey = 'medicas' | 'enfermagem' | 'farmacia';
@@ -85,6 +87,7 @@ const ACTIONS: ReadonlyArray<{ panel: Exclude<OpenPanel, null>; label: string; t
   { panel: 'notificacao', label: 'Notificar agravo compulsório', tab: 'enfermagem' },
 
   { panel: 'farmacia', label: 'Solicitar dispensação (Farmácia)', tab: 'farmacia' },
+  { panel: 'acompanhamento_farmaceutico', label: 'Acompanhamento Farmacêutico', tab: 'farmacia' },
   { panel: 'interop', label: 'Interoperabilidade (RNDS / Lote de AIH)', tab: 'farmacia' },
 ];
 
@@ -302,6 +305,11 @@ export const EncounterActionsPage: React.FC<Props> = ({ encounterId }) => {
       {open === 'balanco_hidrico' && (
         <Overlay title="Balanço Hídrico" onClose={() => setOpen(null)}>
           <FluidBalanceModal encounterId={encounterId} />
+        </Overlay>
+      )}
+      {open === 'acompanhamento_farmaceutico' && patientId && (
+        <Overlay title="Acompanhamento Farmacêutico" onClose={() => setOpen(null)}>
+          <PharmacyFollowUpModal encounterId={encounterId} patientId={patientId} onSuccess={() => setOpen(null)} />
         </Overlay>
       )}
     </main>

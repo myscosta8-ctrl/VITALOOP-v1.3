@@ -48,6 +48,7 @@ import { registerSbarRoutes } from './routes/sbar.js';
 import { registerSocialWorkRoutes } from './routes/social-work.js';
 import { registerNutritionRoutes } from './routes/nutrition.js';
 import { registerPhysiotherapyRoutes } from './routes/physiotherapy.js';
+import { registerPharmacyFollowUpRoutes } from './routes/pharmacy-followup.js';
 import { registerFluidBalanceRoutes } from './routes/fluid-balance.js';
 import { registerNursingTherapeuticPlanRoutes } from './routes/nursing-therapeutic-plan.js';
 import { createSupabaseJwtVerifier, type JwtVerifier } from './security/jwt-verifier.js';
@@ -143,6 +144,7 @@ export const buildServer = (config: LoadedConfig): BuiltServer => {
   registerSocialWorkRoutes(app, db);
   registerNutritionRoutes(app, db);
   registerPhysiotherapyRoutes(app, db);
+  registerPharmacyFollowUpRoutes(app, db);
   registerFluidBalanceRoutes(app, db);
   registerNursingTherapeuticPlanRoutes(app, db);
 
