@@ -1,44 +1,36 @@
-export async function printClinicalDocumentPdf(documentId: string, payload: { documentType: string; patientName: string; issuerName: string; content: string }) {
-  const res = await fetch(`/api/v1/quality/documents/${documentId}/print`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error?.message || 'Erro ao gerar leiaute de impressão PDF do documento.');
-  }
-  return res.json();
+import type { ApiClient } from './api-client.js';
+
+export interface PrintClinicalDocumentResult {
+  documentId: string;
+  formattedText: string;
+  footerChecksum: string;
 }
 
-export async function simulateConcurrencyCheck(currentVersion: number, expectedVersion: number) {
-  const res = await fetch('/api/v1/quality/simulate-concurrency', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ currentVersion, expectedVersion }),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error?.message || 'Erro no teste de concorrência.');
-  }
-  return res.json();
+export interface ConcurrencyCheckResult {
+  status: string;
 }
 
-export async function executeBackupRestoreJob(jobType: 'backup_logical' | 'restore_validation' | 'dr_failover', snapshotHash?: string) {
-  const res = await fetch('/api/v1/quality/backup-restore/execute', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jobType, snapshotHash }),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error?.message || 'Erro ao executar job de backup/restore.');
-  }
-  return res.json();
+export interface BackupRestoreJob {
+  id: string;
+  jobType: string;
+  status: string;
+  snapshotHash: string;
 }
 
-export async function fetchBackupRestoreJobs() {
-  const res = await fetch('/api/v1/quality/backup-restore/jobs');
-  if (!res.ok) throw new Error('Erro ao consultar histórico de jobs de DR.');
-  return res.json();
-}
+export const createQualityApi = (api: ApiClient) => ({
+  printClinicalDocumentPdf: (
+    documentId: string,
+    payload: { documentType: string; patientName: string; issuerName: string; content: string },
+  ): Promise<PrintClinicalDocumentResult> =>
+    api.post<PrintClinicalDocumentResult>(`/api/v1/quality/documents/${documentId}/print`, payload),
+
+  simulateConcurrencyCheck: (currentVersion: number, expectedVersion: number): Promise<ConcurrencyCheckResult> =>
+    api.post<ConcurrencyCheckResult>('/api/v1/quality/simulate-concurrency', { currentVersion, expectedVersion }),
+
+  executeBackupRestoreJob: (
+    jobType: 'backup_logical' | 'restore_validation' | 'dr_failover',
+    snapshotHash?: string,
+  ): Promise<BackupRestoreJob> => api.post<BackupRestoreJob>('/api/v1/quality/backup-restore/execute', { jobType, snapshotHash }),
+
+  fetchBackupRestoreJobs: (): Promise<BackupRestoreJob[]> => api.get<BackupRestoreJob[]>('/api/v1/quality/backup-restore/jobs'),
+});

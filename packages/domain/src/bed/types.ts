@@ -18,6 +18,8 @@ export interface BedData {
   bedNumber: string;
   status: BedStatus;
   isExtra: boolean;
+  isIsolation: boolean;
+  expiresAt?: IsoTimestamp | null | undefined;
   createdAt: IsoTimestamp;
   updatedAt: IsoTimestamp;
 }

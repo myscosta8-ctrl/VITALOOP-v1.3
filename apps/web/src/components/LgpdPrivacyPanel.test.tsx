@@ -1,31 +1,32 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { LgpdPrivacyPanel } from './LgpdPrivacyPanel.js';
-import * as secApi from '../lib/security-api.js';
 
-vi.mock('../lib/security-api.js', () => ({
-  exportLgpdPatientReport: vi.fn(),
-  fetchLgpdRetentionPolicies: vi.fn(),
+const get = vi.fn();
+const post = vi.fn();
+
+const mockApi = { get, post };
+
+vi.mock('../context/session-context.js', () => ({
+  useSession: () => ({ api: mockApi }),
 }));
 
 describe('LgpdPrivacyPanel Component Test (SEC-T-012..016)', () => {
-  it('renderiza painel LGPD, gera extrato do titular com CPF mascarado e carrega políticas de retenção', async () => {
-    vi.mocked(secApi.exportLgpdPatientReport).mockResolvedValue({
-      data: {
-        reportId: 'LGPD-EXT-REL-9988',
-        personalData: { fullName: 'Maria Souza', maskedCpf: '123.***.***-99' },
-        legalBasis: 'Lei 13.709/2018',
-        dataHash: 'SHA256-12345',
-      },
-    });
+  beforeEach(() => {
+    get.mockReset();
+    post.mockReset();
+  });
 
-    vi.mocked(secApi.fetchLgpdRetentionPolicies).mockResolvedValue({
-      data: [
-        { id: 'pol-1', entityType: 'medical_records', retentionYears: 20, description: 'Prontuário 20 anos' },
-      ],
+  it('renderiza painel LGPD, gera extrato do titular com CPF mascarado e carrega políticas de retenção', async () => {
+    post.mockResolvedValue({
+      reportId: 'LGPD-EXT-REL-9988',
+      personalData: { fullName: 'Maria Souza', maskedCpf: '123.***.***-99' },
+      legalBasis: 'Lei 13.709/2018',
+      dataHash: 'SHA256-12345',
     });
+    get.mockResolvedValue([{ id: 'pol-1', entityType: 'medical_records', retentionYears: 20, description: 'Prontuário 20 anos' }]);
 
     render(<LgpdPrivacyPanel patientId="pat-123" />);
 
@@ -36,7 +37,7 @@ describe('LgpdPrivacyPanel Component Test (SEC-T-012..016)', () => {
     fireEvent.click(exportBtn);
 
     await waitFor(() => {
-      expect(secApi.exportLgpdPatientReport).toHaveBeenCalledWith('pat-123');
+      expect(post).toHaveBeenCalledWith('/api/v1/lgpd/patients/pat-123/export');
     });
 
     expect(screen.getByTestId('lgpd-status-msg').textContent).toContain('Extrato de transparência LGPD gerado com sucesso');
@@ -47,7 +48,7 @@ describe('LgpdPrivacyPanel Component Test (SEC-T-012..016)', () => {
     fireEvent.click(retentionBtn);
 
     await waitFor(() => {
-      expect(secApi.fetchLgpdRetentionPolicies).toHaveBeenCalled();
+      expect(get).toHaveBeenCalledWith('/api/v1/lgpd/retention-policies');
     });
 
     expect(screen.getByTestId('retention-policies-list')).toBeTruthy();

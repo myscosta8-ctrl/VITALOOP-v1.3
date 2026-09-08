@@ -1,49 +1,49 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { InteroperabilityStep2Panel } from './InteroperabilityStep2Panel.js';
-import * as intApi from '../lib/integration-api.js';
 
-vi.mock('../lib/integration-api.js', () => ({
-  dispensePharmacyMedications: vi.fn(),
-  exportAihBatch: vi.fn(),
-  sendRndsBundle: vi.fn(),
+const get = vi.fn();
+const post = vi.fn();
+
+const mockApi = { get, post };
+
+vi.mock('../context/session-context.js', () => ({
+  useSession: () => ({ api: mockApi }),
 }));
 
-describe('InteroperabilityStep2Panel Component Test (INT-004..008)', () => {
-  it('renderiza painel da etapa 2, solicita dispensação na farmácia e envia pacote para RNDS', async () => {
-    vi.mocked(intApi.dispensePharmacyMedications).mockResolvedValue({
-      data: { id: 'disp-123', status: 'dispensed' },
+describe('InteroperabilityStep2Panel Component Test (INT-006..007)', () => {
+  beforeEach(() => {
+    get.mockReset();
+    post.mockReset();
+  });
+
+  it('renderiza painel de RNDS/lote de AIH e envia pacote para RNDS', async () => {
+    post.mockImplementation((path: string) => {
+      if (path === '/api/v1/integration/rnds/send-bundle') {
+        return Promise.resolve({ id: 'rnds-msg-456', status: 'processed' });
+      }
+      if (path === '/api/v1/sus/aih-batches/export') {
+        return Promise.resolve({ id: 'batch-789', batchNumber: 'LOTE-AIH-9988' });
+      }
+      return Promise.reject(new Error(`unexpected POST ${path}`));
     });
 
-    vi.mocked(intApi.sendRndsBundle).mockResolvedValue({
-      data: { id: 'rnds-msg-456', status: 'processed' },
-    });
-
-    vi.mocked(intApi.exportAihBatch).mockResolvedValue({
-      data: { id: 'batch-789', batchNumber: 'LOTE-AIH-9988' },
-    });
-
-    render(<InteroperabilityStep2Panel encounterId="enc-123" patientId="pat-456" aihId="aih-789" />);
+    render(<InteroperabilityStep2Panel encounterId="enc-123" aihId="aih-789" />);
 
     expect(screen.getByTestId('step2-interop-panel')).toBeTruthy();
-    expect(screen.getByText('Barramento de Farmácia, Regulação SISREG/CROSS, RNDS e AIH (INT-004..008)')).toBeTruthy();
-
-    const dispenseBtn = screen.getByTestId('dispense-btn');
-    fireEvent.click(dispenseBtn);
-
-    await waitFor(() => {
-      expect(intApi.dispensePharmacyMedications).toHaveBeenCalledWith('enc-123', 'pat-456', expect.any(Array));
-    });
-
-    expect(screen.getByTestId('step2-status-msg').textContent).toContain('Dispensação enviada para Farmácia Central');
+    expect(screen.getByText('Barramento RNDS e Exportação de Lote de AIH (INT-006..007)')).toBeTruthy();
 
     const rndsBtn = screen.getByTestId('send-rnds-btn');
     fireEvent.click(rndsBtn);
 
     await waitFor(() => {
-      expect(intApi.sendRndsBundle).toHaveBeenCalledWith('700000000000001', 'enc-123', expect.any(String));
+      expect(post).toHaveBeenCalledWith('/api/v1/integration/rnds/send-bundle', {
+        patientCns: '700000000000001',
+        encounterId: 'enc-123',
+        clinicalSummary: expect.any(String),
+      });
     });
 
     expect(screen.getByTestId('step2-status-msg').textContent).toContain('Pacote FHIR enviado para o barramento RNDS/DATASUS');
@@ -52,7 +52,7 @@ describe('InteroperabilityStep2Panel Component Test (INT-004..008)', () => {
     fireEvent.click(exportAihBtn);
 
     await waitFor(() => {
-      expect(intApi.exportAihBatch).toHaveBeenCalledWith(['aih-789']);
+      expect(post).toHaveBeenCalledWith('/api/v1/sus/aih-batches/export', { aihIds: ['aih-789'] });
     });
 
     expect(screen.getByTestId('step2-status-msg').textContent).toContain('Lote de AIH exportado com sucesso');

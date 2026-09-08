@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { fetchIntegrationMessages, sendHl7OruMessage } from '../lib/integration-api.js';
+import { useSession } from '../context/session-context.js';
+import { createIntegrationApi } from '../lib/integration-api.js';
 
 export const InteroperabilityDashboardPage: React.FC = () => {
+  const { api } = useSession();
+  const integrationApi = createIntegrationApi(api);
+
   const [messages, setMessages] = useState<Array<{ id: string; messageType: string; sender: string; status: string; createdAt: string }>>([]);
   const [rawHl7, setRawHl7] = useState(
     'MSH|^~\\&|LIS|LAB|VITALOOP|UPA|20260829100000||ORU^R01|MSG-998811|P|2.5\rPID|1||PAT-12345||SILVA^MARIA||19850520|F\rOBX|1|NM|GLUCOSE||98|mg/dL||||F'
@@ -12,8 +16,8 @@ export const InteroperabilityDashboardPage: React.FC = () => {
   const loadMessages = async () => {
     setLoading(true);
     try {
-      const res = await fetchIntegrationMessages();
-      setMessages(res.data);
+      const res = await integrationApi.fetchIntegrationMessages();
+      setMessages(res);
     } catch (err: unknown) {
       setStatusMsg((err as Error).message);
     } finally {
@@ -28,8 +32,8 @@ export const InteroperabilityDashboardPage: React.FC = () => {
   const handleSendHl7 = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await sendHl7OruMessage(rawHl7);
-      setStatusMsg(`Mensagem HL7 recebida e processada com sucesso no barramento! ID: ${res.data.id}`);
+      const res = await integrationApi.sendHl7OruMessage(rawHl7);
+      setStatusMsg(`Mensagem HL7 recebida e processada com sucesso no barramento! ID: ${res.id}`);
       loadMessages();
     } catch (err: unknown) {
       setStatusMsg((err as Error).message);

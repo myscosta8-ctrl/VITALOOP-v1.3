@@ -1,3 +1,5 @@
+import type { ApiClient } from './api-client.js';
+
 export interface CreateRegulationPayload {
   encounterId: string;
   patientId: string;
@@ -13,43 +15,23 @@ export interface CreateRegulationPayload {
   }> | undefined;
 }
 
-export async function createExternalRegulation(payload: CreateRegulationPayload) {
-  const res = await fetch('/api/v1/regulation/requests', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error?.message || 'Erro ao criar solicitação de regulação.');
-  }
-  return res.json();
+export interface RegulationRequest {
+  id: string;
+  status: string;
 }
 
-export async function fetchRegulationRequests() {
-  const res = await fetch('/api/v1/regulation/requests');
-  if (!res.ok) throw new Error('Erro ao listar solicitações de regulação.');
-  return res.json();
-}
+export const createRegulationApi = (api: ApiClient) => ({
+  createExternalRegulation: (payload: CreateRegulationPayload): Promise<RegulationRequest> =>
+    api.post<RegulationRequest>('/api/v1/regulation/requests', payload),
 
-export async function updateRegulationStatus(id: string, targetStatus: string, cancellationReason?: string) {
-  const res = await fetch(`/api/v1/regulation/requests/${id}/status`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ targetStatus, cancellationReason }),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error?.message || 'Erro ao atualizar status da regulação.');
-  }
-  return res.json();
-}
+  fetchRegulationRequests: (): Promise<RegulationRequest[]> => api.get<RegulationRequest[]>('/api/v1/regulation/requests'),
 
-export async function closeAihRequest(id: string) {
-  const res = await fetch(`/api/v1/sus/aih-requests/${id}/close`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  });
-  if (!res.ok) throw new Error('Erro ao fechar lote de AIH.');
-  return res.json();
-}
+  updateRegulationStatus: (id: string, targetStatus: string, cancellationReason?: string): Promise<RegulationRequest> =>
+    api.patch<RegulationRequest>(`/api/v1/regulation/requests/${id}/status`, { targetStatus, cancellationReason }),
+
+  // Endpoint mora em /api/v1/sus/... (mesma família de rotas do AIH), não em
+  // /api/v1/regulation/... — nome mantido aqui porque é chamado só no fluxo
+  // de confirmação de transferência (ExternalRegulationModal).
+  closeAihRequest: (id: string): Promise<{ id: string; closedAt: string }> =>
+    api.post<{ id: string; closedAt: string }>(`/api/v1/sus/aih-requests/${id}/close`),
+});

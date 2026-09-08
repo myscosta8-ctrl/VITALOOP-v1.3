@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { issueClinicalDocument, revokeClinicalDocument } from '../lib/document-api.js';
+import { useSession } from '../context/session-context.js';
+import { createDocumentApi } from '../lib/document-api.js';
 
 interface ClinicalDocumentModalProps {
   encounterId: string;
@@ -7,6 +8,9 @@ interface ClinicalDocumentModalProps {
 }
 
 export const ClinicalDocumentModal: React.FC<ClinicalDocumentModalProps> = ({ encounterId, onSuccess }) => {
+  const { api } = useSession();
+  const documentApi = createDocumentApi(api);
+
   const [docType, setDocType] = useState<'medical_certificate' | 'attendance_declaration' | 'companion_certificate'>('medical_certificate');
   const [title, setTitle] = useState('Atestado Médico de Afastamento');
   const [content, setContent] = useState('Atesto que o paciente necessita de afastamento por motivo de saúde.');
@@ -21,7 +25,7 @@ export const ClinicalDocumentModal: React.FC<ClinicalDocumentModalProps> = ({ en
   const handleIssue = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await issueClinicalDocument(encounterId, {
+      const res = await documentApi.issueClinicalDocument(encounterId, {
         documentType: docType,
         title,
         content,
@@ -30,8 +34,8 @@ export const ClinicalDocumentModal: React.FC<ClinicalDocumentModalProps> = ({ en
         cidCode: docType === 'medical_certificate' && includeCid ? cidCode : undefined,
         companionName: docType === 'companion_certificate' ? companionName : undefined,
       });
-      setCreatedDocId(res.data.id);
-      setMsg(`Documento emitido com sucesso! Hash: ${res.data.integrityHash?.slice(0, 8)}...`);
+      setCreatedDocId(res.id);
+      setMsg(`Documento emitido com sucesso! Hash: ${res.integrityHash?.slice(0, 8)}...`);
       if (onSuccess) onSuccess();
     } catch (err: unknown) {
       setMsg((err as Error).message);
@@ -40,7 +44,7 @@ export const ClinicalDocumentModal: React.FC<ClinicalDocumentModalProps> = ({ en
 
   const handleRevoke = async () => {
     try {
-      await revokeClinicalDocument(createdDocId, revokeReason || 'Cancelamento por solicitação do emitente');
+      await documentApi.revokeClinicalDocument(createdDocId, revokeReason || 'Cancelamento por solicitação do emitente');
       setMsg('Documento revogado com sucesso.');
     } catch (err: unknown) {
       setMsg((err as Error).message);

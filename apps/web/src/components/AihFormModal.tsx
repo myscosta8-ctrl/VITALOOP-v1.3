@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { issueAihRequest, validateSusCompatibility } from '../lib/sus-api.js';
+import React, { useEffect, useState } from 'react';
+import { useSession } from '../context/session-context.js';
+import { createSusApi } from '../lib/sus-api.js';
+import type { ClinicalFormSchema } from '../lib/clinical-form-types.js';
+import { DynamicClinicalForm } from './DynamicClinicalForm.js';
 
 interface AihFormModalProps {
   encounterId: string;
@@ -8,6 +11,9 @@ interface AihFormModalProps {
 }
 
 export const AihFormModal: React.FC<AihFormModalProps> = ({ encounterId, patientId, onSuccess }) => {
+  const { api } = useSession();
+  const susApi = createSusApi(api);
+
   const [mainProcedureCode, setMainProcedureCode] = useState('0303060280');
   const [mainCid10, setMainCid10] = useState('J18.9');
   const [clinicalJustification, setClinicalJustification] = useState(
@@ -16,18 +22,34 @@ export const AihFormModal: React.FC<AihFormModalProps> = ({ encounterId, patient
   const [msg, setMsg] = useState('');
   const [compatCheck, setCompatCheck] = useState<string | null>(null);
 
+  const [clinicalFieldsSchema, setClinicalFieldsSchema] = useState<ClinicalFormSchema | null>(null);
+  const [formFields, setFormFields] = useState<Record<string, string>>({});
+
+  // Campos clínicos/administrativos que não têm coluna própria (história
+  // da doença atual, caráter da internação, médico solicitante/CRM, etc.)
+  // — ver packages/domain/src/sus/aih-clinical-schema.ts. Procedimento
+  // SIGTAP/CID/justificativa continuam campos próprios abaixo, porque têm
+  // validação de compatibilidade de verdade contra a tabela SIGTAP, não
+  // uma lista fechada de opções.
+  useEffect(() => {
+    susApi
+      .getAihClinicalFieldsSchema()
+      .then(setClinicalFieldsSchema)
+      .catch((err: unknown) => setMsg((err as Error).message));
+  }, [api]);
+
   const handleValidate = async () => {
     try {
-      const res = await validateSusCompatibility({
+      const res = await susApi.validateSusCompatibility({
         procedureCode: mainProcedureCode,
         patientAgeMonths: 360,
         patientSex: 'female',
         cid10: mainCid10,
       });
-      if (res.data.isValid) {
+      if (res.isValid) {
         setCompatCheck('Procedimento 100% COMPATÍVEL com as regras do SUS/SIGTAP!');
       } else {
-        setCompatCheck(`INCOMPATÍVEL: ${res.data.errors.join(' ')}`);
+        setCompatCheck(`INCOMPATÍVEL: ${res.errors.join(' ')}`);
       }
     } catch (err: unknown) {
       setCompatCheck((err as Error).message);
@@ -37,14 +59,15 @@ export const AihFormModal: React.FC<AihFormModalProps> = ({ encounterId, patient
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await issueAihRequest({
+      const res = await susApi.issueAihRequest({
         encounterId,
         patientId,
         mainProcedureCode,
         mainCid10,
         clinicalJustification,
+        formFields,
       });
-      setMsg(`Laudo de AIH emitido e validado com sucesso! ID: ${res.data.id}`);
+      setMsg(`Laudo de AIH emitido e validado com sucesso! ID: ${res.id}`);
       if (onSuccess) onSuccess();
     } catch (err: unknown) {
       setMsg((err as Error).message);
@@ -88,6 +111,10 @@ export const AihFormModal: React.FC<AihFormModalProps> = ({ encounterId, patient
         <button type="button" onClick={handleValidate} data-testid="validate-compat-btn">
           Validar Compatibilidade SIGTAP
         </button>
+
+        {clinicalFieldsSchema && (
+          <DynamicClinicalForm schema={clinicalFieldsSchema} values={formFields} onChange={setFormFields} />
+        )}
 
         <button type="submit" data-testid="submit-aih-btn">
           Emitir Laudo AIH

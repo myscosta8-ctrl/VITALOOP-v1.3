@@ -85,8 +85,8 @@ export const BedMapPage: React.FC = () => {
             setAllocationBed(null);
             await load();
           }}
-          onCreateExtraBed={async (sectorId, bedNumber) => {
-            await bedApi.createExtraBed(sectorId, bedNumber);
+          onCreateExtraBed={async (sectorId, bedNumber, isIsolation) => {
+            await bedApi.createExtraBed(sectorId, bedNumber, isIsolation);
             await load();
           }}
         />

@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   calculateScaleScore,
   validateNursingSaeInput,
-  validateFluidBalanceInput,
   validateInvasiveDeviceInput,
 } from './rules.js';
 
@@ -76,20 +75,6 @@ describe('Regras de Domínio de Enfermagem SAE, Escalas, Balanço e Dispositivos
         diagnoses: [{ code: '00047', title: 'Risco de Lesão por Pressão' }],
         prescriptions: [{ careDescription: 'Mudança de decúbito 2/2h' }],
       });
-    }).not.toThrow();
-  });
-
-  it('valida lançamentos de balanço hídrico (NUR-009)', () => {
-    expect(() => {
-      validateFluidBalanceInput({ volumeMl: 0, fluidType: 'oral', direction: 'intake' });
-    }).toThrow('O volume do balanço hídrico deve ser maior que zero (mL).');
-
-    expect(() => {
-      validateFluidBalanceInput({ volumeMl: 250, fluidType: 'oral', direction: 'invalid' });
-    }).toThrow('A direção do balanço hídrico deve ser "intake" (entrada) ou "output" (saída).');
-
-    expect(() => {
-      validateFluidBalanceInput({ volumeMl: 250, fluidType: 'oral', direction: 'intake' });
     }).not.toThrow();
   });
 

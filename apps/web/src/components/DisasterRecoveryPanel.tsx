@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
-import { executeBackupRestoreJob, fetchBackupRestoreJobs } from '../lib/quality-api.js';
+import { useSession } from '../context/session-context.js';
+import { createQualityApi } from '../lib/quality-api.js';
 
 export const DisasterRecoveryPanel: React.FC = () => {
+  const { api } = useSession();
+  const qualityApi = createQualityApi(api);
+
   const [jobs, setJobs] = useState<Array<{ id: string; jobType: string; status: string; snapshotHash: string }>>([]);
   const [msg, setMsg] = useState('');
 
   const handleRunBackup = async () => {
     try {
-      const res = await executeBackupRestoreJob('backup_logical');
-      setMsg(`Backup lógico executado com sucesso! Job ID: ${res.data.id} | Snapshot: ${res.data.snapshotHash}`);
+      const res = await qualityApi.executeBackupRestoreJob('backup_logical');
+      setMsg(`Backup lógico executado com sucesso! Job ID: ${res.id} | Snapshot: ${res.snapshotHash}`);
     } catch (err: unknown) {
       setMsg((err as Error).message);
     }
@@ -16,8 +20,8 @@ export const DisasterRecoveryPanel: React.FC = () => {
 
   const handleRunRestore = async () => {
     try {
-      const res = await executeBackupRestoreJob('restore_validation', 'SHA256-SNAP-99');
-      setMsg(`Validação de restore executada com sucesso! Status: ${res.data.status}`);
+      const res = await qualityApi.executeBackupRestoreJob('restore_validation', 'SHA256-SNAP-99');
+      setMsg(`Validação de restore executada com sucesso! Status: ${res.status}`);
     } catch (err: unknown) {
       setMsg((err as Error).message);
     }
@@ -25,8 +29,8 @@ export const DisasterRecoveryPanel: React.FC = () => {
 
   const handleLoadJobs = async () => {
     try {
-      const res = await fetchBackupRestoreJobs();
-      setJobs(res.data);
+      const res = await qualityApi.fetchBackupRestoreJobs();
+      setJobs(res);
     } catch (err: unknown) {
       setMsg((err as Error).message);
     }

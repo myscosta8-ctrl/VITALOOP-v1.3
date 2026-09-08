@@ -1,22 +1,24 @@
 import React, { useState } from 'react';
-import { createNursingSae, applyNursingScale, recordFluidBalance, insertInvasiveDevice } from '../lib/nursing-sae-api.js';
+import { useSession } from '../context/session-context.js';
+import { createNursingSaeApi } from '../lib/nursing-sae-api.js';
 
 interface NursingSaeViewProps {
   encounterId: string;
 }
 
 export const NursingSaeView: React.FC<NursingSaeViewProps> = ({ encounterId }) => {
+  const { api } = useSession();
+  const nursingSaeApi = createNursingSaeApi(api);
+
   const [diagTitle, setDiagTitle] = useState('');
   const [careDesc, setCareDesc] = useState('');
-  const [volumeMl, setVolumeMl] = useState(250);
-  const [fluidDirection, setFluidDirection] = useState<'intake' | 'output'>('intake');
   const [deviceSite, setDeviceSite] = useState('');
   const [msg, setMsg] = useState('');
 
   const handleSaveSae = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createNursingSae(encounterId, {
+      await nursingSaeApi.createNursingSae(encounterId, {
         diagnoses: [{ code: 'NANDA-00047', title: diagTitle || 'Risco de Lesão por Pressão' }],
         prescriptions: [{ careDescription: careDesc || 'Mudança de decúbito 2 em 2 horas' }],
       });
@@ -28,25 +30,11 @@ export const NursingSaeView: React.FC<NursingSaeViewProps> = ({ encounterId }) =
 
   const handleApplyBraden = async () => {
     try {
-      const res = await applyNursingScale(encounterId, {
+      const res = await nursingSaeApi.applyNursingScale(encounterId, {
         scaleType: 'braden',
         scoreDetails: { sensory: 2, moisture: 2, activity: 2, mobility: 2, nutrition: 2, friction: 1 },
       });
-      setMsg(`Escala de Braden aplicada. Escore: ${res.data.total_score} (Risco: ${res.data.risk_level})`);
-    } catch (err: unknown) {
-      setMsg((err as Error).message);
-    }
-  };
-
-  const handleSaveFluid = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await recordFluidBalance(encounterId, {
-        direction: fluidDirection,
-        fluidType: fluidDirection === 'intake' ? 'intravenous' : 'urine',
-        volumeMl: Number(volumeMl),
-      });
-      setMsg('Balanço hídrico registrado com sucesso.');
+      setMsg(`Escala de Braden aplicada. Escore: ${res.total_score} (Risco: ${res.risk_level})`);
     } catch (err: unknown) {
       setMsg((err as Error).message);
     }
@@ -55,7 +43,7 @@ export const NursingSaeView: React.FC<NursingSaeViewProps> = ({ encounterId }) =
   const handleSaveDevice = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await insertInvasiveDevice(encounterId, {
+      await nursingSaeApi.insertInvasiveDevice(encounterId, {
         deviceType: 'peripheral_venous_access',
         anatomicalSite: deviceSite || 'Antebraço Direito',
       });
@@ -92,19 +80,9 @@ export const NursingSaeView: React.FC<NursingSaeViewProps> = ({ encounterId }) =
         </button>
       </div>
 
-      <form onSubmit={handleSaveFluid} data-testid="fluid-form">
-        <h4>3. Balanço Hídrico (NUR-009)</h4>
-        <select value={fluidDirection} onChange={(e) => setFluidDirection(e.target.value as 'intake' | 'output')}>
-          <option value="intake">Entrada (Intake)</option>
-          <option value="output">Saída (Output)</option>
-        </select>
-        <input
-          type="number"
-          value={volumeMl}
-          onChange={(e) => setVolumeMl(Number(e.target.value))}
-        />
-        <button type="submit">Registrar Balanço</button>
-      </form>
+      <p>
+        <em>Balanço Hídrico: ver tela dedicada "Balanço Hídrico" na central de ações do atendimento (NUR-009).</em>
+      </p>
 
       <form onSubmit={handleSaveDevice} data-testid="device-form">
         <h4>4. Dispositivos Invasivos (NUR-011)</h4>

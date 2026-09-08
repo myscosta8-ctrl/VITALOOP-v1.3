@@ -41,7 +41,7 @@ describe('EncounterListPage UI Component', () => {
 
     render(<EncounterListPage />);
 
-    expect(await screen.findByText('Fila de Atendimentos (UPA 24h)')).toBeInTheDocument();
+    expect(await screen.findByText('Atendimentos abertos (UPA 24h)')).toBeInTheDocument();
     expect(await screen.findByText('Dor no peito')).toBeInTheDocument();
     expect(screen.getByText('created')).toBeInTheDocument();
   });

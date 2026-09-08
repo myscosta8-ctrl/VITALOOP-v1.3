@@ -126,32 +126,6 @@ export function createNursingSaeRecordedEvent(
   });
 }
 
-export function createFluidBalanceRecordedEvent(
-  recordId: UUID,
-  encounterId: UUID,
-  patientId: UUID,
-  recorderId: UUID,
-  direction: string,
-  fluidType: string,
-  volumeMl: number,
-): DomainEvent {
-  return createDomainEvent({
-    type: 'FluidBalanceRecorded',
-    aggregateType: 'fluid_balance_record',
-    aggregateId: recordId,
-    actorId: recorderId,
-    payload: {
-      recordId,
-      encounterId,
-      patientId,
-      recorderId,
-      direction,
-      fluidType,
-      volumeMl,
-    },
-  });
-}
-
 export function createInvasiveDeviceInsertedEvent(
   deviceId: UUID,
   encounterId: UUID,

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { createExternalRegulation, updateRegulationStatus, closeAihRequest } from '../lib/regulation-api.js';
+import { useSession } from '../context/session-context.js';
+import { createRegulationApi } from '../lib/regulation-api.js';
 
 interface ExternalRegulationModalProps {
   encounterId: string;
@@ -14,6 +15,9 @@ export const ExternalRegulationModal: React.FC<ExternalRegulationModalProps> = (
   aihRequestId,
   onSuccess,
 }) => {
+  const { api } = useSession();
+  const regulationApi = createRegulationApi(api);
+
   const [destinationFacility, setDestinationFacility] = useState('Hospital das Clínicas - HCFMUSP');
   const [specialty, setSpecialty] = useState('Cardiologia Intensiva');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'emergency'>('high');
@@ -24,7 +28,7 @@ export const ExternalRegulationModal: React.FC<ExternalRegulationModalProps> = (
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await createExternalRegulation({
+      const res = await regulationApi.createExternalRegulation({
         encounterId,
         patientId,
         aihRequestId,
@@ -37,8 +41,8 @@ export const ExternalRegulationModal: React.FC<ExternalRegulationModalProps> = (
           { documentType: 'aih_form', notes: 'Espelho de laudo AIH pré-validado' },
         ],
       });
-      setCreatedRegulationId(res.data.id);
-      setMsg(`Solicitação de regulação externa enviada com sucesso! ID: ${res.data.id}`);
+      setCreatedRegulationId(res.id);
+      setMsg(`Solicitação de regulação externa enviada com sucesso! ID: ${res.id}`);
     } catch (err: unknown) {
       setMsg((err as Error).message);
     }
@@ -47,9 +51,9 @@ export const ExternalRegulationModal: React.FC<ExternalRegulationModalProps> = (
   const handleConfirmTransfer = async () => {
     if (!createdRegulationId) return;
     try {
-      await updateRegulationStatus(createdRegulationId, 'transferred');
+      await regulationApi.updateRegulationStatus(createdRegulationId, 'transferred');
       if (aihRequestId) {
-        await closeAihRequest(aihRequestId);
+        await regulationApi.closeAihRequest(aihRequestId);
       }
       setMsg('Transferência hospitalar confirmada e lote de AIH encerrado com sucesso!');
       if (onSuccess) onSuccess();

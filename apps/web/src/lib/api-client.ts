@@ -62,11 +62,29 @@ export const createApiClient = (opts: ApiClientOptions) => {
     return json?.data as T;
   };
 
+  // Pra respostas que não são o envelope JSON padrão `{ data: ... }` (ex.:
+  // exportação de relatório em CSV) — ainda envia o Authorization header,
+  // só não tenta decodificar a resposta como JSON.
+  const getText = async (path: string): Promise<string> => {
+    const token = opts.getAccessToken();
+    const res = await fetch(`${opts.baseUrl}${path}`, {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      const shape = await res.json().catch(() => null);
+      throw new ApiError(res.status, shape?.error ?? { code: 'UNKNOWN_ERROR', message: 'Erro desconhecido.', requestId: '' });
+    }
+    return res.text();
+  };
+
   return {
     get: <T>(path: string) => request<T>('GET', path),
     post: <T>(path: string, body?: unknown, extraHeaders?: Record<string, string>) =>
       request<T>('POST', path, body, extraHeaders),
     patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
+    delete: <T>(path: string) => request<T>('DELETE', path),
+    getText,
   };
 };
 

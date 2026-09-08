@@ -1,5 +1,10 @@
 import { AppError, ErrorCategory } from '@vitaloop/shared';
-import type { SigtapProcedure, CreateAihRequestInput, CompatibilityValidationResult } from './types.js';
+import type {
+  SigtapProcedure,
+  CreateAihRequestInput,
+  CreateApacRequestInput,
+  CompatibilityValidationResult,
+} from './types.js';
 
 export function validateSigtapCompatibility(
   procedure: SigtapProcedure,
@@ -33,7 +38,14 @@ export function validateSigtapCompatibility(
   };
 }
 
-export function validateAihRequestInput(input: CreateAihRequestInput): void {
+// AIH e APAC compartilham o mesmo formato de campos "procedimento SIGTAP +
+// CID-10 principal + justificativa clínica" (irmãos: internação vs.
+// procedimento ambulatorial) — mesma validação, só muda o rótulo do
+// documento na mensagem de erro.
+function validateProcedureBasedRequestInput(
+  input: { mainProcedureCode: string; mainCid10: string; clinicalJustification: string },
+  docLabel: string,
+): void {
   if (!input.mainProcedureCode || input.mainProcedureCode.trim().length < 10) {
     throw new AppError({
       category: ErrorCategory.VALIDATION,
@@ -46,7 +58,7 @@ export function validateAihRequestInput(input: CreateAihRequestInput): void {
     throw new AppError({
       category: ErrorCategory.VALIDATION,
       code: 'MAIN_CID_REQUIRED',
-      message: 'Código CID-10 principal é obrigatório para a emissão do laudo de AIH.',
+      message: `Código CID-10 principal é obrigatório para a emissão do laudo de ${docLabel}.`,
     });
   }
 
@@ -54,7 +66,15 @@ export function validateAihRequestInput(input: CreateAihRequestInput): void {
     throw new AppError({
       category: ErrorCategory.VALIDATION,
       code: 'JUSTIFICATION_TOO_SHORT',
-      message: 'A justificativa clínica de solicitação de AIH deve possuir no mínimo 15 caracteres.',
+      message: `A justificativa clínica de solicitação de ${docLabel} deve possuir no mínimo 15 caracteres.`,
     });
   }
+}
+
+export function validateAihRequestInput(input: CreateAihRequestInput): void {
+  validateProcedureBasedRequestInput(input, 'AIH');
+}
+
+export function validateApacRequestInput(input: CreateApacRequestInput): void {
+  validateProcedureBasedRequestInput(input, 'APAC');
 }

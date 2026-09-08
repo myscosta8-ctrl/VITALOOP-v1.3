@@ -16,6 +16,8 @@ export interface BedData {
   bedNumber: string;
   status: 'available' | 'occupied' | 'reserved' | 'cleaning' | 'blocked' | 'maintenance';
   isExtra: boolean;
+  isIsolation: boolean;
+  expiresAt?: string | null;
   allocationId?: string | null;
   encounterId?: string | null;
   patientId?: string | null;
@@ -46,8 +48,17 @@ export const createBedApi = (api: ApiClient) => ({
     return api.get<SectorMapData[]>('/api/v1/beds/map');
   },
 
-  createExtraBed: async (sectorId: string, bedNumber: string): Promise<BedData> => {
-    return api.post<BedData>('/api/v1/beds', { sectorId, bedNumber, isExtra: true });
+  createExtraBed: async (sectorId: string, bedNumber: string, isIsolation = false): Promise<BedData> => {
+    return api.post<BedData>('/api/v1/beds', { sectorId, bedNumber, isExtra: true, isIsolation });
+  },
+
+  createSector: async (
+    name: string,
+    code: string,
+    capacity: number,
+    description?: string | null,
+  ): Promise<BedSectorData> => {
+    return api.post<BedSectorData>('/api/v1/bed-sectors', { name, code, capacity, description });
   },
 
   allocateBed: async (encounterId: string, bedId: string, patientId: string, regulationCode?: string | null) => {

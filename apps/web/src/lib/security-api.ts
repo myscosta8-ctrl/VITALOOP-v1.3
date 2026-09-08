@@ -1,36 +1,49 @@
-export async function fetchSecurityHardeningStatus() {
-  const res = await fetch('/api/v1/security/hardening-status');
-  if (!res.ok) throw new Error('Erro ao buscar status de segurança técnica.');
-  return res.json();
+import type { ApiClient } from './api-client.js';
+
+export interface SecurityHardeningStatus {
+  idorProtection: boolean;
+  privilegeEscalationProtection: boolean;
+  rlsEnforcement: boolean;
+  rbacEnforcement: boolean;
+  sqliProtection: boolean;
+  xssSanitizer: boolean;
+  corsRestricted: boolean;
+  securityHeaders: boolean;
+  logsMasked: boolean;
 }
 
-export async function sendSecurityAlertEvent(eventType: string, severity: 'INFO' | 'WARNING' | 'CRITICAL', endpoint: string, payloadSummary?: string) {
-  const res = await fetch('/api/v1/security/events', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ eventType, severity, endpoint, payloadSummary }),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error?.message || 'Erro ao registrar evento de segurança.');
-  }
-  return res.json();
+export interface SecurityAlertEvent {
+  id: string;
+  eventType: string;
 }
 
-export async function exportLgpdPatientReport(patientId: string) {
-  const res = await fetch(`/api/v1/lgpd/patients/${patientId}/export`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error?.message || 'Erro ao gerar extrato LGPD de dados pessoais.');
-  }
-  return res.json();
+export interface LgpdPatientReport {
+  reportId: string;
+  personalData: { fullName: string; maskedCpf: string };
+  legalBasis: string;
+  dataHash: string;
 }
 
-export async function fetchLgpdRetentionPolicies() {
-  const res = await fetch('/api/v1/lgpd/retention-policies');
-  if (!res.ok) throw new Error('Erro ao buscar políticas de retenção legal.');
-  return res.json();
+export interface LgpdRetentionPolicy {
+  id: string;
+  entityType: string;
+  retentionYears: number;
+  description: string;
 }
+
+export const createSecurityApi = (api: ApiClient) => ({
+  fetchSecurityHardeningStatus: (): Promise<SecurityHardeningStatus> =>
+    api.get<SecurityHardeningStatus>('/api/v1/security/hardening-status'),
+
+  sendSecurityAlertEvent: (
+    eventType: string,
+    severity: 'INFO' | 'WARNING' | 'CRITICAL',
+    endpoint: string,
+    payloadSummary?: string,
+  ): Promise<SecurityAlertEvent> => api.post<SecurityAlertEvent>('/api/v1/security/events', { eventType, severity, endpoint, payloadSummary }),
+
+  exportLgpdPatientReport: (patientId: string): Promise<LgpdPatientReport> =>
+    api.post<LgpdPatientReport>(`/api/v1/lgpd/patients/${patientId}/export`),
+
+  fetchLgpdRetentionPolicies: (): Promise<LgpdRetentionPolicy[]> => api.get<LgpdRetentionPolicy[]>('/api/v1/lgpd/retention-policies'),
+});

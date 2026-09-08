@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { BedData, SectorMapData } from '../lib/bed-api';
+import { Overlay } from './BedAllocationModal.js';
 
 interface BedTransferModalProps {
   currentBed: BedData;
@@ -56,75 +57,46 @@ export const BedTransferModal: React.FC<BedTransferModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg p-6 max-w-lg w-full space-y-4 shadow-xl">
-        <div className="flex justify-between items-center border-b pb-2">
-          <h3 className="font-bold text-gray-900 text-lg">Transferência Interna de Leito (BED-006)</h3>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 font-bold text-xl">
-            &times;
+    <Overlay title="Transferência Interna de Leito (BED-006)" onClose={onClose}>
+      {error && <div role="alert">{error}</div>}
+
+      <div className="vl-info-box">
+        <p style={{ margin: 0, fontWeight: 700 }}>Leito de Origem: {currentBed.bedNumber}</p>
+        <p style={{ margin: 0 }}>Paciente: <strong>{currentBed.patientName || 'Não identificado'}</strong></p>
+      </div>
+
+      <form onSubmit={handleSubmit} style={{ border: 'none', padding: 0, boxShadow: 'none', maxWidth: '100%' }}>
+        <label htmlFor="target-bed">Leito de Destino:</label>
+        {availableBeds.length === 0 ? (
+          <p role="alert">Não há leitos disponíveis na UPA no momento para transferência.</p>
+        ) : (
+          <select id="target-bed" value={targetBedId} onChange={(e) => setTargetBedId(e.target.value)}>
+            {availableBeds.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.sectorName ? `${b.sectorName} - ` : ''}{b.bedNumber} {b.isExtra ? '(Extra)' : ''}
+              </option>
+            ))}
+          </select>
+        )}
+
+        <label htmlFor="transfer-reason">Justificativa Clínica/Técnica Obrigatória (mín. 10 caracteres) *:</label>
+        <textarea
+          id="transfer-reason"
+          rows={3}
+          value={transferReason}
+          onChange={(e) => setTransferReason(e.target.value)}
+          placeholder="Informe a necessidade assistencial da movimentação..."
+        />
+
+        <div className="vl-modal-actions">
+          <button type="button" className="vl-btn-ghost" onClick={onClose}>
+            Cancelar
+          </button>
+          <button type="submit" disabled={loading || availableBeds.length === 0}>
+            {loading ? 'Transferindo...' : 'Confirmar Transferência'}
           </button>
         </div>
-
-        {error && <div className="p-3 bg-red-50 text-red-700 text-sm rounded border border-red-200">{error}</div>}
-
-        <div className="bg-blue-50 p-3 rounded text-sm text-blue-900 space-y-1">
-          <p className="font-bold">Leito de Origem: {currentBed.bedNumber}</p>
-          <p className="truncate">Paciente: <strong>{currentBed.patientName || 'Não identificado'}</strong></p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Leito de Destino:</label>
-            {availableBeds.length === 0 ? (
-              <p className="text-xs text-red-600 font-semibold p-2 bg-red-50 rounded border border-red-200">
-                Não há leitos disponíveis na UPA no momento para transferência.
-              </p>
-            ) : (
-              <select
-                value={targetBedId}
-                onChange={(e) => setTargetBedId(e.target.value)}
-                className="w-full p-2 border rounded text-sm"
-              >
-                {availableBeds.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.sectorName ? `${b.sectorName} - ` : ''}{b.bedNumber} {b.isExtra ? '(Extra)' : ''}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-red-700 mb-1">
-              Justificativa Clínica/Técnica Obrigatória (mín. 10 caracteres) *:
-            </label>
-            <textarea
-              rows={3}
-              value={transferReason}
-              onChange={(e) => setTransferReason(e.target.value)}
-              placeholder="Informe a necessidade assistencial da movimentação..."
-              className="w-full p-2 border border-red-300 rounded text-sm"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-gray-200 text-gray-800 rounded text-xs font-medium hover:bg-gray-300"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={loading || availableBeds.length === 0}
-              className="px-4 py-2 bg-indigo-600 text-white rounded text-xs font-bold hover:bg-indigo-700 disabled:opacity-50"
-            >
-              {loading ? 'Transferindo...' : 'Confirmar Transferência'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </Overlay>
   );
 };

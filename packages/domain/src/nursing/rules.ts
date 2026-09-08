@@ -170,24 +170,6 @@ export function validateNursingSaeInput(input: { diagnoses: Array<{ code: string
   }
 }
 
-export function validateFluidBalanceInput(input: { volumeMl: number; fluidType: string; direction: string }): void {
-  if (!input.volumeMl || input.volumeMl <= 0) {
-    throw new AppError({
-      category: ErrorCategory.VALIDATION,
-      code: 'FLUID_VOLUME_INVALID',
-      message: 'O volume do balanço hídrico deve ser maior que zero (mL).',
-    });
-  }
-
-  if (input.direction !== 'intake' && input.direction !== 'output') {
-    throw new AppError({
-      category: ErrorCategory.VALIDATION,
-      code: 'FLUID_DIRECTION_INVALID',
-      message: 'A direção do balanço hídrico deve ser "intake" (entrada) ou "output" (saída).',
-    });
-  }
-}
-
 export function validateInvasiveDeviceInput(input: { deviceType: string; anatomicalSite: string }): void {
   if (!input.deviceType) {
     throw new AppError({

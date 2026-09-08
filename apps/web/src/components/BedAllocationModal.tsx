@@ -11,7 +11,7 @@ interface BedAllocationModalProps {
     patientId: string,
     regulationCode?: string | null
   ) => Promise<void>;
-  onCreateExtraBed?: (sectorId: string, bedNumber: string) => Promise<void>;
+  onCreateExtraBed?: (sectorId: string, bedNumber: string, isIsolation: boolean) => Promise<void>;
 }
 
 export const Overlay: React.FC<{ title: string; onClose: () => void; children: React.ReactNode }> = ({
@@ -57,6 +57,7 @@ export const BedAllocationModal: React.FC<BedAllocationModalProps> = ({
   const [isExtraMode, setIsExtraMode] = useState(false);
   const [selectedSectorId, setSelectedSectorId] = useState(sectors[0]?.id || '');
   const [extraBedNumber, setExtraBedNumber] = useState('');
+  const [extraIsIsolation, setExtraIsIsolation] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,7 +73,7 @@ export const BedAllocationModal: React.FC<BedAllocationModalProps> = ({
       setLoading(true);
       try {
         if (onCreateExtraBed) {
-          await onCreateExtraBed(selectedSectorId, extraBedNumber.trim());
+          await onCreateExtraBed(selectedSectorId, extraBedNumber.trim(), extraIsIsolation);
         }
         onClose();
       } catch (err) {
@@ -172,6 +173,18 @@ export const BedAllocationModal: React.FC<BedAllocationModalProps> = ({
                 placeholder="Ex: Leito Extra 01"
               />
             </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
+              <input
+                type="checkbox"
+                checked={extraIsIsolation}
+                onChange={(e) => setExtraIsIsolation(e.target.checked)}
+                style={{ width: 'auto' }}
+              />
+              Leito de isolamento
+            </label>
+            <p role="status" style={{ marginTop: 8 }}>
+              Leito extra criado para lotação máxima/excedida — some sozinho após 30 min se ninguém for alocado nele.
+            </p>
           </>
         )}
 

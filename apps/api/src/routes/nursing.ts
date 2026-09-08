@@ -9,7 +9,6 @@ import {
   validateAdministerMedicationInput,
   calculateDefaultScheduleTimes,
   validateNursingSaeInput,
-  validateFluidBalanceInput,
   validateInvasiveDeviceInput,
   calculateScaleScore,
   createNursingRecordCreatedEvent,
@@ -17,7 +16,6 @@ import {
   createMedicationAdministeredEvent,
   createScaleAppliedEvent,
   createNursingSaeRecordedEvent,
-  createFluidBalanceRecordedEvent,
   createInvasiveDeviceInsertedEvent,
   createInvasiveDeviceRemovedEvent,
   type NursingRecord,
@@ -644,103 +642,9 @@ export const registerNursingRoutes = (app: FastifyInstance, pool: pg.Pool | null
     },
   );
 
-  // 3. Balanço Hídrico (NUR-009)
-  const createFluidBalanceSchema = z.object({
-    direction: z.enum(['intake', 'output']),
-    fluidType: z.enum(['oral', 'intravenous', 'enteral', 'blood_products', 'urine', 'emesis', 'drainage', 'feces']),
-    volumeMl: z.number().int().positive(),
-    description: z.string().optional(),
-  });
-
-  app.post(
-    '/api/v1/encounters/:encounterId/nursing/fluid-balance',
-    { preHandler: requirePermission(pool, 'nursing.balance') },
-    async (req, reply) => {
-      const { encounterId } = req.params as { encounterId: UUID };
-      const parsedBody = createFluidBalanceSchema.parse(req.body);
-      const identity = req.identity!;
-      const recorderId = identity.appUserId!;
-
-      validateFluidBalanceInput(parsedBody);
-
-      const record = await withSecurityContext(
-        pool!,
-        { userId: recorderId, roles: identity.roles },
-        async (client) => {
-          const encRes = await client.query('select patient_id from app.encounters where id = $1', [encounterId]);
-          if (encRes.rows.length === 0) {
-            throw new AppError({
-              category: ErrorCategory.NOT_FOUND,
-              code: 'ENCOUNTER_NOT_FOUND',
-              message: 'Atendimento não encontrado.',
-            });
-          }
-          const patientId = encRes.rows[0].patient_id;
-
-          const recRes = await client.query(
-            `insert into app.fluid_balance_records (encounter_id, patient_id, recorder_id, direction, fluid_type, volume_ml, description)
-             values ($1, $2, $3, $4, $5, $6, $7)
-             returning *`,
-            [encounterId, patientId, recorderId, parsedBody.direction, parsedBody.fluidType, parsedBody.volumeMl, parsedBody.description || null],
-          );
-          const rRow = recRes.rows[0];
-
-          const ev = createFluidBalanceRecordedEvent(
-            rRow.id,
-            encounterId,
-            patientId,
-            recorderId as UUID,
-            parsedBody.direction,
-            parsedBody.fluidType,
-            parsedBody.volumeMl,
-          );
-
-          await persistDomainEvent(client, ev, patientId);
-          await auditAction(client, recorderId, 'create', 'fluid_balance_record', rRow.id, req, {
-            encounterId,
-            direction: parsedBody.direction,
-            volumeMl: parsedBody.volumeMl,
-          });
-
-          return rRow;
-        },
-      );
-
-      return reply.status(201).send(success(record, req.id));
-    },
-  );
-
-  app.get(
-    '/api/v1/encounters/:encounterId/nursing/fluid-balance',
-    { preHandler: requirePermission(pool, 'nursing.read') },
-    async (req, reply) => {
-      const { encounterId } = req.params as { encounterId: UUID };
-      const identity = req.identity!;
-
-      const result = await withSecurityContext(
-        pool!,
-        { userId: identity.appUserId!, roles: identity.roles },
-        async (client) => {
-          const res = await client.query(
-            'select * from app.fluid_balance_records where encounter_id = $1 order by recorded_at desc',
-            [encounterId],
-          );
-
-          let intakeTotal = 0;
-          let outputTotal = 0;
-          for (const row of res.rows) {
-            if (row.direction === 'intake') intakeTotal += Number(row.volume_ml);
-            if (row.direction === 'output') outputTotal += Number(row.volume_ml);
-          }
-          const netBalance = intakeTotal - outputTotal;
-
-          return { records: res.rows, summary: { intakeTotal, outputTotal, netBalance } };
-        },
-      );
-
-      return reply.status(200).send(success(result, req.id));
-    },
-  );
+  // 3. Balanço Hídrico (NUR-009) — ver apps/api/src/routes/fluid-balance.ts
+  // (reescrito em 2026-09-07 a partir do modelo real; esta rota antiga foi
+  // removida, ver packages/domain/src/fluid-balance/ e migration 0063).
 
   // 4. Dispositivos Invasivos (NUR-011)
   const insertDeviceSchema = z.object({

@@ -1,25 +1,33 @@
-export async function fetchDashboardData() {
-  const res = await fetch('/api/v1/management/dashboard');
-  if (!res.ok) throw new Error('Erro ao carregar dashboard gerencial.');
-  return res.json();
+import type { ApiClient } from './api-client.js';
+
+export interface ManagementAlertItem {
+  id: string;
+  severity: string;
+  message: string;
 }
 
-export async function fetchManagementAlerts() {
-  const res = await fetch('/api/v1/management/alerts');
-  if (!res.ok) throw new Error('Erro ao buscar alertas de sobrecarga.');
-  return res.json();
+export interface DashboardData {
+  summary: {
+    activeEncountersCount: number;
+    triagePendingCount: number;
+    consultationPendingCount: number;
+    occupiedBedsCount: number;
+    totalBedsCount: number;
+    bedOccupancyRate: number;
+  };
+  averageTmpHours: number;
+  alerts: ManagementAlertItem[];
 }
 
-export async function acknowledgeAlert(alertId: string) {
-  const res = await fetch(`/api/v1/management/alerts/${alertId}/acknowledge`, {
-    method: 'POST',
-  });
-  if (!res.ok) throw new Error('Erro ao reconhecer alerta gerencial.');
-  return res.json();
-}
+export const createManagementApi = (api: ApiClient) => ({
+  fetchDashboardData: (): Promise<DashboardData> => api.get<DashboardData>('/api/v1/management/dashboard'),
 
-export async function exportManagementReportCsv() {
-  const res = await fetch('/api/v1/management/reports/export?format=csv');
-  if (!res.ok) throw new Error('Erro ao exportar relatório em CSV.');
-  return res.text();
-}
+  fetchManagementAlerts: (): Promise<ManagementAlertItem[]> => api.get<ManagementAlertItem[]>('/api/v1/management/alerts'),
+
+  acknowledgeAlert: (alertId: string): Promise<{ id: string }> =>
+    api.post<{ id: string }>(`/api/v1/management/alerts/${alertId}/acknowledge`),
+
+  // Resposta é texto CSV puro, não o envelope JSON `{ data: ... }` — usa
+  // `getText` em vez de `get` (ver apps/web/src/lib/api-client.ts).
+  exportManagementReportCsv: (): Promise<string> => api.getText('/api/v1/management/reports/export?format=csv'),
+});

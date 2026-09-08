@@ -1,38 +1,37 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ExternalRegulationModal } from './ExternalRegulationModal.js';
-import * as regApi from '../lib/regulation-api.js';
 
-vi.mock('../lib/regulation-api.js', () => ({
-  createExternalRegulation: vi.fn(),
-  updateRegulationStatus: vi.fn(),
-  closeAihRequest: vi.fn(),
+const get = vi.fn();
+const post = vi.fn();
+const patch = vi.fn();
+
+const mockApi = { get, post, patch };
+
+vi.mock('../context/session-context.js', () => ({
+  useSession: () => ({ api: mockApi }),
 }));
 
 describe('ExternalRegulationModal Component Test (SUS-007..010)', () => {
+  beforeEach(() => {
+    get.mockReset();
+    post.mockReset();
+    patch.mockReset();
+  });
+
   it('renderiza modal de regulação médica, envia solicitação e confirma transferência inter-hospitalar', async () => {
-    vi.mocked(regApi.createExternalRegulation).mockResolvedValue({
-      data: {
-        id: 'reg-789-xyz',
-        status: 'requested',
-      },
+    post.mockImplementation((path: string) => {
+      if (path === '/api/v1/regulation/requests') {
+        return Promise.resolve({ id: 'reg-789-xyz', status: 'requested' });
+      }
+      if (path === '/api/v1/sus/aih-requests/aih-123-abc/close') {
+        return Promise.resolve({ id: 'aih-123-abc', closedAt: new Date().toISOString() });
+      }
+      return Promise.reject(new Error(`unexpected POST ${path}`));
     });
-
-    vi.mocked(regApi.updateRegulationStatus).mockResolvedValue({
-      data: {
-        id: 'reg-789-xyz',
-        status: 'transferred',
-      },
-    });
-
-    vi.mocked(regApi.closeAihRequest).mockResolvedValue({
-      data: {
-        id: 'aih-123-abc',
-        closedAt: new Date().toISOString(),
-      },
-    });
+    patch.mockResolvedValue({ id: 'reg-789-xyz', status: 'transferred' });
 
     render(<ExternalRegulationModal encounterId="enc-123" patientId="pat-456" aihRequestId="aih-123-abc" />);
 
@@ -43,13 +42,16 @@ describe('ExternalRegulationModal Component Test (SUS-007..010)', () => {
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(regApi.createExternalRegulation).toHaveBeenCalledWith(expect.objectContaining({
-        encounterId: 'enc-123',
-        patientId: 'pat-456',
-        aihRequestId: 'aih-123-abc',
-        destinationFacility: 'Hospital das Clínicas - HCFMUSP',
-        specialty: 'Cardiologia Intensiva',
-      }));
+      expect(post).toHaveBeenCalledWith(
+        '/api/v1/regulation/requests',
+        expect.objectContaining({
+          encounterId: 'enc-123',
+          patientId: 'pat-456',
+          aihRequestId: 'aih-123-abc',
+          destinationFacility: 'Hospital das Clínicas - HCFMUSP',
+          specialty: 'Cardiologia Intensiva',
+        }),
+      );
     });
 
     expect(screen.getByTestId('regulation-msg').textContent).toContain('Solicitação de regulação externa enviada com sucesso!');
@@ -58,8 +60,11 @@ describe('ExternalRegulationModal Component Test (SUS-007..010)', () => {
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {
-      expect(regApi.updateRegulationStatus).toHaveBeenCalledWith('reg-789-xyz', 'transferred');
-      expect(regApi.closeAihRequest).toHaveBeenCalledWith('aih-123-abc');
+      expect(patch).toHaveBeenCalledWith('/api/v1/regulation/requests/reg-789-xyz/status', {
+        targetStatus: 'transferred',
+        cancellationReason: undefined,
+      });
+      expect(post).toHaveBeenCalledWith('/api/v1/sus/aih-requests/aih-123-abc/close');
     });
 
     expect(screen.getByTestId('regulation-msg').textContent).toContain('Transferência hospitalar confirmada e lote de AIH encerrado');

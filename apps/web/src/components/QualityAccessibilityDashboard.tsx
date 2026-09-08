@@ -1,21 +1,25 @@
 import React, { useState } from 'react';
-import { printClinicalDocumentPdf, simulateConcurrencyCheck } from '../lib/quality-api.js';
+import { useSession } from '../context/session-context.js';
+import { createQualityApi, type PrintClinicalDocumentResult } from '../lib/quality-api.js';
 
 export const QualityAccessibilityDashboard: React.FC = () => {
-  const [pdfResult, setPdfResult] = useState<Record<string, string> | null>(null);
+  const { api } = useSession();
+  const qualityApi = createQualityApi(api);
+
+  const [pdfResult, setPdfResult] = useState<PrintClinicalDocumentResult | null>(null);
   const [concurrencyMsg, setConcurrencyMsg] = useState('');
   const [msg, setMsg] = useState('');
 
   const handlePrintDocument = async () => {
     try {
-      const res = await printClinicalDocumentPdf('doc-100', {
+      const res = await qualityApi.printClinicalDocumentPdf('doc-100', {
         documentType: 'Laudo de Exame',
         patientName: 'Carlos Eduardo',
         issuerName: 'Dra. Ana',
         content: 'Hemograma completo sem alterações.',
       });
-      setPdfResult(res.data);
-      setMsg(`PDF gerado com sucesso! Checksum: ${res.data.footerChecksum}`);
+      setPdfResult(res);
+      setMsg(`PDF gerado com sucesso! Checksum: ${res.footerChecksum}`);
     } catch (err: unknown) {
       setMsg((err as Error).message);
     }
@@ -23,7 +27,7 @@ export const QualityAccessibilityDashboard: React.FC = () => {
 
   const handleTestConcurrency = async () => {
     try {
-      await simulateConcurrencyCheck(1, 1);
+      await qualityApi.simulateConcurrencyCheck(1, 1);
       setConcurrencyMsg('Teste de concorrência: Versões compatíveis (Sem conflito).');
     } catch (err: unknown) {
       setConcurrencyMsg((err as Error).message);

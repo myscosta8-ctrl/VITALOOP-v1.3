@@ -1,27 +1,37 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QualityAccessibilityDashboard } from './QualityAccessibilityDashboard.js';
-import * as qualityApi from '../lib/quality-api.js';
 
-vi.mock('../lib/quality-api.js', () => ({
-  printClinicalDocumentPdf: vi.fn(),
-  simulateConcurrencyCheck: vi.fn(),
+const get = vi.fn();
+const post = vi.fn();
+
+const mockApi = { get, post };
+
+vi.mock('../context/session-context.js', () => ({
+  useSession: () => ({ api: mockApi }),
 }));
 
 describe('QualityAccessibilityDashboard Component Test (QLT-001..015)', () => {
-  it('renderiza painel de qualidade/acessibilidade, testa impressão PDF, concorrência e exibe checklist ARIA', async () => {
-    vi.mocked(qualityApi.printClinicalDocumentPdf).mockResolvedValue({
-      data: {
-        documentId: 'doc-100',
-        formattedText: 'VITALOOP UPA 24H - IMPRESSÃO OFICIAL',
-        footerChecksum: 'CHK-PDF-12345',
-      },
-    });
+  beforeEach(() => {
+    get.mockReset();
+    post.mockReset();
+  });
 
-    vi.mocked(qualityApi.simulateConcurrencyCheck).mockResolvedValue({
-      data: { status: 'CONCURRENCY_OK' },
+  it('renderiza painel de qualidade/acessibilidade, testa impressão PDF, concorrência e exibe checklist ARIA', async () => {
+    post.mockImplementation((path: string) => {
+      if (path === '/api/v1/quality/documents/doc-100/print') {
+        return Promise.resolve({
+          documentId: 'doc-100',
+          formattedText: 'VITALOOP UPA 24H - IMPRESSÃO OFICIAL',
+          footerChecksum: 'CHK-PDF-12345',
+        });
+      }
+      if (path === '/api/v1/quality/simulate-concurrency') {
+        return Promise.resolve({ status: 'CONCURRENCY_OK' });
+      }
+      return Promise.reject(new Error(`unexpected POST ${path}`));
     });
 
     render(<QualityAccessibilityDashboard />);
@@ -33,7 +43,7 @@ describe('QualityAccessibilityDashboard Component Test (QLT-001..015)', () => {
     fireEvent.click(printBtn);
 
     await waitFor(() => {
-      expect(qualityApi.printClinicalDocumentPdf).toHaveBeenCalledWith('doc-100', expect.any(Object));
+      expect(post).toHaveBeenCalledWith('/api/v1/quality/documents/doc-100/print', expect.any(Object));
     });
 
     expect(screen.getByTestId('quality-status-msg').textContent).toContain('Checksum: CHK-PDF-12345');
@@ -43,7 +53,7 @@ describe('QualityAccessibilityDashboard Component Test (QLT-001..015)', () => {
     fireEvent.click(concBtn);
 
     await waitFor(() => {
-      expect(qualityApi.simulateConcurrencyCheck).toHaveBeenCalledWith(1, 1);
+      expect(post).toHaveBeenCalledWith('/api/v1/quality/simulate-concurrency', { currentVersion: 1, expectedVersion: 1 });
     });
 
     expect(screen.getByTestId('concurrency-msg').textContent).toContain('Sem conflito');

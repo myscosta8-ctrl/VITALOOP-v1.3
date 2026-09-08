@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { reportAdverseEvent, prescribeIsolation } from '../lib/safety-api.js';
+import { useSession } from '../context/session-context.js';
+import { createSafetyApi } from '../lib/safety-api.js';
 
 interface AdverseEventReportModalProps {
   encounterId?: string;
@@ -8,6 +9,9 @@ interface AdverseEventReportModalProps {
 }
 
 export const AdverseEventReportModal: React.FC<AdverseEventReportModalProps> = ({ encounterId, patientId, onSuccess }) => {
+  const { api } = useSession();
+  const safetyApi = createSafetyApi(api);
+
   const [eventCategory, setEventCategory] = useState('medicação');
   const [severity, setSeverity] = useState<'near_miss' | 'no_harm' | 'mild' | 'moderate' | 'severe' | 'death'>('mild');
   const [description, setDescription] = useState('Troca involuntária de dose durante a administração por erro de rotulagem.');
@@ -21,7 +25,7 @@ export const AdverseEventReportModal: React.FC<AdverseEventReportModalProps> = (
   const handleReport = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await reportAdverseEvent({
+      const res = await safetyApi.reportAdverseEvent({
         encounterId,
         patientId,
         eventCategory,
@@ -30,7 +34,7 @@ export const AdverseEventReportModal: React.FC<AdverseEventReportModalProps> = (
         immediateAction,
         isAnonymous,
       });
-      setMsg(`Notificação do NSP registrada com sucesso! ID: ${res.data.id}`);
+      setMsg(`Notificação do NSP registrada com sucesso! ID: ${res.id}`);
       if (onSuccess) onSuccess();
     } catch (err: unknown) {
       setMsg((err as Error).message);
@@ -41,11 +45,11 @@ export const AdverseEventReportModal: React.FC<AdverseEventReportModalProps> = (
     e.preventDefault();
     if (!encounterId) return;
     try {
-      const res = await prescribeIsolation(encounterId, {
+      const res = await safetyApi.prescribeIsolation(encounterId, {
         isolationType,
         reason: isolationReason,
       });
-      setMsg(`Isolamento de precaução ativado! Tipo: ${res.data.isolationType}`);
+      setMsg(`Isolamento de precaução ativado! Tipo: ${res.isolationType}`);
       if (onSuccess) onSuccess();
     } catch (err: unknown) {
       setMsg((err as Error).message);

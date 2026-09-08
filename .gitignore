@@ -38,3 +38,8 @@ Desktop.ini
 # Rascunhos temporarios
 scratch/
 
+# Documentos hospitalares reais usados só para extração de modelo —
+# NUNCA versionar (dado real de paciente / preenchimento manual)
+/DOC/
+/PDF MODELO SINAN/
+

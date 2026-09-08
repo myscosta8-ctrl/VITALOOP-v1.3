@@ -1,20 +1,24 @@
 import React, { useState } from 'react';
-import { exportLgpdPatientReport, fetchLgpdRetentionPolicies } from '../lib/security-api.js';
+import { useSession } from '../context/session-context.js';
+import { createSecurityApi, type LgpdPatientReport } from '../lib/security-api.js';
 
 interface LgpdPrivacyPanelProps {
   patientId: string;
 }
 
 export const LgpdPrivacyPanel: React.FC<LgpdPrivacyPanelProps> = ({ patientId }) => {
-  const [report, setReport] = useState<Record<string, unknown> | null>(null);
+  const { api } = useSession();
+  const securityApi = createSecurityApi(api);
+
+  const [report, setReport] = useState<LgpdPatientReport | null>(null);
   const [policies, setPolicies] = useState<Array<{ id: string; entityType: string; retentionYears: number; description: string }>>([]);
   const [msg, setMsg] = useState('');
 
   const handleExportLgpd = async () => {
     try {
-      const res = await exportLgpdPatientReport(patientId);
-      setReport(res.data);
-      setMsg(`Extrato de transparência LGPD gerado com sucesso! N° Relatório: ${res.data.reportId}`);
+      const res = await securityApi.exportLgpdPatientReport(patientId);
+      setReport(res);
+      setMsg(`Extrato de transparência LGPD gerado com sucesso! N° Relatório: ${res.reportId}`);
     } catch (err: unknown) {
       setMsg((err as Error).message);
     }
@@ -22,8 +26,8 @@ export const LgpdPrivacyPanel: React.FC<LgpdPrivacyPanelProps> = ({ patientId })
 
   const handleLoadRetention = async () => {
     try {
-      const res = await fetchLgpdRetentionPolicies();
-      setPolicies(res.data);
+      const res = await securityApi.fetchLgpdRetentionPolicies();
+      setPolicies(res);
     } catch (err: unknown) {
       setMsg((err as Error).message);
     }

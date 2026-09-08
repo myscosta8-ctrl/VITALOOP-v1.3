@@ -73,8 +73,6 @@ export type InvasiveDeviceType =
   | 'tracheostomy';
 
 export type DeviceStatus = 'active' | 'removed' | 'replaced' | 'accidental_withdrawal';
-export type FluidType = 'oral' | 'intravenous' | 'enteral' | 'blood_products' | 'urine' | 'emesis' | 'drainage' | 'feces';
-export type FluidDirection = 'intake' | 'output';
 export type ScaleType = 'braden' | 'morse' | 'glasgow' | 'mews' | 'ramsay';
 export type RiskLevel = 'low' | 'moderate' | 'high' | 'severe';
 
@@ -126,19 +124,6 @@ export interface NursingScaleEvaluation {
   riskLevel: RiskLevel;
   scoreDetails: Record<string, unknown>;
   evaluatedAt: string;
-  createdAt: string;
-}
-
-export interface FluidBalanceRecord {
-  id: UUID;
-  encounterId: UUID;
-  patientId: UUID;
-  recorderId: UUID;
-  direction: FluidDirection;
-  fluidType: FluidType;
-  volumeMl: number;
-  description?: string | null;
-  recordedAt: string;
   createdAt: string;
 }
 
@@ -194,13 +179,6 @@ export interface CreateNursingSaeInput {
 export interface ApplyScaleInput {
   scaleType: ScaleType;
   scoreDetails: Record<string, unknown>;
-}
-
-export interface CreateFluidBalanceInput {
-  direction: FluidDirection;
-  fluidType: FluidType;
-  volumeMl: number;
-  description?: string | null | undefined;
 }
 
 export interface InsertInvasiveDeviceInput {

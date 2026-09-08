@@ -1,20 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { fetchSecurityHardeningStatus, sendSecurityAlertEvent } from '../lib/security-api.js';
+import { useSession } from '../context/session-context.js';
+import { createSecurityApi, type SecurityHardeningStatus } from '../lib/security-api.js';
 
 export const SecurityHardeningPanel: React.FC = () => {
-  const [status, setStatus] = useState<Record<string, boolean> | null>(null);
+  const { api } = useSession();
+  const securityApi = createSecurityApi(api);
+
+  const [status, setStatus] = useState<SecurityHardeningStatus | null>(null);
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
-    fetchSecurityHardeningStatus()
-      .then((res) => setStatus(res.data))
+    securityApi
+      .fetchSecurityHardeningStatus()
+      .then((res) => setStatus(res))
       .catch((err: Error) => setMsg(err.message));
-  }, []);
+  }, [api]);
 
   const handleTestAlert = async () => {
     try {
-      const res = await sendSecurityAlertEvent('IDOR_ATTEMPT', 'WARNING', '/api/v1/patients/pat-9999', 'Tentativa não autorizada');
-      setMsg(`Alerta de segurança registrado no banco com sucesso! ID: ${res.data.id}`);
+      const res = await securityApi.sendSecurityAlertEvent('IDOR_ATTEMPT', 'WARNING', '/api/v1/patients/pat-9999', 'Tentativa não autorizada');
+      setMsg(`Alerta de segurança registrado no banco com sucesso! ID: ${res.id}`);
     } catch (err: unknown) {
       setMsg((err as Error).message);
     }

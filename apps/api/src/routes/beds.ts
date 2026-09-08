@@ -81,7 +81,13 @@ const createBedSchema = z.object({
   sectorId: z.string().uuid(),
   bedNumber: z.string().min(1),
   isExtra: z.boolean().optional().default(false),
+  isIsolation: z.boolean().optional().default(false),
 });
+
+// Leito extra aberto por lotação máxima/excedida e nunca alocado é excluído
+// automaticamente após esse prazo (verificado a cada leitura do mapa de
+// leitos — sem job/cron novo). Valor de exemplo definido pela unidade.
+const EXTRA_BED_EXPIRY_MINUTES = 30;
 
 export const registerBedRoutes = (app: FastifyInstance, pool: pg.Pool | null): void => {
   // 1. GET /api/v1/bed-sectors
@@ -112,13 +118,28 @@ export const registerBedRoutes = (app: FastifyInstance, pool: pg.Pool | null): v
       const body = createSectorSchema.parse(req.body);
 
       const sector = await withSecurityContext(pool!, { userId: identity.appUserId!, roles: identity.roles }, async (client) => {
+        const code = body.code.toUpperCase();
         const { rows } = await client.query(
           `insert into app.bed_sectors (name, code, description, capacity)
            values ($1, $2, $3, $4)
            returning id, name, code, description, capacity, created_at as "createdAt"`,
-          [body.name, body.code.toUpperCase(), body.description || null, body.capacity],
+          [body.name, code, body.description || null, body.capacity],
         );
-        return rows[0];
+        const sectorRow = rows[0];
+
+        // Cria os leitos físicos do setor (SECTOR-01, SECTOR-02...) — sem isso,
+        // a capacidade informada fica só um número solto, sem leitos de verdade
+        // pro mapa de ocupação mostrar/alocar.
+        for (let i = 1; i <= body.capacity; i += 1) {
+          const bedNumber = `${code}-${String(i).padStart(2, '0')}`;
+          await client.query(
+            `insert into app.beds (sector_id, bed_number, status, is_extra, is_isolation)
+             values ($1, $2, 'available', false, false)`,
+            [sectorRow.id, bedNumber],
+          );
+        }
+
+        return sectorRow;
       });
 
       return reply.status(201).send(success(sector, req.id));
@@ -136,7 +157,8 @@ export const registerBedRoutes = (app: FastifyInstance, pool: pg.Pool | null): v
       const beds = await withSecurityContext(pool!, { userId: identity.appUserId!, roles: identity.roles }, async (client) => {
         let query = `
           select b.id, b.sector_id as "sectorId", s.name as "sectorName", b.bed_number as "bedNumber",
-                 b.status, b.is_extra as "isExtra", b.created_at as "createdAt", b.updated_at as "updatedAt"
+                 b.status, b.is_extra as "isExtra", b.is_isolation as "isIsolation",
+                 b.expires_at as "expiresAt", b.created_at as "createdAt", b.updated_at as "updatedAt"
           from app.beds b
           join app.bed_sectors s on s.id = b.sector_id
         `;
@@ -165,10 +187,11 @@ export const registerBedRoutes = (app: FastifyInstance, pool: pg.Pool | null): v
 
       const bed = await withSecurityContext(pool!, { userId: identity.appUserId!, roles: identity.roles }, async (client) => {
         const { rows } = await client.query(
-          `insert into app.beds (sector_id, bed_number, is_extra, status)
-           values ($1, $2, $3, 'available')
-           returning id, sector_id as "sectorId", bed_number as "bedNumber", status, is_extra as "isExtra", created_at as "createdAt"`,
-          [body.sectorId, body.bedNumber, body.isExtra],
+          `insert into app.beds (sector_id, bed_number, is_extra, is_isolation, status, expires_at)
+           values ($1, $2, $3, $4, 'available', case when $3 then now() + make_interval(mins => $5) else null end)
+           returning id, sector_id as "sectorId", bed_number as "bedNumber", status, is_extra as "isExtra",
+                     is_isolation as "isIsolation", expires_at as "expiresAt", created_at as "createdAt"`,
+          [body.sectorId, body.bedNumber, body.isExtra, body.isIsolation, EXTRA_BED_EXPIRY_MINUTES],
         );
         await auditAction(client, identity.appUserId!, 'create', 'bed', rows[0].id, req, rows[0]);
         return rows[0];
@@ -186,12 +209,21 @@ export const registerBedRoutes = (app: FastifyInstance, pool: pg.Pool | null): v
       const identity = req.identity!;
 
       const mapData = await withSecurityContext(pool!, { userId: identity.appUserId!, roles: identity.roles }, async (client) => {
+        // Exclusão automática de leito extra vencido e nunca alocado (sem job/cron
+        // novo — verificado a cada leitura do mapa). Leito já alocado sempre tem
+        // expires_at nulo (limpo no momento da alocação), então nunca cai aqui.
+        await client.query(
+          `delete from app.beds
+           where is_extra = true and status = 'available' and expires_at is not null and expires_at < now()`,
+        );
+
         const { rows: sectors } = await client.query(
           `select id, name, code, capacity from app.bed_sectors order by name asc`,
         );
 
         const { rows: beds } = await client.query(
           `select b.id, b.sector_id as "sectorId", b.bed_number as "bedNumber", b.status, b.is_extra as "isExtra",
+                  b.is_isolation as "isIsolation", b.expires_at as "expiresAt",
                   ba.id as "allocationId", ba.encounter_id as "encounterId", ba.patient_id as "patientId",
                   ba.allocated_at as "allocatedAt", ba.regulation_code as "regulationCode",
                   p.full_name as "patientName", p.cpf as "patientCpf"
@@ -284,8 +316,11 @@ export const registerBedRoutes = (app: FastifyInstance, pool: pg.Pool | null): v
           targetBed.status as BedStatus,
         );
 
-        // 3. Atualizar leito para 'occupied'
-        await client.query(`update app.beds set status = 'occupied', updated_at = now() where id = $1`, [body.bedId]);
+        // 3. Atualizar leito para 'occupied' — expires_at some, leito alocado não expira mais sozinho
+        await client.query(
+          `update app.beds set status = 'occupied', expires_at = null, updated_at = now() where id = $1`,
+          [body.bedId],
+        );
 
         // 4. Criar registro em app.bed_allocations
         const { rows: allocRows } = await client.query(

@@ -53,12 +53,14 @@ Todas as rotas abaixo estão 100% conectadas, roteadas por hash e protegidas por
 
 ### 🆕 Novos Contêineres de Página Conectados
 - `#/atendimentos/:id/enfermagem` (`EnfermagemPage`) — Contêiner de cuidados de enfermagem, aprazamento de prescrições, checagem beira-leito (5 Certos), dispositivos invasivos e anotações clínicas.
-- `#/atendimentos/:id/acoes` (`EncounterActionsPage`) — Central de ações do atendimento integrando os modais de Solicitação de AIH, Regulação Externa (SISREG/CROSS), Notificação de Evento Adverso (NSP), Documentos Clínicos Complementares e Interoperabilidade.
+- `#/atendimentos/:id/acoes` (`EncounterActionsPage`) — Central de ações do atendimento integrando os modais de Solicitação de AIH, Regulação Externa (SISREG/CROSS), Dispensação de Farmácia, Notificação de Evento Adverso (NSP), Notificação Compulsória de Agravos (registro interno, sem integração SINAN ainda), Documentos Clínicos Complementares e Interoperabilidade (RNDS / Lote de AIH).
 - `#/leitos` (`BedMapPage`) — Mapa interativo de leitos por setor assistencial, gestão de ocupação, transferência interna, alta do leito e alocação direta via formulário modal/overlay validado (sem o antigo `window.prompt`).
 
 ### 📊 Painéis de Gestão, Segurança e Sistema (8 Módulos Diretos)
 - `#/indicadores` (`ManagementDashboardPage`) — Dashboard de gestão operacional, TMP, indicadores Manchester e alertas de sobrelotação.
-- `#/interoperabilidade` (`InteroperabilityDashboardPage`) — Barramento FHIR R4, receptores HL7 v2 (LIS/RIS), WADO DICOM e dispensação de farmácia.
+- `#/configuracoes/leitos` (`BedSectorSettingsPage`) — Cadastro de setores assistenciais e capacidade de leitos (Etapa 5 #10). Restrito ao grupo de papel `gestao`.
+- `#/escala` (`StaffSchedulePage`) — Escala de profissionais: férias/afastamentos e plantões, substituindo o controle por planilha (Etapa 5 #11). Restrito ao grupo de papel `gestao`.
+- `#/interoperabilidade` (`InteroperabilityDashboardPage`) — Barramento FHIR R4, receptores HL7 v2 (LIS/RIS) e WADO DICOM. (Dispensação de farmácia, RNDS e lote de AIH ficam em `EncounterActionsPage`, por atendimento — não nesta rota.)
 - `#/observabilidade` (`ObservabilityDashboard`) — Métricas de sistema em tempo real, propagação de Correlation ID (`X-Request-Id`) e auditoria de logs.
 - `#/seguranca` (`SecurityHardeningPanel`) — Painel de segurança, proteção IDOR/BOLA, validação de RLS/RBAC e políticas de sanitização.
 - `#/qualidade` (`QualityAccessibilityDashboard`) — Suíte de testes E2E, simulação de concorrência com trava otimista e impressão de laudos com hash SHA-256.

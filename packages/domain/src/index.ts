@@ -19,6 +19,19 @@ export * from './regulation/index.js';
 export * from './integration/index.js';
 export * from './security/index.js';
 export * from './quality/index.js';
+export * from './clinical-forms/index.js';
+export * from './notification/index.js';
+export * from './hemotherapy/index.js';
+export * from './pharmacy-atm/index.js';
+export * from './tfd/index.js';
+export * from './ser/index.js';
+export * from './therapeutic-plan/index.js';
+export * from './sbar/index.js';
+export * from './social-work/index.js';
+export * from './nutrition/index.js';
+export * from './physiotherapy/index.js';
+export * from './fluid-balance/index.js';
+export * from './nursing-therapeutic-plan/index.js';
 
 
 

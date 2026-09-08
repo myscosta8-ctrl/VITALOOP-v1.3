@@ -33,9 +33,23 @@ import { registerDocumentRoutes } from './routes/documents.js';
 import { registerSafetyRoutes } from './routes/safety.js';
 import { registerManagementRoutes } from './routes/management.js';
 import { registerSusRoutes } from './routes/sus.js';
+import { registerApacRoutes } from './routes/apac.js';
 import { registerRegulationRoutes } from './routes/regulation.js';
 import { registerIntegrationRoutes } from './routes/integration.js';
 import { registerObservabilityRoutes } from './routes/observability.js';
+import { registerStaffScheduleRoutes } from './routes/staff-schedule.js';
+import { registerCompulsoryNotificationRoutes } from './routes/compulsory-notifications.js';
+import { registerHemotherapyRoutes } from './routes/hemotherapy.js';
+import { registerPharmacyAtmRoutes } from './routes/pharmacy-atm.js';
+import { registerTfdRoutes } from './routes/tfd.js';
+import { registerSerRoutes } from './routes/ser.js';
+import { registerTherapeuticPlanRoutes } from './routes/therapeutic-plan.js';
+import { registerSbarRoutes } from './routes/sbar.js';
+import { registerSocialWorkRoutes } from './routes/social-work.js';
+import { registerNutritionRoutes } from './routes/nutrition.js';
+import { registerPhysiotherapyRoutes } from './routes/physiotherapy.js';
+import { registerFluidBalanceRoutes } from './routes/fluid-balance.js';
+import { registerNursingTherapeuticPlanRoutes } from './routes/nursing-therapeutic-plan.js';
 import { createSupabaseJwtVerifier, type JwtVerifier } from './security/jwt-verifier.js';
 import { createSupabaseAuthClient } from './security/supabase-auth-client.js';
 import { createRateLimiter } from './security/rate-limiter.js';
@@ -114,9 +128,23 @@ export const buildServer = (config: LoadedConfig): BuiltServer => {
   registerSafetyRoutes(app, db);
   registerManagementRoutes(app, db);
   registerSusRoutes(app, db);
+  registerApacRoutes(app, db);
   registerRegulationRoutes(app, db);
   registerIntegrationRoutes(app, db);
   registerObservabilityRoutes(app, db);
+  registerStaffScheduleRoutes(app, db);
+  registerCompulsoryNotificationRoutes(app, db);
+  registerHemotherapyRoutes(app, db);
+  registerPharmacyAtmRoutes(app, db);
+  registerTfdRoutes(app, db);
+  registerSerRoutes(app, db);
+  registerTherapeuticPlanRoutes(app, db);
+  registerSbarRoutes(app, db);
+  registerSocialWorkRoutes(app, db);
+  registerNutritionRoutes(app, db);
+  registerPhysiotherapyRoutes(app, db);
+  registerFluidBalanceRoutes(app, db);
+  registerNursingTherapeuticPlanRoutes(app, db);
 
   // 404 padronizado.
   app.setNotFoundHandler((req, reply) => {

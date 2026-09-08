@@ -6,6 +6,10 @@ import { AppError, ErrorCategory } from '@vitaloop/shared';
 import {
   validateAihRequestInput,
   validateSigtapCompatibility,
+  validateFormValues,
+  sanitizeFormValues,
+  AIH_CLINICAL_FIELDS_SCHEMA,
+  AIH_AUTHORIZATION_FIELDS_SCHEMA,
   type SigtapProcedure,
   type AihRequest,
 } from '@vitaloop/domain';
@@ -33,6 +37,26 @@ const auditAction = async (
   );
 };
 
+const mapAihRow = (r: pg.QueryResultRow): AihRequest => ({
+  id: r.id,
+  encounterId: r.encounter_id,
+  patientId: r.patient_id,
+  requesterId: r.requester_id,
+  mainProcedureCode: r.main_procedure_code,
+  secondaryProcedureCode: r.secondary_procedure_code,
+  mainCid10: r.main_cid10,
+  secondaryCid10: r.secondary_cid10,
+  clinicalJustification: r.clinical_justification,
+  status: r.status,
+  formFields: r.form_fields,
+  createdAt: r.created_at.toISOString(),
+  updatedAt: r.updated_at.toISOString(),
+});
+
+const authorizeAihSchema = z.object({
+  formFields: z.record(z.string(), z.string()),
+});
+
 const createAihSchema = z.object({
   encounterId: z.string().uuid(),
   patientId: z.string().uuid(),
@@ -41,6 +65,7 @@ const createAihSchema = z.object({
   mainCid10: z.string().min(3),
   secondaryCid10: z.string().optional().nullable(),
   clinicalJustification: z.string().min(15),
+  formFields: z.record(z.string(), z.string()).optional(),
 });
 
 const validateCompatibilitySchema = z.object({
@@ -136,6 +161,17 @@ export const registerSusRoutes = (app: FastifyInstance, pool: pg.Pool | null): v
     },
   );
 
+  // GET /api/v1/sus/aih-clinical-fields-schema — campos clínicos/
+  // administrativos do laudo que não têm coluna própria (história da
+  // doença atual, caráter da internação, médico solicitante/CRM, etc.).
+  app.get(
+    '/api/v1/sus/aih-clinical-fields-schema',
+    { preHandler: requirePermission(pool, 'sus.read') },
+    async (req, reply) => {
+      return reply.status(200).send(success(AIH_CLINICAL_FIELDS_SCHEMA, req.id));
+    },
+  );
+
   // POST /api/v1/sus/aih-requests (Emissão de laudo AIH SUS-001/003/004/005/006)
   app.post(
     '/api/v1/sus/aih-requests',
@@ -149,11 +185,22 @@ export const registerSusRoutes = (app: FastifyInstance, pool: pg.Pool | null): v
         encounterId: parsedBody.encounterId as UUID,
         patientId: parsedBody.patientId as UUID,
         mainProcedureCode: parsedBody.mainProcedureCode,
-        secondaryProcedureCode: (parsedBody.secondaryProcedureCode as UUID) ?? null,
+        secondaryProcedureCode: parsedBody.secondaryProcedureCode ?? null,
         mainCid10: parsedBody.mainCid10,
         secondaryCid10: parsedBody.secondaryCid10 ?? null,
         clinicalJustification: parsedBody.clinicalJustification,
       });
+
+      const formFieldErrors = validateFormValues(AIH_CLINICAL_FIELDS_SCHEMA, parsedBody.formFields ?? {});
+      if (formFieldErrors.length > 0) {
+        throw new AppError({
+          category: ErrorCategory.VALIDATION,
+          code: 'VALIDATION_AIH_CLINICAL_FIELDS',
+          message: 'Campos clínicos do laudo de AIH inválidos.',
+          details: formFieldErrors.map((e) => ({ field: e.fieldCode, issue: e.message })),
+        });
+      }
+      const sanitizedFormFields = sanitizeFormValues(AIH_CLINICAL_FIELDS_SCHEMA, parsedBody.formFields ?? {});
 
       const aihRecord = await withSecurityContext(
         pool!,
@@ -209,8 +256,8 @@ export const registerSusRoutes = (app: FastifyInstance, pool: pg.Pool | null): v
           // 4. Inserção do laudo AIH (SUS-001)
           const res = await client.query(
             `insert into app.aih_requests
-               (encounter_id, patient_id, requester_id, main_procedure_code, secondary_procedure_code, main_cid10, secondary_cid10, clinical_justification, status)
-             values ($1, $2, $3, $4, $5, $6, $7, $8, 'validated')
+               (encounter_id, patient_id, requester_id, main_procedure_code, secondary_procedure_code, main_cid10, secondary_cid10, clinical_justification, form_fields, status)
+             values ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'validated')
              returning *`,
             [
               parsedBody.encounterId,
@@ -221,24 +268,11 @@ export const registerSusRoutes = (app: FastifyInstance, pool: pg.Pool | null): v
               parsedBody.mainCid10,
               parsedBody.secondaryCid10 ?? null,
               parsedBody.clinicalJustification,
+              JSON.stringify(sanitizedFormFields),
             ],
           );
           const r = res.rows[0];
-
-          const aih: AihRequest = {
-            id: r.id,
-            encounterId: r.encounter_id,
-            patientId: r.patient_id,
-            requesterId: r.requester_id,
-            mainProcedureCode: r.main_procedure_code,
-            secondaryProcedureCode: r.secondary_procedure_code,
-            mainCid10: r.main_cid10,
-            secondaryCid10: r.secondary_cid10,
-            clinicalJustification: r.clinical_justification,
-            status: r.status,
-            createdAt: r.created_at.toISOString(),
-            updatedAt: r.updated_at.toISOString(),
-          };
+          const aih = mapAihRow(r);
 
           await auditAction(client, requesterId, 'create', 'aih_request', aih.id, req, {
             mainProcedureCode: aih.mainProcedureCode,
@@ -273,21 +307,99 @@ export const registerSusRoutes = (app: FastifyInstance, pool: pg.Pool | null): v
               message: 'Laudo de AIH não encontrado.',
             });
           }
-          const r = res.rows[0];
-          return {
-            id: r.id,
-            encounterId: r.encounter_id,
-            patientId: r.patient_id,
-            requesterId: r.requester_id,
-            mainProcedureCode: r.main_procedure_code,
-            secondaryProcedureCode: r.secondary_procedure_code,
-            mainCid10: r.main_cid10,
-            secondaryCid10: r.secondary_cid10,
-            clinicalJustification: r.clinical_justification,
-            status: r.status,
-            createdAt: r.created_at.toISOString(),
-            updatedAt: r.updated_at.toISOString(),
-          };
+          return mapAihRow(res.rows[0]);
+        },
+      );
+
+      return reply.status(200).send(success(aih, req.id));
+    },
+  );
+
+  // GET /api/v1/sus/aih-requests — lista por atendimento e/ou status
+  // (usado pela tela de autorização pra achar laudos pendentes).
+  app.get<{ Querystring: { encounterId?: string; status?: string } }>(
+    '/api/v1/sus/aih-requests',
+    { preHandler: requirePermission(pool, 'sus.read') },
+    async (req, reply) => {
+      const { encounterId, status } = req.query;
+      const identity = req.identity!;
+
+      const list = await withSecurityContext(
+        pool!,
+        { userId: identity.appUserId!, roles: identity.roles },
+        async (client) => {
+          const res = await client.query(
+            `select * from app.aih_requests
+             where ($1::uuid is null or encounter_id = $1) and ($2::text is null or status = $2)
+             order by created_at desc`,
+            [encounterId ?? null, status ?? null],
+          );
+          return res.rows.map(mapAihRow);
+        },
+      );
+
+      return reply.status(200).send(success(list, req.id));
+    },
+  );
+
+  // GET /api/v1/sus/aih-authorization-fields-schema — campos preenchidos
+  // pela regulação/auditoria na etapa de autorização (nome/registro do
+  // autorizador, número e data da autorização).
+  app.get(
+    '/api/v1/sus/aih-authorization-fields-schema',
+    { preHandler: requirePermission(pool, 'sus.read') },
+    async (req, reply) => {
+      return reply.status(200).send(success(AIH_AUTHORIZATION_FIELDS_SCHEMA, req.id));
+    },
+  );
+
+  // POST /api/v1/sus/aih-requests/:id/authorize — etapa de autorização,
+  // separada da etapa de solicitação por uma permissão própria
+  // (`sus.authorize_aih`) e um schema de campos próprio.
+  app.post(
+    '/api/v1/sus/aih-requests/:id/authorize',
+    { preHandler: requirePermission(pool, 'sus.authorize_aih') },
+    async (req, reply) => {
+      const { id } = req.params as { id: UUID };
+      const parsedBody = authorizeAihSchema.parse(req.body);
+      const identity = req.identity!;
+      const authorizerId = identity.appUserId!;
+
+      const errors = validateFormValues(AIH_AUTHORIZATION_FIELDS_SCHEMA, parsedBody.formFields);
+      if (errors.length > 0) {
+        throw new AppError({
+          category: ErrorCategory.VALIDATION,
+          code: 'VALIDATION_AIH_AUTHORIZATION_FIELDS',
+          message: 'Campos de autorização do laudo de AIH inválidos.',
+          details: errors.map((e) => ({ field: e.fieldCode, issue: e.message })),
+        });
+      }
+      const sanitizedFields = sanitizeFormValues(AIH_AUTHORIZATION_FIELDS_SCHEMA, parsedBody.formFields);
+
+      const aih = await withSecurityContext(
+        pool!,
+        { userId: authorizerId, roles: identity.roles },
+        async (client) => {
+          const existing = await client.query('select status from app.aih_requests where id = $1', [id]);
+          if (existing.rows.length === 0) {
+            throw new AppError({ category: ErrorCategory.NOT_FOUND, code: 'AIH_REQUEST_NOT_FOUND', message: 'Laudo de AIH não encontrado.' });
+          }
+          if (existing.rows[0].status === 'authorized') {
+            throw new AppError({ category: ErrorCategory.VALIDATION, code: 'AIH_ALREADY_AUTHORIZED', message: 'Este laudo de AIH já foi autorizado.' });
+          }
+
+          const res = await client.query(
+            `update app.aih_requests
+             set status = 'authorized', form_fields = form_fields || $1::jsonb, updated_at = now()
+             where id = $2
+             returning *`,
+            [JSON.stringify(sanitizedFields), id],
+          );
+          const aihRow = mapAihRow(res.rows[0]);
+
+          await auditAction(client, authorizerId, 'update', 'aih_request', id, req, { action: 'authorize' });
+
+          return aihRow;
         },
       );
 

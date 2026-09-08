@@ -2,13 +2,17 @@
  * Roteamento mínimo por hash (sem dependência de roteador pesado — Doc 4 §39,
  * esta fase é exclusivamente identidade/segurança, sem telas clínicas).
  *
- * Rotas protegidas usam requireSession: se não há identidade autenticada,
- * mostra AccessDeniedPage(reason: 'unauthenticated') em vez do conteúdo.
+ * Rotas protegidas usam RequireSession: sem identidade autenticada, mostra
+ * AccessDeniedPage(reason: 'unauthenticated'); com identidade mas sem o
+ * grupo de papel exigido (prop `roles`, ver lib/role-groups.ts), mostra
+ * AccessDeniedPage(reason: 'forbidden'). Isso é só uma camada de UX — a
+ * autorização de verdade já é aplicada pela API em cada rota.
  */
 
 import { useEffect, useState } from 'react';
 import { SessionProvider, useSession } from './context/session-context.js';
 import { AppShell } from './components/AppShell.js';
+import { hasAnyRoleGroup, type RoleGroup } from './lib/role-groups.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { ProfilePage } from './pages/ProfilePage.js';
 import { PasswordRecoveryPage } from './pages/PasswordRecoveryPage.js';
@@ -25,6 +29,8 @@ import { QueueDashboardPage } from './pages/QueueDashboardPage.js';
 import { MedicalConsultationPage } from './pages/MedicalConsultationPage.js';
 import { EnfermagemPage } from './pages/EnfermagemPage.js';
 import { BedMapPage } from './pages/BedMapPage.js';
+import { BedSectorSettingsPage } from './pages/BedSectorSettingsPage.js';
+import { StaffSchedulePage } from './pages/StaffSchedulePage.js';
 import { EncounterActionsPage } from './pages/EncounterActionsPage.js';
 import { NursingSaeView } from './components/NursingSaeView.js';
 import { LgpdPrivacyPanel } from './components/LgpdPrivacyPanel.js';
@@ -47,13 +53,22 @@ const useHashRoute = (): string => {
   return route;
 };
 
-const RequireSession = ({ children }: { children: JSX.Element }): JSX.Element => {
+const RequireSession = ({
+  children,
+  roles,
+}: {
+  children: JSX.Element;
+  roles?: readonly RoleGroup[];
+}): JSX.Element => {
   const { identity, status } = useSession();
   if (status === 'authenticating') {
     return <p role="status">Carregando…</p>;
   }
   if (!identity) {
     return <AccessDeniedPage reason="unauthenticated" />;
+  }
+  if (roles && !hasAnyRoleGroup(identity.roles, roles)) {
+    return <AccessDeniedPage reason="forbidden" />;
   }
   return <AppShell>{children}</AppShell>;
 };
@@ -84,73 +99,85 @@ const Shell = (): JSX.Element => {
       );
     case '/pacientes':
       return (
-        <RequireSession>
+        <RequireSession roles={['assistencial', 'recepcao']}>
           <PatientSearchPage />
         </RequireSession>
       );
     case '/pacientes/novo':
       return (
-        <RequireSession>
+        <RequireSession roles={['assistencial', 'recepcao']}>
           <PatientRegisterPage />
         </RequireSession>
       );
     case '/atendimentos':
       return (
-        <RequireSession>
+        <RequireSession roles={['assistencial', 'recepcao']}>
           <EncounterListPage />
         </RequireSession>
       );
     case '/atendimentos/novo':
       return (
-        <RequireSession>
+        <RequireSession roles={['assistencial', 'recepcao']}>
           <EncounterOpenPage />
         </RequireSession>
       );
     case '/filas':
       return (
-        <RequireSession>
+        <RequireSession roles={['assistencial', 'recepcao']}>
           <QueueDashboardPage />
         </RequireSession>
       );
     case '/leitos':
       return (
-        <RequireSession>
+        <RequireSession roles={['assistencial', 'recepcao']}>
           <BedMapPage />
         </RequireSession>
       );
     case '/indicadores':
       return (
-        <RequireSession>
+        <RequireSession roles={['gestao']}>
           <ManagementDashboardPage />
+        </RequireSession>
+      );
+    case '/configuracoes/leitos':
+      return (
+        <RequireSession roles={['gestao']}>
+          <BedSectorSettingsPage />
+        </RequireSession>
+      );
+    case '/escala':
+      return (
+        <RequireSession roles={['gestao']}>
+          <StaffSchedulePage />
         </RequireSession>
       );
     case '/interoperabilidade':
       return (
-        <RequireSession>
+        <RequireSession roles={['ti']}>
           <InteroperabilityDashboardPage />
         </RequireSession>
       );
     case '/observabilidade':
       return (
-        <RequireSession>
+        <RequireSession roles={['ti']}>
           <ObservabilityDashboard />
         </RequireSession>
       );
     case '/seguranca':
       return (
-        <RequireSession>
+        <RequireSession roles={['ti']}>
           <SecurityHardeningPanel />
         </RequireSession>
       );
     case '/qualidade':
       return (
-        <RequireSession>
+        <RequireSession roles={['ti']}>
           <QualityAccessibilityDashboard />
         </RequireSession>
       );
     case '/disaster-recovery':
       return (
-        <RequireSession>
+        <RequireSession roles={['ti']}>
           <DisasterRecoveryPanel />
         </RequireSession>
       );

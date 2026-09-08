@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
-import { fetchSystemMetrics, fetchDrStatus, postSystemMetric } from '../lib/observability-api.js';
+import { useSession } from '../context/session-context.js';
+import { createObservabilityApi } from '../lib/observability-api.js';
 
 export const ObservabilityDashboard: React.FC = () => {
+  const { api } = useSession();
+  const observabilityApi = createObservabilityApi(api);
+
   const [healthData, setHealthData] = useState<{ availabilityPercent?: number; avgLatencyMs?: number; isHealthy?: boolean } | null>(null);
   const [drInfo, setDrInfo] = useState<{ offsiteBackup?: boolean; rpoMinutes?: number; rtoMinutes?: number } | null>(null);
   const [msg, setMsg] = useState('');
 
   const handleLoadMetrics = async () => {
     try {
-      const res = await fetchSystemMetrics();
-      setHealthData(res.data.health);
+      const res = await observabilityApi.fetchSystemMetrics();
+      setHealthData(res.health);
       setMsg('Métricas de observabilidade carregadas com sucesso!');
     } catch (err: unknown) {
       setMsg((err as Error).message);
@@ -18,7 +22,7 @@ export const ObservabilityDashboard: React.FC = () => {
 
   const handleEmitMetric = async () => {
     try {
-      await postSystemMetric('http_request_duration_ms', 145, { path: '/api/v1/patients' });
+      await observabilityApi.postSystemMetric('http_request_duration_ms', 145, { path: '/api/v1/patients' });
       setMsg('Métrica de telemetria emitida com sucesso!');
     } catch (err: unknown) {
       setMsg((err as Error).message);
@@ -27,8 +31,8 @@ export const ObservabilityDashboard: React.FC = () => {
 
   const handleCheckDr = async () => {
     try {
-      const res = await fetchDrStatus();
-      setDrInfo(res.data);
+      const res = await observabilityApi.fetchDrStatus();
+      setDrInfo(res);
       setMsg('Status de Disaster Recovery ambiental validado!');
     } catch (err: unknown) {
       setMsg((err as Error).message);

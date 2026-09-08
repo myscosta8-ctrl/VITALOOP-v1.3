@@ -1,23 +1,26 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ClinicalDocumentModal } from './ClinicalDocumentModal.js';
-import * as docApi from '../lib/document-api.js';
 
-vi.mock('../lib/document-api.js', () => ({
-  issueClinicalDocument: vi.fn(),
-  revokeClinicalDocument: vi.fn(),
+const get = vi.fn();
+const post = vi.fn();
+
+const mockApi = { get, post };
+
+vi.mock('../context/session-context.js', () => ({
+  useSession: () => ({ api: mockApi }),
 }));
 
 describe('ClinicalDocumentModal Component Test (DOC-001..010)', () => {
+  beforeEach(() => {
+    get.mockReset();
+    post.mockReset();
+  });
+
   it('renderiza form de atestado medico e emite documento com sucesso', async () => {
-    vi.mocked(docApi.issueClinicalDocument).mockResolvedValue({
-      data: {
-        id: 'doc-123',
-        integrityHash: 'a1b2c3d4e5f67890',
-      },
-    });
+    post.mockResolvedValue({ id: 'doc-123', integrityHash: 'a1b2c3d4e5f67890', status: 'issued' });
 
     render(<ClinicalDocumentModal encounterId="enc-456" />);
 
@@ -28,11 +31,14 @@ describe('ClinicalDocumentModal Component Test (DOC-001..010)', () => {
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(docApi.issueClinicalDocument).toHaveBeenCalledWith('enc-456', expect.objectContaining({
-        documentType: 'medical_certificate',
-        title: 'Atestado Médico de Afastamento',
-        daysOff: 3,
-      }));
+      expect(post).toHaveBeenCalledWith(
+        '/api/v1/encounters/enc-456/documents',
+        expect.objectContaining({
+          documentType: 'medical_certificate',
+          title: 'Atestado Médico de Afastamento',
+          daysOff: 3,
+        }),
+      );
     });
 
     expect(screen.getByTestId('doc-msg').textContent).toContain('Documento emitido com sucesso!');

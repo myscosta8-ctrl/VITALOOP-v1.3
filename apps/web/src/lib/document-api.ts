@@ -1,3 +1,5 @@
+import type { ApiClient } from './api-client.js';
+
 export interface CreateDocumentPayload {
   documentType: 'medical_certificate' | 'attendance_declaration' | 'companion_certificate' | 'medical_report' | 'procedure_request';
   title: string;
@@ -8,40 +10,27 @@ export interface CreateDocumentPayload {
   companionName?: string | undefined;
 }
 
-export async function fetchDocumentTemplates() {
-  const res = await fetch('/api/v1/document-templates');
-  if (!res.ok) throw new Error('Erro ao carregar modelos de documentos.');
-  return res.json();
+export interface DocumentTemplate {
+  id: string;
+  documentType: string;
+  title: string;
 }
 
-export async function issueClinicalDocument(encounterId: string, payload: CreateDocumentPayload) {
-  const res = await fetch(`/api/v1/encounters/${encounterId}/documents`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error?.message || 'Erro ao emitir documento clínico.');
-  }
-  return res.json();
+export interface ClinicalDocumentRecord {
+  id: string;
+  integrityHash: string;
+  status: string;
 }
 
-export async function fetchEncounterDocuments(encounterId: string) {
-  const res = await fetch(`/api/v1/encounters/${encounterId}/documents`);
-  if (!res.ok) throw new Error('Erro ao buscar documentos do atendimento.');
-  return res.json();
-}
+export const createDocumentApi = (api: ApiClient) => ({
+  fetchDocumentTemplates: (): Promise<DocumentTemplate[]> => api.get<DocumentTemplate[]>('/api/v1/document-templates'),
 
-export async function revokeClinicalDocument(documentId: string, revocationReason: string) {
-  const res = await fetch(`/api/v1/documents/${documentId}/revoke`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ revocationReason }),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error?.message || 'Erro ao revogar documento clínico.');
-  }
-  return res.json();
-}
+  issueClinicalDocument: (encounterId: string, payload: CreateDocumentPayload): Promise<ClinicalDocumentRecord> =>
+    api.post<ClinicalDocumentRecord>(`/api/v1/encounters/${encounterId}/documents`, payload),
+
+  fetchEncounterDocuments: (encounterId: string): Promise<ClinicalDocumentRecord[]> =>
+    api.get<ClinicalDocumentRecord[]>(`/api/v1/encounters/${encounterId}/documents`),
+
+  revokeClinicalDocument: (documentId: string, revocationReason: string): Promise<ClinicalDocumentRecord> =>
+    api.post<ClinicalDocumentRecord>(`/api/v1/documents/${documentId}/revoke`, { revocationReason }),
+});
