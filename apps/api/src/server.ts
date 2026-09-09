@@ -38,6 +38,7 @@ import { registerRegulationRoutes } from './routes/regulation.js';
 import { registerIntegrationRoutes } from './routes/integration.js';
 import { registerObservabilityRoutes } from './routes/observability.js';
 import { registerStaffScheduleRoutes } from './routes/staff-schedule.js';
+import { registerStaffAccountRoutes } from './routes/staff-accounts.js';
 import { registerCompulsoryNotificationRoutes } from './routes/compulsory-notifications.js';
 import { registerHemotherapyRoutes } from './routes/hemotherapy.js';
 import { registerPharmacyAtmRoutes } from './routes/pharmacy-atm.js';
@@ -53,6 +54,7 @@ import { registerFluidBalanceRoutes } from './routes/fluid-balance.js';
 import { registerNursingTherapeuticPlanRoutes } from './routes/nursing-therapeutic-plan.js';
 import { createSupabaseJwtVerifier, type JwtVerifier } from './security/jwt-verifier.js';
 import { createSupabaseAuthClient } from './security/supabase-auth-client.js';
+import { createSupabaseAdminClient } from './security/supabase-admin-client.js';
 import { createRateLimiter } from './security/rate-limiter.js';
 import { registerIdentityPlugin } from './security/identity-plugin.js';
 
@@ -133,6 +135,10 @@ export const buildServer = (config: LoadedConfig): BuiltServer => {
   registerIntegrationRoutes(app, db);
   registerObservabilityRoutes(app, db);
   registerStaffScheduleRoutes(app, db);
+  const adminClient = config.env.SUPABASE_SERVICE_ROLE
+    ? createSupabaseAdminClient({ supabaseUrl, serviceRoleKey: config.env.SUPABASE_SERVICE_ROLE })
+    : null;
+  registerStaffAccountRoutes(app, db, adminClient);
   registerCompulsoryNotificationRoutes(app, db);
   registerHemotherapyRoutes(app, db);
   registerPharmacyAtmRoutes(app, db);

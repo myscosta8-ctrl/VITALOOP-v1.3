@@ -30,6 +30,7 @@ import { EnfermagemPage } from './pages/EnfermagemPage.js';
 import { BedMapPage } from './pages/BedMapPage.js';
 import { BedSectorSettingsPage } from './pages/BedSectorSettingsPage.js';
 import { StaffSchedulePage } from './pages/StaffSchedulePage.js';
+import { StaffAccountsPage } from './pages/StaffAccountsPage.js';
 import { EncounterActionsPage } from './pages/EncounterActionsPage.js';
 import { NursingSaeView } from './components/NursingSaeView.js';
 import { LgpdPrivacyPanel } from './components/LgpdPrivacyPanel.js';
@@ -146,6 +147,12 @@ const Shell = (): JSX.Element => {
       return (
         <RequireSession roles={['gestao']}>
           <StaffSchedulePage />
+        </RequireSession>
+      );
+    case '/profissionais':
+      return (
+        <RequireSession roles={['ti']}>
+          <StaffAccountsPage />
         </RequireSession>
       );
     case '/interoperabilidade':

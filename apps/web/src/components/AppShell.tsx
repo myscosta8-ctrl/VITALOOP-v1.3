@@ -108,6 +108,14 @@ const IconDisasterRecovery = (props: SVGProps<SVGSVGElement>): JSX.Element => (
     <path d="M21 3v6h-6" />
   </svg>
 );
+const IconStaffAccounts = (props: SVGProps<SVGSVGElement>): JSX.Element => (
+  <svg {...iconProps} {...props}>
+    <circle cx="9" cy="8" r="3.5" />
+    <path d="M3 20v-1.5A4 4 0 0 1 7 14.5h4a4 4 0 0 1 4 4V20" />
+    <path d="M17 8h4" />
+    <path d="M19 6v4" />
+  </svg>
+);
 
 const NAV_GROUPS: readonly NavGroup[] = [
   {
@@ -133,6 +141,7 @@ const NAV_GROUPS: readonly NavGroup[] = [
     title: 'Sistema',
     requiredRoles: ['ti'],
     links: [
+      { href: '#/profissionais', label: 'Gerenciar profissionais', icon: IconStaffAccounts },
       { href: '#/qualidade', label: 'Qualidade e acessibilidade', icon: IconQuality },
       { href: '#/interoperabilidade', label: 'Interoperabilidade', icon: IconInteroperability },
       { href: '#/seguranca', label: 'Segurança', icon: IconSecurity },

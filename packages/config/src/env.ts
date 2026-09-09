@@ -40,8 +40,15 @@ export const EnvSchema = z.object({
     .url()
     .optional()
     .or(z.literal('').transform(() => undefined)),
-  // Chave anon/publishable (pública por design — Doc 2 §2.2). NUNCA service_role aqui.
+  // Chave anon/publishable (pública por design — Doc 2 §2.2). Usada para login/sessão comuns.
   SUPABASE_ANON_KEY: z
+    .string()
+    .optional()
+    .or(z.literal('').transform(() => undefined)),
+  // Chave service_role — segredo forte, NUNCA enviada ao frontend nem usada para
+  // autenticação comum. Único uso: apps/api/src/security/supabase-admin-client.ts,
+  // para o admin (system_admin) criar contas de profissionais (2026-09-09).
+  SUPABASE_SERVICE_ROLE: z
     .string()
     .optional()
     .or(z.literal('').transform(() => undefined)),
