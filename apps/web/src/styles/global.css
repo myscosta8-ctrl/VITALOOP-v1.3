@@ -775,3 +775,8 @@ tbody tr:hover { background: var(--color-surface-sunken); }
   display: block;
   text-align: center;
 }
+.vl-auth-hint {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--vl-text-muted, #6b7280);
+}

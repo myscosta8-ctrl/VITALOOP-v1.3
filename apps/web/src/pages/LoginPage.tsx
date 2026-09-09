@@ -51,7 +51,7 @@ export const LoginPage = (): JSX.Element => {
           {error}
         </p>
       )}
-      <a href="#/recuperar-senha">Esqueci minha senha</a>
+      <p className="vl-auth-hint">Esqueceu a senha? Solicite a redefinição ao administrativo da unidade.</p>
     </main>
     </div>
   );

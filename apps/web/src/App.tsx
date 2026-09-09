@@ -15,7 +15,6 @@ import { AppShell } from './components/AppShell.js';
 import { hasAnyRoleGroup, type RoleGroup } from './lib/role-groups.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { ProfilePage } from './pages/ProfilePage.js';
-import { PasswordRecoveryPage } from './pages/PasswordRecoveryPage.js';
 import { ChangePasswordPage } from './pages/ChangePasswordPage.js';
 import { BreakGlassPage } from './pages/BreakGlassPage.js';
 import { AccessDeniedPage } from './pages/AccessDeniedPage.js';
@@ -77,8 +76,6 @@ const Shell = (): JSX.Element => {
   const route = useHashRoute();
 
   switch (route) {
-    case '/recuperar-senha':
-      return <PasswordRecoveryPage />;
     case '/perfil':
       return (
         <RequireSession>

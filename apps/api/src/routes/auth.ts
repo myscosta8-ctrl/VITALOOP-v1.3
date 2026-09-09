@@ -28,18 +28,16 @@ const LoginBody = z.object({
 // e-mail sintético, nunca exposto ao usuário nem usado para envio real.
 const syntheticEmail = (username: string): string => `${username.toLowerCase()}@vitaloop.local`;
 
-const RecoveryBody = z.object({ email: z.string().email() });
 const ChangePasswordBody = z.object({ newPassword: z.string().min(8) });
 
 export interface AuthRoutesDeps {
   readonly authClient: SupabaseAuthClient;
   readonly db: pg.Pool | null;
   readonly loginLimiter: RateLimiter;
-  readonly recoveryLimiter: RateLimiter;
 }
 
 export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRoutesDeps): void => {
-  const { authClient, db, loginLimiter, recoveryLimiter } = deps;
+  const { authClient, db, loginLimiter } = deps;
 
   app.post('/api/v1/auth/login', async (req, reply) => {
     const parsed = LoginBody.safeParse(req.body);
@@ -156,28 +154,6 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRoutesDeps): 
       });
     }
     reply.code(204).send();
-  });
-
-  app.post('/api/v1/auth/password/recovery', async (req, reply) => {
-    const parsed = RecoveryBody.safeParse(req.body);
-    if (!parsed.success) {
-      throw new AppError({
-        category: ErrorCategory.VALIDATION,
-        code: 'VALIDATION_INVALID_BODY',
-        message: 'Corpo da requisição inválido.',
-      });
-    }
-    const rl = recoveryLimiter.attempt(`${parsed.data.email.toLowerCase()}:${req.ip}`);
-    if (!rl.allowed) {
-      throw new AppError({
-        category: ErrorCategory.RATE_LIMIT,
-        code: 'RATE_LIMIT_RECOVERY',
-        message: 'Muitas solicitações. Tente novamente mais tarde.',
-      });
-    }
-    // Resposta idêntica exista ou não o e-mail — evita enumeração (Doc 2 §26).
-    await authClient.requestPasswordRecovery(parsed.data.email);
-    reply.code(202).send(success({ requested: true }, req.id));
   });
 
   app.post('/api/v1/auth/password/change', { preHandler: requireAuth }, async (req, reply) => {

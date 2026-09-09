@@ -110,7 +110,6 @@ export const buildServer = (config: LoadedConfig): BuiltServer => {
     authClient,
     db,
     loginLimiter: createRateLimiter({ maxAttempts: 5, windowMs: 15 * 60_000 }),
-    recoveryLimiter: createRateLimiter({ maxAttempts: 3, windowMs: 60 * 60_000 }),
   });
   registerMeRoutes(app);
   registerSecurityRoutes(app, db);

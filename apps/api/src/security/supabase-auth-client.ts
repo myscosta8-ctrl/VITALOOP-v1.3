@@ -31,7 +31,6 @@ export type AuthResult<T> =
 export interface SupabaseAuthClient {
   signInWithPassword(email: string, password: string): Promise<AuthResult<AuthTokenResponse>>;
   signOut(accessToken: string, scope?: 'global' | 'local' | 'others'): Promise<AuthResult<null>>;
-  requestPasswordRecovery(email: string): Promise<AuthResult<null>>;
   updatePassword(accessToken: string, newPassword: string): Promise<AuthResult<null>>;
 }
 
@@ -73,16 +72,6 @@ export const createSupabaseAuthClient = (
         headers: { apikey: opts.anonKey, Authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok && res.status !== 204) return parseError(res);
-      return { ok: true, data: null };
-    },
-
-    async requestPasswordRecovery(email) {
-      const res = await f(`${base}/auth/v1/recover`, {
-        method: 'POST',
-        headers: { apikey: opts.anonKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      if (!res.ok) return parseError(res);
       return { ok: true, data: null };
     },
 

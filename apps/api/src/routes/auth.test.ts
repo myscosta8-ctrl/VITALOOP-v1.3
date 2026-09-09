@@ -27,7 +27,6 @@ const makeFakeAuthClient = (opts: {
   signInWithPassword: async () =>
     opts.loginResult ?? { ok: true, data: okToken },
   signOut: async () => ({ ok: true, data: null }),
-  requestPasswordRecovery: async () => ({ ok: true, data: null }),
   updatePassword: async () => ({ ok: true, data: null }),
 });
 
@@ -48,7 +47,6 @@ const buildApp = (authClient: SupabaseAuthClient): FastifyInstance => {
     authClient,
     db: null,
     loginLimiter: createRateLimiter({ maxAttempts: 3, windowMs: 60_000 }),
-    recoveryLimiter: createRateLimiter({ maxAttempts: 2, windowMs: 60_000 }),
   });
   registerMeRoutes(app);
   return app;
@@ -123,28 +121,6 @@ describe('POST /api/v1/auth/logout', () => {
       headers: { authorization: 'Bearer any-token' },
     });
     expect(res.statusCode).toBe(204);
-  });
-});
-
-describe('POST /api/v1/auth/password/recovery', () => {
-  it('returns 202 regardless of whether the email exists (no enumeration)', async () => {
-    const app = buildApp(makeFakeAuthClient());
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/v1/auth/password/recovery',
-      payload: { email: 'whoever@example.com' },
-    });
-    expect(res.statusCode).toBe(202);
-  });
-
-  it('rate limits repeated recovery requests', async () => {
-    const app = buildApp(makeFakeAuthClient());
-    const payload = { email: 'flood@example.com' };
-    let last;
-    for (let i = 0; i < 3; i++) {
-      last = await app.inject({ method: 'POST', url: '/api/v1/auth/password/recovery', payload });
-    }
-    expect(last!.statusCode).toBe(429);
   });
 });
 
