@@ -30,7 +30,7 @@ export interface SessionState {
 
 export interface SessionContextValue extends SessionState {
   readonly api: ApiClient;
-  login(email: string, password: string): Promise<void>;
+  login(username: string, password: string): Promise<void>;
   loginDemo(): void;
   logout(): Promise<void>;
   refreshIdentity(): Promise<void>;
@@ -79,11 +79,11 @@ export const SessionProvider = ({ children }: { children: ReactNode }): JSX.Elem
   }, [api]);
 
   const login = useCallback(
-    async (email: string, password: string) => {
+    async (username: string, password: string) => {
       setState({ status: 'authenticating', identity: null, error: null });
       try {
         const result = await api.post<{ accessToken: string }>('/api/v1/auth/login', {
-          email,
+          username,
           password,
         });
         setToken(result.accessToken);

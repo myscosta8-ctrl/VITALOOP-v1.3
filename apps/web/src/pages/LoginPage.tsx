@@ -4,12 +4,12 @@ import { VitaloopMark } from '../components/VitaloopMark.js';
 
 export const LoginPage = (): JSX.Element => {
   const { login, loginDemo, status, error } = useSession();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
   const onSubmit = (e: FormEvent): void => {
     e.preventDefault();
-    void login(email, password);
+    void login(username, password);
   };
 
   return (
@@ -21,14 +21,14 @@ export const LoginPage = (): JSX.Element => {
         <p>PEP hospitalar · UPA 24h · versão 1.3 · entrar com sua conta</p>
       </div>
       <form onSubmit={onSubmit}>
-        <label htmlFor="email">E-mail</label>
+        <label htmlFor="username">Usuário</label>
         <input
-          id="email"
-          type="email"
+          id="username"
+          type="text"
           autoComplete="username"
           required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
         />
         <label htmlFor="password">Senha</label>
         <input

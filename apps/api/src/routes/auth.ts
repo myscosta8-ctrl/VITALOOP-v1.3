@@ -18,9 +18,15 @@ import { extractBearerToken } from '../security/request-identity.js';
 import type pg from 'pg';
 
 const LoginBody = z.object({
-  email: z.string().email(),
+  username: z.string().min(1),
   password: z.string().min(1),
 });
+
+// Supabase Auth exige um e-mail. O login do Vitaloop é por username (decisão
+// institucional — não usar e-mail pessoal/corporativo como identificador,
+// já que a instituição pode não ter esse dado organizado). Constrói um
+// e-mail sintético, nunca exposto ao usuário nem usado para envio real.
+const syntheticEmail = (username: string): string => `${username.toLowerCase()}@vitaloop.local`;
 
 const RecoveryBody = z.object({ email: z.string().email() });
 const ChangePasswordBody = z.object({ newPassword: z.string().min(8) });
@@ -44,16 +50,13 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRoutesDeps): 
         message: 'Corpo da requisição inválido.',
       });
     }
-    let normalizedEmail = parsed.data.email.toLowerCase().trim();
-    if (normalizedEmail.endsWith('@vitaloop.loca')) {
-      normalizedEmail = normalizedEmail.replace('@vitaloop.loca', '@vitaloop.local');
-    }
+    const username = parsed.data.username.toLowerCase().trim();
     const { password } = parsed.data;
-    const email = normalizedEmail;
+    const email = syntheticEmail(username);
     const ipHash = sha256Hex(req.ip);
 
-    // Rate limit em memória por e-mail+IP (defesa imediata, Doc 3 SEC-011).
-    const rl = loginLimiter.attempt(`${email.toLowerCase()}:${req.ip}`);
+    // Rate limit em memória por usuário+IP (defesa imediata, Doc 3 SEC-011).
+    const rl = loginLimiter.attempt(`${username}:${req.ip}`);
     if (!rl.allowed) {
       throw new AppError({
         category: ErrorCategory.RATE_LIMIT,
@@ -66,7 +69,7 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRoutesDeps): 
     if (db) {
       const locked = await db.query<{ locked: boolean }>(
         'select app.is_locked_out($1) as locked',
-        [email.toLowerCase()],
+        [username],
       );
       if (locked.rows[0]?.locked) {
         throw new AppError({
@@ -81,7 +84,7 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRoutesDeps): 
 
     if (db) {
       await db.query('select app.record_login_attempt($1,$2,$3,$4)', [
-        email.toLowerCase(),
+        username,
         result.ok,
         ipHash,
         result.ok ? null : result.errorCode,
@@ -102,8 +105,8 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRoutesDeps): 
       const expiresAt = new Date(Date.now() + result.data.expires_in * 1000);
       const tokenHash = sha256Hex(result.data.access_token);
       const authIdRes = await db.query<{ id: string }>(
-        `select id from app.users where email = $1`,
-        [email.toLowerCase()],
+        `select id from app.users where username = $1`,
+        [username],
       );
       const appUserId = authIdRes.rows[0]?.id;
       if (appUserId) {
@@ -115,7 +118,7 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRoutesDeps): 
       }
     }
 
-    loginLimiter.reset(`${email.toLowerCase()}:${req.ip}`);
+    loginLimiter.reset(`${username}:${req.ip}`);
     reply.code(200).send(
       success(
         {

@@ -60,7 +60,7 @@ describe('POST /api/v1/auth/login', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
-      payload: { email: 'user@example.com', password: 'secret123' },
+      payload: { username: 'jsilva', password: 'secret123' },
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().data.accessToken).toBe('access-token-value');
@@ -75,7 +75,7 @@ describe('POST /api/v1/auth/login', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
-      payload: { email: 'user@example.com', password: 'wrong' },
+      payload: { username: 'jsilva', password: 'wrong' },
     });
     expect(res.statusCode).toBe(401);
     expect(res.json().error.code).toBe('AUTH_INVALID_CREDENTIALS');
@@ -86,7 +86,7 @@ describe('POST /api/v1/auth/login', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
-      payload: { email: 'not-an-email' },
+      payload: { username: '' },
     });
     expect(res.statusCode).toBe(400);
   });
@@ -97,7 +97,7 @@ describe('POST /api/v1/auth/login', () => {
         loginResult: { ok: false, status: 400, errorCode: 'invalid_credentials', message: 'x' },
       }),
     );
-    const payload = { email: 'rl@example.com', password: 'wrong' };
+    const payload = { username: 'rluser', password: 'wrong' };
     let last;
     for (let i = 0; i < 4; i++) {
       last = await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload });
