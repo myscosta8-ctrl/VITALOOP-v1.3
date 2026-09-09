@@ -1,7 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useSession } from '../context/session-context.js';
 import { ApiError } from '../lib/api-client.js';
-import { createEncountersApi, type Encounter, type EncounterStatus } from '../lib/encounters-api.js';
+import {
+  createEncountersApi,
+  type Encounter,
+  type EncounterStatus,
+  type PostConsultationDetail,
+} from '../lib/encounters-api.js';
 import { Overlay } from '../components/BedAllocationModal.js';
 
 export const EncounterListPage: React.FC = () => {
@@ -16,6 +21,7 @@ export const EncounterListPage: React.FC = () => {
   const [selectedEncounter, setSelectedEncounter] = useState<Encounter | null>(null);
   const [nextStatus, setNextStatus] = useState<EncounterStatus>('triage_pending');
   const [cancelReason, setCancelReason] = useState('');
+  const [postConsultationDetail, setPostConsultationDetail] = useState<PostConsultationDetail | ''>('');
   const [updating, setUpdating] = useState(false);
 
   const fetchEncounters = useCallback(async () => {
@@ -42,12 +48,14 @@ export const EncounterListPage: React.FC = () => {
   const handleOpenStatusModal = (encounter: Encounter) => {
     setSelectedEncounter(encounter);
     setCancelReason('');
+    setPostConsultationDetail('');
     const statusMap: Record<EncounterStatus, EncounterStatus> = {
       created: 'triage_pending',
       triage_pending: 'triaged',
       triaged: 'consultation_pending',
       consultation_pending: 'in_consultation',
-      in_consultation: 'completed',
+      in_consultation: 'post_consultation',
+      post_consultation: 'completed',
       completed: 'completed',
       canceled: 'canceled',
     };
@@ -63,12 +71,18 @@ export const EncounterListPage: React.FC = () => {
       return;
     }
 
+    if (nextStatus === 'post_consultation' && !postConsultationDetail) {
+      setErrorMessage('Informe o que está acontecendo com o paciente (medicando, aguardando exames ou aguardando reavaliação).');
+      return;
+    }
+
     setUpdating(true);
     setErrorMessage(null);
     try {
       await encountersApi.updateStatus(selectedEncounter.id, {
         status: nextStatus,
         cancelReason: nextStatus === 'canceled' ? cancelReason.trim() : null,
+        postConsultationDetail: nextStatus === 'post_consultation' ? postConsultationDetail || null : null,
         expectedUpdatedAt: selectedEncounter.updatedAt,
       });
       setSelectedEncounter(null);
@@ -178,6 +192,7 @@ export const EncounterListPage: React.FC = () => {
               <option value="triaged">Triado (triaged)</option>
               <option value="consultation_pending">Aguardando Consulta (consultation_pending)</option>
               <option value="in_consultation">Em Atendimento (in_consultation)</option>
+              <option value="post_consultation">Pós-Avaliação Médica (post_consultation)</option>
               <option value="completed">Concluído (completed)</option>
               <option value="canceled">Cancelado (canceled)</option>
             </select>
@@ -192,6 +207,22 @@ export const EncounterListPage: React.FC = () => {
                   onChange={(e) => setCancelReason(e.target.value)}
                   placeholder="Descreva o motivo do cancelamento"
                 />
+              </>
+            )}
+
+            {nextStatus === 'post_consultation' && (
+              <>
+                <label htmlFor="postConsultationDetail">O que está acontecendo? *</label>
+                <select
+                  id="postConsultationDetail"
+                  value={postConsultationDetail}
+                  onChange={(e) => setPostConsultationDetail(e.target.value as PostConsultationDetail)}
+                >
+                  <option value="">Selecione…</option>
+                  <option value="medicando">Realizando Medicação</option>
+                  <option value="aguardando_exames_laboratoriais">Aguardando Exames Laboratoriais</option>
+                  <option value="aguardando_reavaliacao_medica">Aguardando Reavaliação Médica</option>
+                </select>
               </>
             )}
 

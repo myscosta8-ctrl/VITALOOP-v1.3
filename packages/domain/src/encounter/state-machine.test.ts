@@ -19,8 +19,11 @@ describe('Encounter State Machine (ENC-006)', () => {
     expect(isValidEncounterStatusTransition('triage_pending', 'triaged')).toBe(true);
     expect(isValidEncounterStatusTransition('triaged', 'consultation_pending')).toBe(true);
     expect(isValidEncounterStatusTransition('consultation_pending', 'in_consultation')).toBe(true);
+    expect(isValidEncounterStatusTransition('in_consultation', 'post_consultation')).toBe(true);
     expect(isValidEncounterStatusTransition('in_consultation', 'completed')).toBe(true);
     expect(isValidEncounterStatusTransition('in_consultation', 'canceled')).toBe(true);
+    expect(isValidEncounterStatusTransition('post_consultation', 'completed')).toBe(true);
+    expect(isValidEncounterStatusTransition('post_consultation', 'canceled')).toBe(true);
   });
 
   it('rejeita transições de estado inválidas', () => {
@@ -40,6 +43,15 @@ describe('Encounter State Machine (ENC-006)', () => {
     expect(() => assertValidEncounterStatusTransition('created', 'canceled', '  ')).toThrow(AppError);
     expect(() =>
       assertValidEncounterStatusTransition('created', 'canceled', 'Desistência do paciente'),
+    ).not.toThrow();
+  });
+
+  it('exige sub-status ao mudar para post_consultation', () => {
+    expect(() => assertValidEncounterStatusTransition('in_consultation', 'post_consultation')).toThrow(
+      AppError,
+    );
+    expect(() =>
+      assertValidEncounterStatusTransition('in_consultation', 'post_consultation', null, 'medicando'),
     ).not.toThrow();
   });
 });

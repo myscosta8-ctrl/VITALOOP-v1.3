@@ -20,6 +20,7 @@ import {
   type EncounterOrigin,
   type EncounterStatus,
   type EncounterType,
+  type PostConsultationDetail,
 } from '@vitaloop/domain';
 import { success } from '../http/envelope.js';
 import { requirePermission } from '../security/require-auth.js';
@@ -89,6 +90,7 @@ interface DbEncounterRow {
   chief_complaint: string;
   status: EncounterStatus;
   cancel_reason: string | null;
+  post_consultation_detail: PostConsultationDetail | null;
   assigned_user_id: string | null;
   created_by: string | null;
   updated_by: string | null;
@@ -107,6 +109,7 @@ const mapRowToEncounter = (row: DbEncounterRow): Encounter => ({
   chiefComplaint: row.chief_complaint,
   status: row.status,
   cancelReason: row.cancel_reason,
+  postConsultationDetail: row.post_consultation_detail,
   assignedUserId: row.assigned_user_id,
   createdBy: row.created_by,
   updatedBy: row.updated_by,
@@ -134,10 +137,15 @@ const updateEncounterStatusSchema = z.object({
     'triaged',
     'consultation_pending',
     'in_consultation',
+    'post_consultation',
     'completed',
     'canceled',
   ]),
   cancelReason: z.string().optional().nullable(),
+  postConsultationDetail: z
+    .enum(['medicando', 'aguardando_exames_laboratoriais', 'aguardando_reavaliacao_medica'])
+    .optional()
+    .nullable(),
   expectedUpdatedAt: z.string().datetime('A data expectedUpdatedAt deve estar no formato ISO8601 (UTC).'),
 });
 
@@ -404,15 +412,27 @@ export const registerEncounterRoutes = (app: FastifyInstance, pool: pg.Pool | nu
           const oldStatus = currentEncounter.status;
 
           // Valida transição de estado da máquina de estados (ENC-006)
-          assertValidEncounterStatusTransition(oldStatus, parsed.status, parsed.cancelReason);
+          assertValidEncounterStatusTransition(
+            oldStatus,
+            parsed.status,
+            parsed.cancelReason,
+            parsed.postConsultationDetail,
+          );
 
           // 2. Atualização com LOCK OTIMISTA REAL (`updated_at = expectedUpdatedAt`)
           const updateRes = await client.query<DbEncounterRow>(
             `update app.encounters
-             set status = $1, cancel_reason = $2, updated_by = $3, updated_at = now()
-             where id = $4 and (updated_at = $5::timestamptz or date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', $5::timestamptz))
+             set status = $1, cancel_reason = $2, post_consultation_detail = $3, updated_by = $4, updated_at = now()
+             where id = $5 and (updated_at = $6::timestamptz or date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', $6::timestamptz))
              returning *`,
-            [parsed.status, parsed.cancelReason || null, appUserId, id, parsed.expectedUpdatedAt],
+            [
+              parsed.status,
+              parsed.cancelReason || null,
+              parsed.status === 'post_consultation' ? parsed.postConsultationDetail || null : null,
+              appUserId,
+              id,
+              parsed.expectedUpdatedAt,
+            ],
           );
 
           if (updateRes.rowCount === 0 || !updateRes.rows[0]) {
@@ -462,6 +482,7 @@ export const registerEncounterRoutes = (app: FastifyInstance, pool: pg.Pool | nu
             oldStatus,
             newStatus: updated.status,
             cancelReason: updated.cancelReason ?? null,
+            postConsultationDetail: updated.postConsultationDetail ?? null,
           });
 
           return updated;

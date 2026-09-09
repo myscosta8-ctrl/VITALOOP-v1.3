@@ -1,12 +1,13 @@
 import { AppError, ErrorCategory } from '@vitaloop/shared';
-import type { EncounterStatus } from './types.js';
+import type { EncounterStatus, PostConsultationDetail } from './types.js';
 
 const ALLOWED_TRANSITIONS: Record<EncounterStatus, readonly EncounterStatus[]> = {
   created: ['triage_pending', 'canceled'],
   triage_pending: ['triaged', 'canceled'],
   triaged: ['consultation_pending', 'canceled'],
   consultation_pending: ['in_consultation', 'canceled'],
-  in_consultation: ['completed', 'canceled'],
+  in_consultation: ['post_consultation', 'completed', 'canceled'],
+  post_consultation: ['completed', 'canceled'],
   completed: [],
   canceled: [],
 };
@@ -28,6 +29,7 @@ export const assertValidEncounterStatusTransition = (
   from: EncounterStatus,
   to: EncounterStatus,
   cancelReason?: string | null,
+  postConsultationDetail?: PostConsultationDetail | null,
 ): void => {
   if (isTerminalEncounterStatus(from)) {
     throw new AppError({
@@ -50,6 +52,14 @@ export const assertValidEncounterStatusTransition = (
       category: ErrorCategory.VALIDATION,
       code: 'CANCEL_REASON_REQUIRED',
       message: 'O motivo do cancelamento é obrigatório ao cancelar um atendimento.',
+    });
+  }
+
+  if (to === 'post_consultation' && !postConsultationDetail) {
+    throw new AppError({
+      category: ErrorCategory.VALIDATION,
+      code: 'POST_CONSULTATION_DETAIL_REQUIRED',
+      message: 'É obrigatório informar o que está acontecendo (medicando, aguardando exames ou aguardando reavaliação) ao mover o atendimento para pós-avaliação médica.',
     });
   }
 };

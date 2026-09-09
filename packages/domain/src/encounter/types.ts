@@ -11,8 +11,18 @@ export type EncounterStatus =
   | 'triaged'
   | 'consultation_pending'
   | 'in_consultation'
+  | 'post_consultation'
   | 'completed'
   | 'canceled';
+
+// Sub-status do Pronto Atendimento pós-avaliação médica (status
+// 'post_consultation'): o paciente já foi avaliado pelo médico, mas segue
+// em cuidado ativo na unidade antes de alta/internação. Só tem sentido
+// quando status === 'post_consultation' — nos demais status é null.
+export type PostConsultationDetail =
+  | 'medicando'
+  | 'aguardando_exames_laboratoriais'
+  | 'aguardando_reavaliacao_medica';
 
 export interface Encounter {
   id: string;
@@ -25,6 +35,7 @@ export interface Encounter {
   chiefComplaint: string;
   status: EncounterStatus;
   cancelReason?: string | null;
+  postConsultationDetail?: PostConsultationDetail | null;
   assignedUserId?: string | null;
   createdBy?: string | null;
   updatedBy?: string | null;
@@ -46,5 +57,6 @@ export interface EncounterCreateInput {
 export interface EncounterUpdateStatusInput {
   status: EncounterStatus;
   cancelReason?: string | null;
+  postConsultationDetail?: PostConsultationDetail | null;
   expectedUpdatedAt: string;
 }

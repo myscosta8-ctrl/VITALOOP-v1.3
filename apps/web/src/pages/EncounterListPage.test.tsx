@@ -68,6 +68,7 @@ describe('EncounterListPage UI Component', () => {
       expect(patch).toHaveBeenCalledWith('/api/v1/encounters/enc-uuid-1/status', {
         status: 'triage_pending',
         cancelReason: null,
+        postConsultationDetail: null,
         expectedUpdatedAt: mockEncounters[0]!.updatedAt,
       });
     });
