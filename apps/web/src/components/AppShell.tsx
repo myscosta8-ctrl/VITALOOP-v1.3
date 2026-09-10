@@ -15,6 +15,8 @@ interface NavLink {
   href: string;
   label: string;
   icon: (props: SVGProps<SVGSVGElement>) => JSX.Element;
+  /** Sobrepõe requiredRoles do grupo — pra um item mais restrito que o resto do grupo. */
+  requiredRoles?: readonly RoleGroup[];
 }
 
 interface NavGroup {
@@ -146,7 +148,10 @@ const NAV_GROUPS: readonly NavGroup[] = [
     title: 'Sistema',
     requiredRoles: ['ti'],
     links: [
-      { href: '#/profissionais', label: 'Gerenciar profissionais', icon: IconStaffAccounts },
+      // Restrito a 'root' (só system_admin) — a tela exige literalmente essa
+      // role via RLS nas tabelas de identidade (não uma permissão), então
+      // admin (que cai em 'ti') não conseguiria usá-la mesmo vendo o link.
+      { href: '#/profissionais', label: 'Gerenciar profissionais', icon: IconStaffAccounts, requiredRoles: ['root'] },
       { href: '#/qualidade', label: 'Qualidade e acessibilidade', icon: IconQuality },
       { href: '#/interoperabilidade', label: 'Interoperabilidade', icon: IconInteroperability },
       { href: '#/seguranca', label: 'Segurança', icon: IconSecurity },
@@ -179,7 +184,9 @@ export const AppShell = ({ children }: { children: ReactNode }): JSX.Element => 
             {visibleGroups.map((group) => (
               <div className="vl-nav-group" key={group.title}>
                 <h4>{group.title}</h4>
-                {group.links.map((link) => {
+                {group.links
+                  .filter((link) => hasAnyRoleGroup(identity?.roles, link.requiredRoles ?? group.requiredRoles))
+                  .map((link) => {
                   const isActive = currentRoute === link.href.replace(/^#/, '');
                   const Icon = link.icon;
                   return (

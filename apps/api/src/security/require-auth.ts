@@ -92,3 +92,27 @@ export const requirePermission =
       });
     }
   };
+
+/**
+ * Exige uma role literal (ex.: `system_admin`), não uma permissão do
+ * catálogo `app.permissions`. Uso restrito: tabelas centrais de identidade/
+ * RBAC (app.users, app.roles, app.user_roles, app.role_permissions...) têm
+ * RLS que checa `ctx_has_role('system_admin')` diretamente (migration
+ * 0010) — decisão institucional deliberada de isolar quem gerencia
+ * identidade/RBAC numa role própria, fora do sistema de permissões (evita
+ * que alguém com uma permissão administrativa qualquer se autoconceda
+ * mais acesso). Este preHandler só dá um erro amigável ANTES de bater no
+ * banco — o banco continua sendo a autoridade final via RLS.
+ */
+export const requireRole =
+  (roleCode: string, message = 'Acesso negado.') =>
+  async (req: FastifyRequest, _reply: FastifyReply): Promise<void> => {
+    await requireAuth(req, _reply);
+    if (!req.identity!.roles.includes(roleCode)) {
+      throw new AppError({
+        category: ErrorCategory.ACCESS,
+        code: 'ACCESS_DENIED',
+        message,
+      });
+    }
+  };

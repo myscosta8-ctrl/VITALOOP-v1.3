@@ -62,7 +62,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }): JSX.Elem
         authUserId: 'demo-user-123',
         appUserId: 'demo-app-user-123',
         status: 'active',
-        roles: ['doctor', 'nurse', 'admin', 'manager', 'receptionist'],
+        roles: ['doctor', 'nurse', 'admin', 'system_admin', 'manager', 'receptionist'],
       },
       error: null,
     });

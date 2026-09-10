@@ -9,8 +9,15 @@
  * plantão assistencial deveria ter, no cadastro, tanto o papel de
  * enfermagem/medicina quanto um papel de coordenação distinto (não basta
  * ser enfermeiro — só quem de fato coordena tem esse papel extra).
+ *
+ * 'root' é distinto de 'ti': cobre só quem tem a role literal
+ * `system_admin` — as tabelas centrais de identidade/RBAC (app.users,
+ * app.roles, app.user_roles...) exigem essa role específica via RLS
+ * (migration 0010), não uma permissão, então `admin` (que cai em 'ti')
+ * não consegue usar telas restritas a 'root' mesmo tendo acesso ao resto
+ * do grupo Sistema — achado de auditoria em 2026-09-10.
  */
-export type RoleGroup = 'assistencial' | 'recepcao' | 'gestao' | 'ti';
+export type RoleGroup = 'assistencial' | 'recepcao' | 'gestao' | 'ti' | 'root';
 
 const ROLE_GROUP_MAP: Record<string, readonly RoleGroup[]> = {
   doctor: ['assistencial'],
@@ -30,7 +37,7 @@ const ROLE_GROUP_MAP: Record<string, readonly RoleGroup[]> = {
   coordenador: ['assistencial', 'gestao'],
 
   admin: ['ti'],
-  system_admin: ['ti'],
+  system_admin: ['ti', 'root'],
   auditoria: ['ti'],
   ti: ['ti'],
 };

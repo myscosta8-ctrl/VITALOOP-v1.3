@@ -2,11 +2,15 @@
  * Cadastro de profissionais (conta de login + papel + setor de lotação).
  *
  * Distinto de staff-schedule.ts (férias/plantão de quem já tem conta) —
- * aqui é a CRIAÇÃO da conta em si. Exige o papel `system_admin`: as tabelas
- * app.users/app.user_roles têm RLS que checa literalmente
- * app.ctx_has_role('system_admin') (migration 0010), não uma permissão
- * genérica — refletido aqui para dar um erro amigável antes de bater no
- * banco, mas o banco é a autoridade final.
+ * aqui é a CRIAÇÃO da conta em si. Toda rota exige literalmente o papel
+ * `system_admin` (`requireRole`, não `requirePermission`): as tabelas
+ * app.users/app.roles/app.user_roles/app.access_assignments... têm RLS que
+ * checa `app.ctx_has_role('system_admin')` diretamente (migration 0010) —
+ * decisão institucional deliberada de isolar quem gerencia identidade/RBAC
+ * numa role própria, fora do sistema de permissões. Usar `user.manage`
+ * aqui daria uma falsa impressão de acesso: passaria na checagem da API,
+ * mas o banco recusaria a escrita (ou filtraria a leitura) de qualquer
+ * jeito via RLS — achado de auditoria em 2026-09-10.
  */
 import type { FastifyInstance } from 'fastify';
 import pg from 'pg';
@@ -14,8 +18,13 @@ import { z } from 'zod';
 import { AppError, ErrorCategory } from '@vitaloop/shared';
 import { success } from '../http/envelope.js';
 import { withSecurityContext } from '../db/security-context.js';
-import { requirePermission } from '../security/require-auth.js';
+import { requireRole } from '../security/require-auth.js';
 import type { SupabaseAdminClient } from '../security/supabase-admin-client.js';
+
+const requireStaffAccountsAdmin = requireRole(
+  'system_admin',
+  'Gerenciar profissionais exige o papel de Administrador do Sistema.',
+);
 
 const createStaffAccountSchema = z.object({
   name: z.string().min(2),
@@ -39,7 +48,7 @@ export const registerStaffAccountRoutes = (
   // Papéis reais disponíveis para atribuir (exclui as roles de teste/dev).
   app.get(
     '/api/v1/staff/accounts/roles',
-    { preHandler: requirePermission(pool, 'user.manage') },
+    { preHandler: requireStaffAccountsAdmin },
     async (req, reply) => {
       const identity = req.identity!;
       const roles = await withSecurityContext(pool!, { userId: identity.appUserId!, roles: identity.roles }, async (client) => {
@@ -57,7 +66,7 @@ export const registerStaffAccountRoutes = (
   // Setores físicos disponíveis para lotação.
   app.get(
     '/api/v1/staff/accounts/sectors',
-    { preHandler: requirePermission(pool, 'user.manage') },
+    { preHandler: requireStaffAccountsAdmin },
     async (req, reply) => {
       const identity = req.identity!;
       const sectors = await withSecurityContext(pool!, { userId: identity.appUserId!, roles: identity.roles }, async (client) => {
@@ -73,7 +82,7 @@ export const registerStaffAccountRoutes = (
   // Profissionais já cadastrados (conta + papel + setor).
   app.get(
     '/api/v1/staff/accounts',
-    { preHandler: requirePermission(pool, 'user.manage') },
+    { preHandler: requireStaffAccountsAdmin },
     async (req, reply) => {
       const identity = req.identity!;
       const accounts = await withSecurityContext(pool!, { userId: identity.appUserId!, roles: identity.roles }, async (client) => {
@@ -98,18 +107,11 @@ export const registerStaffAccountRoutes = (
 
   app.post(
     '/api/v1/staff/accounts',
-    { preHandler: requirePermission(pool, 'user.manage') },
+    { preHandler: requireStaffAccountsAdmin },
     async (req, reply) => {
       const identity = req.identity!;
       const body = createStaffAccountSchema.parse(req.body);
 
-      if (!identity.roles.includes('system_admin')) {
-        throw new AppError({
-          category: ErrorCategory.ACCESS,
-          code: 'ACCESS_DENIED',
-          message: 'Criar contas de profissionais exige o papel de Administrador do Sistema.',
-        });
-      }
       if (!adminClient) {
         throw new AppError({
           category: ErrorCategory.INTERNAL,

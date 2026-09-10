@@ -173,7 +173,7 @@ const Shell = (): JSX.Element => {
       );
     case '/profissionais':
       return (
-        <RequireSession roles={['ti']}>
+        <RequireSession roles={['root']}>
           <StaffAccountsPage />
         </RequireSession>
       );
