@@ -13,10 +13,11 @@ import type { MedicalConsultation, MedicalEvolution } from './types.js';
 
 describe('Medical Domain Rules & Events', () => {
   describe('assertEncounterStatusPermitsConsultation', () => {
-    it('permite registro nos estados triaged, consultation_pending e in_consultation', () => {
+    it('permite registro nos estados triaged, consultation_pending, in_consultation e post_consultation', () => {
       expect(() => assertEncounterStatusPermitsConsultation('triaged')).not.toThrow();
       expect(() => assertEncounterStatusPermitsConsultation('consultation_pending')).not.toThrow();
       expect(() => assertEncounterStatusPermitsConsultation('in_consultation')).not.toThrow();
+      expect(() => assertEncounterStatusPermitsConsultation('post_consultation')).not.toThrow();
     });
 
     it('rejeita registro em estados invalidos como created ou completed', () => {

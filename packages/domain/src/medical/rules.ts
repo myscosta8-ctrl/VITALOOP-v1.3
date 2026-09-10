@@ -5,6 +5,11 @@ export const ALLOWED_ENCOUNTER_STATUSES_FOR_CONSULTATION: readonly string[] = [
   'triaged',
   'consultation_pending',
   'in_consultation',
+  // Inclui 'post_consultation': é justamente o status que sinaliza
+  // "aguardando reavaliação médica" (entre outros sub-status) — o médico
+  // precisa poder registrar uma nova evolução/reavaliação nesse estado,
+  // senão o sub-status perde o sentido (migration 0071).
+  'post_consultation',
 ];
 
 /**
