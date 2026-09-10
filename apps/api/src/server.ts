@@ -38,6 +38,7 @@ import { registerRegulationRoutes } from './routes/regulation.js';
 import { registerIntegrationRoutes } from './routes/integration.js';
 import { registerObservabilityRoutes } from './routes/observability.js';
 import { registerStaffScheduleRoutes } from './routes/staff-schedule.js';
+import { registerShiftSectorSelectionRoutes } from './routes/shift-sector-selection.js';
 import { registerStaffAccountRoutes } from './routes/staff-accounts.js';
 import { registerCompulsoryNotificationRoutes } from './routes/compulsory-notifications.js';
 import { registerHemotherapyRoutes } from './routes/hemotherapy.js';
@@ -135,6 +136,7 @@ export const buildServer = (config: LoadedConfig): BuiltServer => {
   registerIntegrationRoutes(app, db);
   registerObservabilityRoutes(app, db);
   registerStaffScheduleRoutes(app, db);
+  registerShiftSectorSelectionRoutes(app, db);
   const adminClient = config.env.SUPABASE_SERVICE_ROLE
     ? createSupabaseAdminClient({ supabaseUrl, serviceRoleKey: config.env.SUPABASE_SERVICE_ROLE })
     : null;

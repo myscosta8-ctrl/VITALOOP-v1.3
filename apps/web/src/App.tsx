@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react';
 import { SessionProvider, useSession } from './context/session-context.js';
 import { AppShell } from './components/AppShell.js';
+import { ShiftSectorGate } from './components/ShiftSectorGate.js';
 import { hasAnyRoleGroup, type RoleGroup } from './lib/role-groups.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { ProfilePage } from './pages/ProfilePage.js';
@@ -70,7 +71,11 @@ const RequireSession = ({
   if (roles && !hasAnyRoleGroup(identity.roles, roles)) {
     return <AccessDeniedPage reason="forbidden" />;
   }
-  return <AppShell>{children}</AppShell>;
+  return (
+    <ShiftSectorGate>
+      <AppShell>{children}</AppShell>
+    </ShiftSectorGate>
+  );
 };
 
 const Shell = (): JSX.Element => {

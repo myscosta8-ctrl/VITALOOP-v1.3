@@ -15,6 +15,7 @@ export type RoleGroup = 'assistencial' | 'recepcao' | 'gestao' | 'ti';
 const ROLE_GROUP_MAP: Record<string, readonly RoleGroup[]> = {
   doctor: ['assistencial'],
   nurse: ['assistencial'],
+  nursing_technician: ['assistencial'],
   medico: ['assistencial'],
   enfermeiro: ['assistencial'],
   tecnico_enfermagem: ['assistencial'],
