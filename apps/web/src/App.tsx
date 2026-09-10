@@ -78,6 +78,23 @@ const RequireSession = ({
   );
 };
 
+// A rota '/' e '/login' mostravam sempre a LoginPage, mesmo já
+// autenticado (ex.: logo após o Modo de Demonstração) — nada redirecionava
+// pra dentro do app, então o clique em "Entrar" parecia não fazer nada.
+const LoginOrRedirect = (): JSX.Element => {
+  const { identity, status } = useSession();
+  useEffect(() => {
+    if (identity && status === 'authenticated') {
+      window.location.hash = '#/filas';
+    }
+  }, [identity, status]);
+
+  if (identity && status === 'authenticated') {
+    return <p role="status">Entrando…</p>;
+  }
+  return <LoginPage />;
+};
+
 const Shell = (): JSX.Element => {
   const route = useHashRoute();
 
@@ -192,7 +209,7 @@ const Shell = (): JSX.Element => {
       );
     case '/login':
     case '/':
-      return <LoginPage />;
+      return <LoginOrRedirect />;
     default: {
       const triageMatch = /^\/atendimentos\/([^/]+)\/triagem$/.exec(route);
       if (triageMatch) {
