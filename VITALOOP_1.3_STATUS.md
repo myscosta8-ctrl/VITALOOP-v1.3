@@ -91,6 +91,40 @@
 
 ---
 
+> ## 🟤 NOTA DE ATUALIZAÇÃO (10/09/2026) — Auditoria por grupo de todo o histórico do projeto
+> A pedido do usuário, auditoria sistemática de **todos os 28 commits** do projeto (desde a linha
+> de base de 28/08), organizados em 10 grupos temáticos e verificados um a um contra o estado real
+> do código/banco — não apenas os commits mais recentes. Objetivo: parar de descobrir "por acaso"
+> que uma correção documentada nunca foi de fato aplicada (como aconteceu com o menu lateral).
+> Commits `18ac880`..`9956383` + migrations `0078`-`0079`.
+>
+> - **CORS**: removida a exceção automática de `localhost`/`127.0.0.1` que contradizia o próprio
+>   "negado por padrão" documentado desde 01/09 — `CORS_ALLOWED_ORIGINS` é agora a única fonte de
+>   verdade, em qualquer ambiente. Corrigida também a causa raiz que mascarava isso: o dev script da
+>   API nunca carregava o `.env` da raiz do monorepo.
+> - **Arquivo `.patch` morto** (494 linhas, commitado por engano em 01/09) removido do repositório.
+> - **`MedicationScheduleGrid.tsx`**: o commit de 02/09 só tinha corrigido os 5 badges de status;
+>   todo o resto do layout (painel, grid, botões) continuava com Tailwind cru e inerte há mais de
+>   uma semana. Reescrito com as classes reais do sistema.
+> - **Revisão de break-glass construída**: a migration 0067 (decisão institucional de 08/09) criou
+>   as colunas de revisão e a permissão `break_glass.review`, mas nada no código as usava — sem rota
+>   de listagem, sem tela. Agora existe (`GET/POST .../break-glass`, seção na `BreakGlassPage`).
+> - **Achado mais profundo da sessão**: as tabelas centrais de identidade/RBAC (`app.users`,
+>   `app.roles`, `app.user_roles`, `app.role_permissions`...) exigem a role literal `system_admin`
+>   via RLS desde a Fase 1 (migration 0010) — não uma permissão. A correção anterior desta mesma
+>   auditoria (conceder `user.manage` etc. a `admin`) não tinha efeito real nessas tabelas. Decisão
+>   do usuário: manter `system_admin` como única role de gestão de identidade/RBAC (separação de
+>   segurança deliberada, não descuido). `staff-accounts.ts` e o menu (`AppShell`) foram alinhados
+>   com essa regra (novo grupo de papel `root`, distinto de `ti`).
+> - **Leitura de auditoria** (`app.audit_events`) tinha uma política própria checando a role
+>   `auditoria` (nunca criada como role real) — na prática só `direcao` conseguia ler, nem `admin`
+>   nem `system_admin`. Trocada para checar a permissão `audit.read` (já concedida às 3).
+> - **Resultado da auditoria por grupo**: 6 dos 10 grupos tinham pelo menos um achado real; 4
+>   estavam limpos (auditoria original+módulos clínicos, reorganização de setores, auditoria geral —
+>   confirmada intacta —, e os bugs de uso local do dia anterior, confirmados ainda corretos).
+
+---
+
 ## 1. RESUMO DA ARQUITETURA E ESTADO ATUAL
 
 - **Projeto:** VITALOOP v1.3 (PEP Hospitalar UPA 24h)
@@ -170,6 +204,12 @@ Todas as rotas abaixo estão 100% conectadas, roteadas por hash e protegidas por
 23. **17 setores de teste removidos** da tabela real `app.bed_sectors` (com leitos/alocações de 14 pacientes-fixture) — limpeza de dado, sem migration.
 24. **Bug de redirecionamento pós-login**: `/` e `/login` sempre mostravam `LoginPage`, mesmo já autenticado (login real ou Modo de Demonstração) — nada navegava pra dentro do app. Corrigido com redirecionamento automático para `#/filas`.
 25. **Menu lateral desatualizado**: "Fila de atendimento"/"Mapa de leitos" nunca refletiam a nomenclatura real — renomeados para "Pronto Atendimento"/"Prontuário de Internação" (mesmas rotas).
+26. **`AUDITORIA POR GRUPO — 10/09`**: CORS sem mais exceção automática de `localhost` (única fonte de verdade é `CORS_ALLOWED_ORIGINS`, em qualquer ambiente); dev script da API corrigido pra carregar o `.env` da raiz (nenhuma variável chegava ao processo antes); arquivo `.patch` morto (494 linhas, 01/09) removido; `MedicationScheduleGrid.tsx` teve o resto do Tailwind cru (além dos 5 badges já corrigidos em 02/09) finalmente substituído pelas classes reais do sistema.
+27. **Revisão de break-glass construída**: `GET/POST /api/v1/security/break-glass(/:id/review)` + seção "Revisão de acessos excepcionais" na `BreakGlassPage` — a política decidida na migration 0067 nunca tinha sido implementada de fato.
+28. **Permissões administrativas de Fase 1 concedidas também a `admin`**: `user.manage`, `role.manage`, `assignment.manage`, `audit.read`, `session.manage`, `security.settings.manage` (migration 0013) só estavam em `system_admin`; `admin` (role operacional real desde 0065) nunca tinha sido revisitada.
+29. **Achado mais profundo**: as tabelas centrais de identidade/RBAC (`app.users`, `app.roles`, `app.user_roles`, `app.role_permissions`, `app.access_policies`, `app.professional_profiles`, `app.institutions/units/sectors`) exigem a role literal `system_admin` via RLS (migration 0010) — não a permissão. O item 28 acima não dá a `admin` controle real sobre essas tabelas. Decisão do usuário: manter assim (separação de segurança deliberada). `staff-accounts.ts` (todas as 4 rotas) e o menu (`AppShell`, novo grupo de papel `root`) alinhados com essa regra — a tela de cadastro de profissionais agora exige `system_admin` de forma consistente e visível só pra quem tem essa role.
+30. **Leitura de auditoria corrigida**: `app.audit_events` checava a role `auditoria` (nunca criada como role real) — só `direcao` lia de fato. Trocado para checar a permissão `audit.read` (concedida a `admin`/`system_admin`/`direcao`).
+31. **`.env` local completo para testes reais**: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` configurados — `/api/v1/ready` confirma banco e autenticação prontos. Falta só `SUPABASE_SERVICE_ROLE` para a tela de cadastro de profissionais funcionar de ponta a ponta localmente.
 
 ---
 
@@ -197,4 +237,6 @@ Conforme auditado e registrado formalmente em `docs/GO_LIVE_REAL_VALIDATION_REPO
 | **Redefinição de senha por administrador (para outro usuário)** | **NÃO CONSTRUÍDO** | Decidido que reset é feito pelo administrativo, mas só existe `POST /api/v1/auth/password/change` (troca da própria senha, autenticado) — falta uma tela/rota de admin resetando a senha de terceiros. |
 | **Proteção de senha vazada (Supabase Auth)** | **PENDENTE — ação no dashboard** | Toggle simples em Authentication → Password Security no painel do Supabase; fora do alcance das ferramentas de automação usadas nesta sessão. |
 | **Documentos de farmácia clínica adicionais** | **RESOLVIDO** | Anamnese, Score de Critérios e Acompanhamento Farmacêutico — construídos como módulo `pharmacy-followup` (ver item 10 da seção 3). |
-| **Ambiente local sem senha do Postgres real** | **PENDENTE** | `.env` local só tem `DATABASE_URL` antiga (Fase 0); testar com dado real exige a senha do Postgres do projeto `VITALOOP-v1.3` (só o usuário tem — Supabase Dashboard → Settings → Database), mais `SUPABASE_URL`/`SUPABASE_ANON_KEY`/`SUPABASE_SERVICE_ROLE` (a última necessária só para a tela de cadastro de profissionais). |
+| **Ambiente local sem banco/auth real** | **RESOLVIDO** | `.env` local já tem `DATABASE_URL` (banco real), `SUPABASE_URL` e `SUPABASE_ANON_KEY` — `/api/v1/ready` confirma `db: ok`, `auth: ok`. Falta só `SUPABASE_SERVICE_ROLE` (Settings → API → service_role), necessária apenas para a tela de cadastro de profissionais (Admin API do Supabase Auth). |
+| **Nenhuma conta `system_admin` real cadastrada** | **PENDENTE** | A tela de cadastro de profissionais (`#/profissionais`) agora exige literalmente a role `system_admin` (não mais `admin` — achado de auditoria em 10/09, ver item 26 da seção 3), mas nenhuma conta real com essa role existe no banco ainda — só contas de teste. Sem `SUPABASE_SERVICE_ROLE` configurada (item acima) e uma primeira conta `system_admin` criada manualmente, ninguém consegue usar a tela. |
+| **Revisão de break-glass** | **RESOLVIDO** | `GET/POST /api/v1/security/break-glass(/:id/review)` + seção na `BreakGlassPage` (ver item 27 da seção 3). |
