@@ -122,10 +122,15 @@ const NAV_GROUPS: readonly NavGroup[] = [
     title: 'Assistencial',
     requiredRoles: ['assistencial', 'recepcao'],
     links: [
-      { href: '#/filas', label: 'Fila de atendimento', icon: IconQueue },
+      // Nomenclatura alinhada aos dois setores reais da UPA (2026-09):
+      // Pronto Atendimento (fila/triagem/avaliação médica, sem leito físico)
+      // e Prontuário de Internação (Sala Vermelha, Internação Adulto,
+      // Observação Pediátrica/Adulto — setores com leito). Mesmas rotas de
+      // sempre, só o rótulo do menu que ficava genérico e desatualizado.
+      { href: '#/filas', label: 'Pronto Atendimento', icon: IconQueue },
       { href: '#/pacientes', label: 'Pacientes', icon: IconPatients },
       { href: '#/atendimentos', label: 'Atendimentos', icon: IconEncounters },
-      { href: '#/leitos', label: 'Mapa de leitos', icon: IconBeds },
+      { href: '#/leitos', label: 'Prontuário de Internação', icon: IconBeds },
     ],
   },
   {
