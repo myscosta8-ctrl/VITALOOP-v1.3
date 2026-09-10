@@ -9,10 +9,7 @@ export const makeCorsHook =
   (allowedOrigins: readonly string[]) =>
   (req: FastifyRequest, reply: FastifyReply, done: () => void): void => {
     const origin = req.headers.origin;
-    const isLocalhost = Boolean(
-      origin && (origin.includes('localhost') || origin.includes('127.0.0.1')),
-    );
-    if (origin && (allowedOrigins.includes(origin) || isLocalhost)) {
+    if (origin && allowedOrigins.includes(origin)) {
       reply.header('Access-Control-Allow-Origin', origin);
       reply.header('Vary', 'Origin');
       reply.header('Access-Control-Allow-Credentials', 'true');
