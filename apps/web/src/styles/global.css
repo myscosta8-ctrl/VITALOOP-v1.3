@@ -589,6 +589,46 @@ tbody tr:hover { background: var(--color-surface-sunken); }
   margin-top: 0;
   white-space: nowrap;
 }
+.vl-text-muted {
+  color: var(--color-text-muted);
+}
+
+/* Grade de aprazamento de medicamentos (MedicationScheduleGrid) */
+.vl-schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-3);
+}
+.vl-schedule-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-sunken);
+}
+.vl-schedule-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.vl-schedule-card-head h4 {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+.vl-schedule-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
 
 /* Variantes semânticas de botão — mesma base de <button>, cor por intenção */
 .vl-btn-warning { background: var(--color-warning); }
