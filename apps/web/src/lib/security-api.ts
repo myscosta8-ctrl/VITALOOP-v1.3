@@ -31,6 +31,24 @@ export interface LgpdRetentionPolicy {
   description: string;
 }
 
+export interface BreakGlassAccessRecord {
+  id: string;
+  userId: string;
+  userName: string;
+  patientId: string | null;
+  encounterId: string | null;
+  reason: string;
+  justification: string;
+  grantedAt: string;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  status: 'active' | 'expired' | 'revoked';
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  reviewedByName: string | null;
+  reviewNotes: string | null;
+}
+
 export const createSecurityApi = (api: ApiClient) => ({
   fetchSecurityHardeningStatus: (): Promise<SecurityHardeningStatus> =>
     api.get<SecurityHardeningStatus>('/api/v1/security/hardening-status'),
@@ -46,4 +64,10 @@ export const createSecurityApi = (api: ApiClient) => ({
     api.post<LgpdPatientReport>(`/api/v1/lgpd/patients/${patientId}/export`),
 
   fetchLgpdRetentionPolicies: (): Promise<LgpdRetentionPolicy[]> => api.get<LgpdRetentionPolicy[]>('/api/v1/lgpd/retention-policies'),
+
+  listBreakGlassAccess: (): Promise<BreakGlassAccessRecord[]> =>
+    api.get<BreakGlassAccessRecord[]>('/api/v1/security/break-glass'),
+
+  reviewBreakGlassAccess: (id: string, notes?: string): Promise<{ id: string; reviewed: boolean }> =>
+    api.post<{ id: string; reviewed: boolean }>(`/api/v1/security/break-glass/${id}/review`, { notes }),
 });

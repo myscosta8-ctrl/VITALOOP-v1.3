@@ -25,6 +25,10 @@ const BreakGlassBody = z.object({
   minutes: z.number().int().positive().max(24 * 60).optional(),
 });
 
+const BreakGlassReviewBody = z.object({
+  notes: z.string().min(1).optional(),
+});
+
 const SecurityEventBody = z.object({
   eventType: z.string().min(3),
   severity: z.enum(['INFO', 'WARNING', 'CRITICAL']).default('WARNING'),
@@ -91,6 +95,106 @@ export const registerSecurityRoutes = (app: FastifyInstance, db: pg.Pool | null)
         },
       );
       reply.code(201).send(success({ breakGlassId: id }, req.id));
+    },
+  );
+
+  // GET /api/v1/security/break-glass — lista ativações pra revisão (admin/direcao/system_admin).
+  app.get(
+    '/api/v1/security/break-glass',
+    { preHandler: db ? requirePermission(db, 'break_glass.review') : requireAuth },
+    async (req, reply) => {
+      if (!db) {
+        throw new AppError({
+          category: ErrorCategory.INTERNAL,
+          code: 'BREAK_GLASS_BACKEND_UNAVAILABLE',
+          message: 'Banco indisponível.',
+        });
+      }
+      const identity = req.identity!;
+      const records = await withSecurityContext(
+        db,
+        { userId: identity.appUserId!, roles: identity.roles },
+        async (client) => {
+          const res = await client.query(
+            `select bg.id, bg.user_id, u.name as user_name, bg.patient_id, bg.encounter_id,
+                    bg.reason, bg.justification, bg.granted_at, bg.expires_at, bg.revoked_at,
+                    bg.status, bg.reviewed_at, bg.reviewed_by, ru.name as reviewed_by_name, bg.review_notes
+             from app.break_glass_access bg
+             join app.users u on u.id = bg.user_id
+             left join app.users ru on ru.id = bg.reviewed_by
+             order by bg.granted_at desc`,
+          );
+          return res.rows.map((r) => ({
+            id: r.id,
+            userId: r.user_id,
+            userName: r.user_name,
+            patientId: r.patient_id,
+            encounterId: r.encounter_id,
+            reason: r.reason,
+            justification: r.justification,
+            grantedAt: r.granted_at.toISOString(),
+            expiresAt: r.expires_at ? r.expires_at.toISOString() : null,
+            revokedAt: r.revoked_at ? r.revoked_at.toISOString() : null,
+            status: r.status,
+            reviewedAt: r.reviewed_at ? r.reviewed_at.toISOString() : null,
+            reviewedBy: r.reviewed_by,
+            reviewedByName: r.reviewed_by_name,
+            reviewNotes: r.review_notes,
+          }));
+        },
+      );
+      reply.code(200).send(success(records, req.id));
+    },
+  );
+
+  // POST /api/v1/security/break-glass/:id/review — marca uma ativação como revisada.
+  app.post(
+    '/api/v1/security/break-glass/:id/review',
+    { preHandler: db ? requirePermission(db, 'break_glass.review') : requireAuth },
+    async (req, reply) => {
+      const { id } = req.params as { id: UUID };
+      const parsed = BreakGlassReviewBody.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        throw new AppError({
+          category: ErrorCategory.VALIDATION,
+          code: 'VALIDATION_INVALID_BODY',
+          message: 'Corpo da requisição inválido.',
+        });
+      }
+      if (!db) {
+        throw new AppError({
+          category: ErrorCategory.INTERNAL,
+          code: 'BREAK_GLASS_BACKEND_UNAVAILABLE',
+          message: 'Banco indisponível.',
+        });
+      }
+      const identity = req.identity!;
+      const actorId = identity.appUserId!;
+      const updated = await withSecurityContext(
+        db,
+        { userId: actorId, roles: identity.roles },
+        async (client) => {
+          const res = await client.query(
+            `update app.break_glass_access
+             set reviewed_at = now(), reviewed_by = $1, review_notes = $2
+             where id = $3
+             returning id`,
+            [actorId, parsed.data.notes ?? null, id],
+          );
+          if (res.rows.length === 0) {
+            throw new AppError({
+              category: ErrorCategory.NOT_FOUND,
+              code: 'BREAK_GLASS_NOT_FOUND',
+              message: 'Registro de acesso excepcional não encontrado.',
+            });
+          }
+          await auditAction(client, actorId, 'update', 'break_glass_access', id, req, {
+            reviewNotes: parsed.data.notes ?? null,
+          });
+          return res.rows[0];
+        },
+      );
+      reply.code(200).send(success({ id: updated.id, reviewed: true }, req.id));
     },
   );
 
