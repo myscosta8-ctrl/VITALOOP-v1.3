@@ -1,9 +1,23 @@
 import React, { useState } from 'react';
 import { BedData, BedSectorData } from '../lib/bed-api';
+import type { Encounter } from '../lib/encounters-api';
+import { Button } from './ui/button.js';
+
+const ENCOUNTER_STATUS_LABEL: Record<Encounter['status'], string> = {
+  created: 'Recém-criado',
+  triage_pending: 'Aguardando triagem',
+  triaged: 'Triado',
+  consultation_pending: 'Aguardando consulta',
+  in_consultation: 'Em consulta',
+  post_consultation: 'Pós-consulta',
+  completed: 'Concluído',
+  canceled: 'Cancelado',
+};
 
 interface BedAllocationModalProps {
   bed: BedData | null;
   sectors: BedSectorData[];
+  candidateEncounters: readonly Encounter[];
   onClose: () => void;
   onConfirmAllocation: (
     encounterId: string,
@@ -32,12 +46,12 @@ export const Overlay: React.FC<{ title: string; onClose: () => void; children: R
       zIndex: 100,
     }}
   >
-    <div style={{ background: '#fff', borderRadius: 10, padding: 24, width: 520, maxWidth: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h2 style={{ margin: 0, fontSize: 16 }}>{title}</h2>
-        <button type="button" onClick={onClose} style={{ marginTop: 0 }}>
+    <div className="w-[520px] max-w-full rounded-lg border border-border bg-card p-6 text-card-foreground shadow-lg">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="m-0 text-base font-semibold">{title}</h2>
+        <Button type="button" variant="ghost" size="sm" onClick={onClose}>
           Fechar
-        </button>
+        </Button>
       </div>
       {children}
     </div>
@@ -47,12 +61,13 @@ export const Overlay: React.FC<{ title: string; onClose: () => void; children: R
 export const BedAllocationModal: React.FC<BedAllocationModalProps> = ({
   bed,
   sectors,
+  candidateEncounters,
   onClose,
   onConfirmAllocation,
   onCreateExtraBed,
 }) => {
   const [encounterId, setEncounterId] = useState('');
-  const [patientId, setPatientId] = useState('');
+  const [encounterFilter, setEncounterFilter] = useState('');
   const [regulationCode, setRegulationCode] = useState('');
   const [isExtraMode, setIsExtraMode] = useState(false);
   const [selectedSectorId, setSelectedSectorId] = useState(sectors[0]?.id || '');
@@ -60,6 +75,13 @@ export const BedAllocationModal: React.FC<BedAllocationModalProps> = ({
   const [extraIsIsolation, setExtraIsIsolation] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const filterText = encounterFilter.trim().toLowerCase();
+  const filteredEncounters = filterText
+    ? candidateEncounters.filter(
+        (e) => e.chiefComplaint.toLowerCase().includes(filterText) || e.patientId.toLowerCase().includes(filterText),
+      )
+    : candidateEncounters;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,8 +106,9 @@ export const BedAllocationModal: React.FC<BedAllocationModalProps> = ({
       return;
     }
 
-    if (!encounterId.trim() || !patientId.trim()) {
-      setError('ID do atendimento e ID do paciente são obrigatórios.');
+    const selectedEncounter = candidateEncounters.find((e) => e.id === encounterId);
+    if (!selectedEncounter) {
+      setError('Selecione um atendimento da lista.');
       return;
     }
 
@@ -94,9 +117,9 @@ export const BedAllocationModal: React.FC<BedAllocationModalProps> = ({
     setLoading(true);
     try {
       await onConfirmAllocation(
-        encounterId.trim(),
+        selectedEncounter.id,
         bed.id,
-        patientId.trim(),
+        selectedEncounter.patientId,
         regulationCode.trim() ? regulationCode.trim() : null
       );
       onClose();
@@ -111,30 +134,43 @@ export const BedAllocationModal: React.FC<BedAllocationModalProps> = ({
 
   return (
     <Overlay title={title} onClose={onClose}>
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <p role="alert" className="mb-3 rounded-md bg-[var(--color-danger-soft)] px-3 py-2 text-sm text-[var(--color-danger)]">
+          {error}
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} style={{ border: 'none', padding: 0, boxShadow: 'none', maxWidth: '100%' }}>
         {!isExtraMode ? (
           <>
             <div>
-              <label htmlFor="encounterId">ID do Atendimento *</label>
+              <label htmlFor="encounterFilter">Buscar atendimento (queixa ou nº do paciente)</label>
               <input
-                id="encounterId"
+                id="encounterFilter"
                 type="text"
-                value={encounterId}
-                onChange={(e) => setEncounterId(e.target.value)}
-                placeholder="Ex: ENC-12345"
+                value={encounterFilter}
+                onChange={(e) => setEncounterFilter(e.target.value)}
+                placeholder="Digite para filtrar a lista abaixo..."
               />
             </div>
             <div>
-              <label htmlFor="patientId">ID do Paciente *</label>
-              <input
-                id="patientId"
-                type="text"
-                value={patientId}
-                onChange={(e) => setPatientId(e.target.value)}
-                placeholder="Ex: PAT-67890"
-              />
+              <label htmlFor="encounterId">Atendimento *</label>
+              {filteredEncounters.length === 0 ? (
+                <p role="status">
+                  Nenhum atendimento em aberto disponível para internação (todos já têm leito ou não há
+                  correspondência com a busca).
+                </p>
+              ) : (
+                <select id="encounterId" value={encounterId} onChange={(e) => setEncounterId(e.target.value)}>
+                  <option value="">Selecione…</option>
+                  {filteredEncounters.map((enc) => (
+                    <option key={enc.id} value={enc.id}>
+                      {enc.chiefComplaint} — paciente {enc.patientId.substring(0, 8)}… (
+                      {ENCOUNTER_STATUS_LABEL[enc.status]})
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             <div>
               <label htmlFor="regulationCode">Código de Regulação (CROSS/SISREG - Opcional)</label>
@@ -188,28 +224,20 @@ export const BedAllocationModal: React.FC<BedAllocationModalProps> = ({
           </>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+        <div className="mt-4 flex items-center justify-between">
           {onCreateExtraBed && (
-            <button
-              type="button"
-              onClick={() => setIsExtraMode(!isExtraMode)}
-              style={{ background: 'transparent', color: 'var(--color-primary)', padding: 0, marginTop: 0 }}
-            >
+            <Button type="button" variant="link" className="p-0" onClick={() => setIsExtraMode(!isExtraMode)}>
               {isExtraMode ? 'Voltar para Alocação Direta' : '+ Abrir Leito Extra'}
-            </button>
+            </Button>
           )}
 
-          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{ background: 'var(--color-surface-sunken)', color: 'var(--color-text)', marginTop: 0 }}
-            >
+          <div className="ml-auto flex gap-2">
+            <Button type="button" variant="secondary" onClick={onClose}>
               Cancelar
-            </button>
-            <button type="submit" disabled={loading} style={{ marginTop: 0 }}>
+            </Button>
+            <Button type="submit" disabled={loading}>
               {loading ? 'Confirmando...' : isExtraMode ? 'Criar Leito Extra' : 'Confirmar Alocação'}
-            </button>
+            </Button>
           </div>
         </div>
       </form>

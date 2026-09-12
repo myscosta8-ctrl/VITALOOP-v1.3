@@ -1,77 +1,73 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSession } from '../context/session-context.js';
-import { createManagementApi, type DashboardData, type ManagementAlertItem } from '../lib/management-api.js';
+import { createManagementApi, type ManagementAlertItem } from '../lib/management-api.js';
+import { Card, CardContent, CardHeader } from './ui/card.js';
+import { Badge } from './ui/badge.js';
+import { Button } from './ui/button.js';
+import { EmptyState } from './ui/empty-state.js';
+import { toast } from '../lib/toast.js';
 
 export const ManagementDashboardPage: React.FC = () => {
   const { api } = useSession();
   const managementApi = createManagementApi(api);
+  const queryClient = useQueryClient();
 
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [msg, setMsg] = useState('');
+  const dashboardQuery = useQuery({
+    queryKey: ['management-dashboard'],
+    queryFn: () => managementApi.fetchDashboardData(),
+  });
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const res = await managementApi.fetchDashboardData();
-      setData(res);
-    } catch (err: unknown) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const data = dashboardQuery.data ?? null;
+  const loading = dashboardQuery.isLoading;
+  const error = dashboardQuery.isError ? (dashboardQuery.error as Error).message : '';
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const handleExportCsv = async () => {
-    try {
-      const csvText = await managementApi.exportManagementReportCsv();
+  const exportCsvMutation = useMutation({
+    mutationFn: () => managementApi.exportManagementReportCsv(),
+    onSuccess: (csvText) => {
       const blob = new Blob([csvText], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = 'relatorio_atendimentos_upa.csv';
       a.click();
-      setMsg('Relatório CSV gerado e baixado com sucesso!');
-    } catch (err: unknown) {
-      setError((err as Error).message);
-    }
-  };
+      toast.success('Relatório CSV gerado e baixado com sucesso!');
+    },
+    onError: (err: unknown) => toast.error((err as Error).message),
+  });
 
-  const handleAckAlert = async (alertId: string) => {
-    try {
-      await managementApi.acknowledgeAlert(alertId);
-      setMsg('Alerta reconhecido com sucesso.');
-      loadData();
-    } catch (err: unknown) {
-      setError((err as Error).message);
-    }
-  };
+  const ackAlertMutation = useMutation({
+    mutationFn: (alertId: string) => managementApi.acknowledgeAlert(alertId),
+    onSuccess: () => {
+      toast.success('Alerta reconhecido com sucesso.');
+      return queryClient.invalidateQueries({ queryKey: ['management-dashboard'] });
+    },
+    onError: (err: unknown) => toast.error((err as Error).message),
+  });
+
+  const handleExportCsv = () => exportCsvMutation.mutate();
+  const handleAckAlert = (alertId: string) => ackAlertMutation.mutate(alertId);
 
   if (loading) {
     return (
       <main>
-        <p role="status" data-testid="loading-dashboard">Carregando Dashboard Operacional...</p>
+        <p role="status" data-testid="loading-dashboard" className="text-sm text-muted-foreground">Carregando Dashboard Operacional...</p>
       </main>
     );
   }
   if (error) {
     return (
       <main>
-        <div role="alert" data-testid="error-dashboard">{error}</div>
+        <div role="alert" data-testid="error-dashboard" className="rounded-md bg-[var(--color-danger-soft)] px-3 py-2 text-sm text-[var(--color-danger)]">{error}</div>
       </main>
     );
   }
 
-  const severityBadgeClass = (severity: string): string => {
+  const severityBadgeVariant = (severity: string): 'destructive' | 'warning' | 'secondary' => {
     const s = severity.toLowerCase();
-    if (s === 'critical' || s === 'danger') return 'vl-badge-danger';
-    if (s === 'warning') return 'vl-badge-warning';
-    return 'vl-badge-info';
+    if (s === 'critical' || s === 'danger') return 'destructive';
+    if (s === 'warning') return 'warning';
+    return 'secondary';
   };
 
   return (
@@ -81,61 +77,53 @@ export const ManagementDashboardPage: React.FC = () => {
           <h1 id="mgmt-heading">Gestão Operacional UPA 24h (MGT-001..010)</h1>
         </div>
       </div>
-      {msg && <p role="status" data-testid="management-msg">{msg}</p>}
 
-      <div className="vl-panel" data-testid="kpis-summary">
-        <div className="vl-panel-head">
-          <h2>Métricas em Tempo Real (MGT-001..005)</h2>
-        </div>
-        <div className="vl-panel-body">
-          <p>Atendimentos Ativos: <strong className="vl-mono">{data?.summary?.activeEncountersCount}</strong></p>
-          <p>Aguardando Triagem: <strong className="vl-mono">{data?.summary?.triagePendingCount}</strong></p>
-          <p>Aguardando Consulta: <strong className="vl-mono">{data?.summary?.consultationPendingCount}</strong></p>
-          <p>Ocupação de Leitos: <strong className="vl-mono">{data?.summary?.bedOccupancyRate}%</strong> ({data?.summary?.occupiedBedsCount}/{data?.summary?.totalBedsCount})</p>
-          <p>Tempo Médio de Permanência (TMP): <strong className="vl-mono">{data?.averageTmpHours}h</strong></p>
-        </div>
-      </div>
+      <Card data-testid="kpis-summary">
+        <CardHeader className="text-sm font-semibold text-muted-foreground">Métricas em Tempo Real (MGT-001..005)</CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <p>Atendimentos Ativos: <strong className="font-mono">{data?.summary?.activeEncountersCount}</strong></p>
+          <p>Aguardando Triagem: <strong className="font-mono">{data?.summary?.triagePendingCount}</strong></p>
+          <p>Aguardando Consulta: <strong className="font-mono">{data?.summary?.consultationPendingCount}</strong></p>
+          <p>Ocupação de Leitos: <strong className="font-mono">{data?.summary?.bedOccupancyRate}%</strong> ({data?.summary?.occupiedBedsCount}/{data?.summary?.totalBedsCount})</p>
+          <p>Tempo Médio de Permanência (TMP): <strong className="font-mono">{data?.averageTmpHours}h</strong></p>
+        </CardContent>
+      </Card>
 
-      <div className="vl-panel" data-testid="alerts-section" style={{ marginTop: 'var(--space-4)' }}>
-        <div className="vl-panel-head">
-          <h2>Alertas de Sobrecarga e Lotação (MGT-009)</h2>
-        </div>
-        <div className="vl-panel-body">
+      <Card className="mt-4" data-testid="alerts-section">
+        <CardHeader className="text-sm font-semibold text-muted-foreground">Alertas de Sobrecarga e Lotação (MGT-009)</CardHeader>
+        <CardContent>
           {data?.alerts?.length === 0 ? (
-            <p role="status">Nenhum alerta crítico no momento.</p>
+            <EmptyState className="border-none p-0" title="Nenhum alerta crítico no momento" />
           ) : (
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+            <ul className="flex flex-col gap-2">
               {data?.alerts?.map((alert: ManagementAlertItem) => (
                 <li
                   key={alert.id}
                   data-testid={`alert-item-${alert.id}`}
-                  className="vl-row-actions"
-                  style={{ alignItems: 'center', justifyContent: 'space-between' }}
+                  className="flex items-center justify-between gap-2 rounded-md border border-border p-2"
                 >
                   <span>
-                    <span className={`vl-badge ${severityBadgeClass(alert.severity)}`}>{alert.severity.toUpperCase()}</span>{' '}
+                    <Badge variant={severityBadgeVariant(alert.severity)}>{alert.severity.toUpperCase()}</Badge>{' '}
                     {alert.message}
                   </span>
-                  <button className="vl-btn-sm vl-btn-ghost" onClick={() => handleAckAlert(alert.id)}>
+                  <Button size="sm" variant="ghost" onClick={() => handleAckAlert(alert.id)}>
                     Reconhecer
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div className="vl-panel" data-testid="export-section" style={{ marginTop: 'var(--space-4)' }}>
-        <div className="vl-panel-head">
-          <h2>Relatórios Gerenciais (MGT-008)</h2>
-        </div>
-        <div className="vl-panel-body">
-          <button onClick={handleExportCsv} data-testid="export-csv-btn">
+      <Card className="mt-4" data-testid="export-section">
+        <CardHeader className="text-sm font-semibold text-muted-foreground">Relatórios Gerenciais (MGT-008)</CardHeader>
+        <CardContent>
+          <Button onClick={handleExportCsv} data-testid="export-csv-btn">
             Exportar Relatório Atendimentos (CSV)
-          </button>
-        </div>
-      </div>
+          </Button>
+        </CardContent>
+      </Card>
     </main>
   );
 };

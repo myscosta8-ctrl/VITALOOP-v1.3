@@ -9,18 +9,15 @@
  */
 
 import { useState, type FormEvent } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { useSession } from '../context/session-context.js';
 import { ApiError } from '../lib/api-client.js';
-import { createPatientsApi, type Patient } from '../lib/patients-api.js';
+import { createPatientsApi } from '../lib/patients-api.js';
 import { AccessDeniedPage } from './AccessDeniedPage.js';
-
-type SearchState =
-  | { readonly kind: 'idle' }
-  | { readonly kind: 'loading' }
-  | { readonly kind: 'results'; readonly patients: readonly Patient[] }
-  | { readonly kind: 'empty' }
-  | { readonly kind: 'denied'; readonly reason: 'unauthenticated' | 'forbidden' }
-  | { readonly kind: 'error'; readonly message: string };
+import { Card, CardContent, CardHeader } from '../components/ui/card.js';
+import { Button } from '../components/ui/button.js';
+import { EmptyState } from '../components/ui/empty-state.js';
+import { toast } from '../lib/toast.js';
 
 const maskCpf = (cpf: string | null): string =>
   cpf ? `${cpf.slice(0, 3)}.***.***-${cpf.slice(-2)}` : '—';
@@ -33,46 +30,55 @@ export const PatientSearchPage = (): JSX.Element => {
   const [cpf, setCpf] = useState('');
   const [cns, setCns] = useState('');
   const [mrn, setMrn] = useState('');
-  const [state, setState] = useState<SearchState>({ kind: 'idle' });
+  const [denied, setDenied] = useState<{ reason: 'unauthenticated' | 'forbidden' } | null>(null);
 
-  const onSubmit = async (e: FormEvent): Promise<void> => {
-    e.preventDefault();
-    if (!name && !cpf && !cns && !mrn) return;
-    setState({ kind: 'loading' });
-    try {
-      const params: Parameters<typeof patientsApi.search>[0] = {
-        ...(name ? { name } : {}),
-        ...(cpf ? { cpf } : {}),
-        ...(cns ? { cns } : {}),
-        ...(mrn ? { mrn } : {}),
-      };
-      const results = await patientsApi.search(params);
-      setState(results.length > 0 ? { kind: 'results', patients: results } : { kind: 'empty' });
-    } catch (err) {
+  const searchMutation = useMutation({
+    mutationFn: (params: Parameters<typeof patientsApi.search>[0]) => patientsApi.search(params),
+    onError: (err) => {
       if (err instanceof ApiError && err.status === 401) {
-        setState({ kind: 'denied', reason: 'unauthenticated' });
+        setDenied({ reason: 'unauthenticated' });
         return;
       }
       if (err instanceof ApiError && err.status === 403) {
-        setState({ kind: 'denied', reason: 'forbidden' });
+        setDenied({ reason: 'forbidden' });
         return;
       }
-      setState({
-        kind: 'error',
-        message: err instanceof ApiError ? err.message : 'Falha ao buscar pacientes.',
-      });
-    }
+      toast.error(err instanceof ApiError ? err.message : 'Falha ao buscar pacientes.');
+    },
+  });
+
+  const onSubmit = (e: FormEvent): void => {
+    e.preventDefault();
+    if (!name && !cpf && !cns && !mrn) return;
+    setDenied(null);
+    searchMutation.mutate({
+      ...(name ? { name } : {}),
+      ...(cpf ? { cpf } : {}),
+      ...(cns ? { cns } : {}),
+      ...(mrn ? { mrn } : {}),
+    });
   };
 
-  if (state.kind === 'denied') return <AccessDeniedPage reason={state.reason} />;
+  if (denied) return <AccessDeniedPage reason={denied.reason} />;
+
+  const loading = searchMutation.isPending;
+  const results = searchMutation.data ?? null;
 
   return (
     <main aria-labelledby="patient-search-heading">
-      <h1 id="patient-search-heading">Buscar paciente</h1>
-      <p>
-        Busque por nome, CPF, CNS ou número de prontuário antes de cadastrar — evita
-        duplicidade e abertura equivocada de prontuário (Doc 1 §11/§12).
-      </p>
+      <div className="vl-page-head">
+        <div>
+          <h1 id="patient-search-heading">Buscar paciente</h1>
+          <p>
+            Busque por nome, CPF, CNS ou número de prontuário antes de cadastrar — evita
+            duplicidade e abertura equivocada de prontuário (Doc 1 §11/§12).
+          </p>
+        </div>
+        <Button asChild variant="secondary">
+          <a href="#/pacientes/novo">+ Cadastrar novo paciente</a>
+        </Button>
+      </div>
+
       <form onSubmit={(e) => void onSubmit(e)}>
         <label htmlFor="search-name">Nome</label>
         <input id="search-name" value={name} onChange={(e) => setName(e.target.value)} />
@@ -86,51 +92,55 @@ export const PatientSearchPage = (): JSX.Element => {
         <label htmlFor="search-mrn">Número de prontuário</label>
         <input id="search-mrn" value={mrn} onChange={(e) => setMrn(e.target.value)} />
 
-        <button type="submit" disabled={state.kind === 'loading'}>
-          {state.kind === 'loading' ? 'Buscando…' : 'Buscar'}
-        </button>
+        <Button type="submit" className="mt-4" disabled={loading}>
+          {loading ? 'Buscando…' : 'Buscar'}
+        </Button>
       </form>
 
-      <p>
-        <a href="#/pacientes/novo">Cadastrar novo paciente</a>
-      </p>
+      {loading && <p role="status" className="mt-4 text-sm text-muted-foreground">Carregando…</p>}
 
-      {state.kind === 'loading' && <p role="status">Carregando…</p>}
-
-      {state.kind === 'empty' && (
-        <p role="status">Nenhum paciente encontrado para os critérios informados.</p>
+      {results !== null && results.length === 0 && (
+        <EmptyState
+          className="mt-4"
+          title="Nenhum paciente encontrado"
+          description="Ajuste os critérios de busca ou cadastre um novo paciente."
+        />
       )}
 
-      {state.kind === 'error' && <p role="alert">{state.message}</p>}
-
-      {state.kind === 'results' && (
-        <table>
-          <caption>Resultados da busca</caption>
-          <thead>
-            <tr>
-              <th scope="col">Nome</th>
-              <th scope="col">Nome social</th>
-              <th scope="col">Prontuário</th>
-              <th scope="col">Nascimento</th>
-              <th scope="col">CPF</th>
-              <th scope="col"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {state.patients.map((p) => (
-              <tr key={p.id}>
-                <td>{p.fullName}</td>
-                <td>{p.socialName ?? '—'}</td>
-                <td>{p.medicalRecordNumber}</td>
-                <td>{p.birthDate ?? '—'}</td>
-                <td>{maskCpf(p.cpf)}</td>
-                <td>
-                  <a href={`#/pacientes/${p.id}`}>Abrir prontuário</a>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {results !== null && results.length > 0 && (
+        <Card className="mt-4">
+          <CardHeader className="text-sm font-semibold text-muted-foreground">Resultados da busca</CardHeader>
+          <CardContent className="overflow-x-auto p-0">
+            <table className="w-full min-w-[720px] border-collapse text-sm">
+              <thead>
+                <tr className="bg-muted text-left text-xs text-muted-foreground">
+                  <th className="p-3 font-semibold">Nome</th>
+                  <th className="p-3 font-semibold">Nome social</th>
+                  <th className="p-3 font-semibold">Prontuário</th>
+                  <th className="p-3 font-semibold">Nascimento</th>
+                  <th className="p-3 font-semibold">CPF</th>
+                  <th className="p-3 font-semibold"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((p) => (
+                  <tr key={p.id} className="border-t border-border">
+                    <td className="p-3">{p.fullName}</td>
+                    <td className="p-3">{p.socialName ?? '—'}</td>
+                    <td className="p-3 font-mono">{p.medicalRecordNumber}</td>
+                    <td className="p-3">{p.birthDate ?? '—'}</td>
+                    <td className="p-3">{maskCpf(p.cpf)}</td>
+                    <td className="p-3">
+                      <Button asChild size="sm" variant="secondary">
+                        <a href={`#/pacientes/${p.id}`}>Abrir prontuário</a>
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
       )}
     </main>
   );

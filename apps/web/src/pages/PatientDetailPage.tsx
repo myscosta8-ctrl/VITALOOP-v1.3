@@ -8,14 +8,14 @@
  * validações já feitas pelo domínio/API.
  */
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSession } from '../context/session-context.js';
 import { ApiError } from '../lib/api-client.js';
 import {
   createPatientsApi,
   type AllergySeverity,
   type AllergyStatus,
-  type Patient,
   type PatientActiveProblem,
   type PatientAllergy,
   type PatientAntecedent,
@@ -24,13 +24,9 @@ import {
   type PatientTimelineEvent,
 } from '../lib/patients-api.js';
 import { AccessDeniedPage } from './AccessDeniedPage.js';
-
-type PageState =
-  | { readonly kind: 'loading' }
-  | { readonly kind: 'loaded'; readonly patient: Patient }
-  | { readonly kind: 'not_found' }
-  | { readonly kind: 'denied'; readonly reason: 'unauthenticated' | 'forbidden' }
-  | { readonly kind: 'error'; readonly message: string };
+import { Button } from '../components/ui/button.js';
+import { EmptyState } from '../components/ui/empty-state.js';
+import { toast } from '../lib/toast.js';
 
 const age = (birthDate: string | null): string => {
   if (!birthDate) return '—';
@@ -43,43 +39,24 @@ const age = (birthDate: string | null): string => {
 export const PatientDetailPage = ({ patientId }: { patientId: string }): JSX.Element => {
   const { api } = useSession();
   const patientsApi = createPatientsApi(api);
-  const [state, setState] = useState<PageState>({ kind: 'loading' });
-  const [reloadToken, setReloadToken] = useState(0);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    let cancelled = false;
-    setState({ kind: 'loading' });
-    patientsApi
-      .get(patientId)
-      .then((patient) => {
-        if (!cancelled) setState({ kind: 'loaded', patient });
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        if (err instanceof ApiError && err.status === 404) {
-          setState({ kind: 'not_found' });
-        } else if (err instanceof ApiError && err.status === 401) {
-          setState({ kind: 'denied', reason: 'unauthenticated' });
-        } else if (err instanceof ApiError && err.status === 403) {
-          setState({ kind: 'denied', reason: 'forbidden' });
-        } else {
-          setState({
-            kind: 'error',
-            message: err instanceof ApiError ? err.message : 'Falha ao carregar paciente.',
-          });
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [patientId, reloadToken]);
+  const patientQuery = useQuery({
+    queryKey: ['patient', patientId],
+    queryFn: () => patientsApi.get(patientId),
+  });
 
-  if (state.kind === 'loading') return <p role="status">Carregando…</p>;
-  if (state.kind === 'not_found') return <p role="alert">Paciente não encontrado.</p>;
-  if (state.kind === 'denied') return <AccessDeniedPage reason={state.reason} />;
-  if (state.kind === 'error') return <p role="alert">{state.message}</p>;
+  if (patientQuery.isLoading) return <p role="status">Carregando…</p>;
+  if (patientQuery.isError) {
+    const err = patientQuery.error;
+    if (err instanceof ApiError && err.status === 404) return <p role="alert">Paciente não encontrado.</p>;
+    if (err instanceof ApiError && err.status === 401) return <AccessDeniedPage reason="unauthenticated" />;
+    if (err instanceof ApiError && err.status === 403) return <AccessDeniedPage reason="forbidden" />;
+    return <p role="alert">{err instanceof ApiError ? err.message : 'Falha ao carregar paciente.'}</p>;
+  }
 
-  const { patient } = state;
+  const patient = patientQuery.data;
+  if (!patient) return <p role="alert">Paciente não encontrado.</p>;
 
   return (
     <main aria-labelledby="patient-detail-heading">
@@ -109,7 +86,7 @@ export const PatientDetailPage = ({ patientId }: { patientId: string }): JSX.Ele
         <InactivatePatientAction
           patientId={patient.id}
           patientsApi={patientsApi}
-          onInactivated={() => setReloadToken((t) => t + 1)}
+          onInactivated={() => queryClient.invalidateQueries({ queryKey: ['patient', patientId] })}
         />
       )}
 
@@ -137,36 +114,36 @@ const InactivatePatientAction = ({
   onInactivated: () => void;
 }): JSX.Element => {
   const [reason, setReason] = useState('');
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const onSubmit = async (e: FormEvent): Promise<void> => {
+  const inactivateMutation = useMutation({
+    mutationFn: () => patientsApi.inactivate(patientId, reason),
+    onSuccess: () => {
+      toast.success('Paciente inativado.');
+      onInactivated();
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao inativar paciente.'),
+  });
+
+  const onSubmit = (e: FormEvent): void => {
     e.preventDefault();
     if (!reason.trim()) {
       setError('Motivo é obrigatório para inativar o paciente.');
       return;
     }
-    setSaving(true);
     setError(null);
-    try {
-      await patientsApi.inactivate(patientId, reason);
-      onInactivated();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Falha ao inativar paciente.');
-    } finally {
-      setSaving(false);
-    }
+    inactivateMutation.mutate();
   };
 
   return (
     <section aria-labelledby="inactivate-heading">
       <h2 id="inactivate-heading">Inativar cadastro</h2>
-      <form onSubmit={(e) => void onSubmit(e)}>
+      <form onSubmit={onSubmit}>
         <label htmlFor="inactivate-reason">Motivo</label>
         <input id="inactivate-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
-        <button type="submit" disabled={saving}>
-          {saving ? 'Inativando…' : 'Inativar paciente'}
-        </button>
+        <Button type="submit" className="mt-4" disabled={inactivateMutation.isPending}>
+          {inactivateMutation.isPending ? 'Inativando…' : 'Inativar paciente'}
+        </Button>
         {error && <p role="alert">{error}</p>}
       </form>
     </section>
@@ -174,14 +151,19 @@ const InactivatePatientAction = ({
 };
 
 const TimelineSection = ({ patientId, patientsApi }: { patientId: string; patientsApi: Api }): JSX.Element => {
-  const { items, error } = useList(() => patientsApi.getTimeline(patientId));
+  const query = useQuery({
+    queryKey: ['patient', patientId, 'timeline'],
+    queryFn: () => patientsApi.getTimeline(patientId),
+  });
+  const items = query.data ?? null;
+  const error = query.isError ? errMsg(query.error) : null;
 
   return (
     <section aria-labelledby="timeline-heading">
       <h2 id="timeline-heading">Histórico</h2>
       {error && <p role="alert">{error}</p>}
       {items === null && !error && <p role="status">Carregando histórico…</p>}
-      {items !== null && items.length === 0 && <p role="status">Nenhum evento registrado ainda.</p>}
+      {items !== null && items.length === 0 && <EmptyState title="Nenhum evento registrado ainda" />}
       {items !== null && items.length > 0 && (
         <ul>
           {items.map((ev: PatientTimelineEvent) => (
@@ -197,46 +179,40 @@ const TimelineSection = ({ patientId, patientsApi }: { patientId: string; patien
 
 type Api = ReturnType<typeof createPatientsApi>;
 
-const useList = <T,>(loader: () => Promise<readonly T[]>) => {
-  const [items, setItems] = useState<readonly T[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const reload = (): void => {
-    setItems(null);
-    loader()
-      .then(setItems)
-      .catch((err: unknown) => setError(err instanceof ApiError ? err.message : 'Falha ao carregar.'));
-  };
-  useEffect(reload, []);
-  return { items, error, reload };
-};
+const errMsg = (err: unknown, fallback = 'Falha ao carregar.'): string => (err instanceof ApiError ? err.message : fallback);
 
 const ContactsSection = ({ patientId, patientsApi }: { patientId: string; patientsApi: Api }): JSX.Element => {
-  const { items, error, reload } = useList(() => patientsApi.listContacts(patientId));
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: ['patient', patientId, 'contacts'],
+    queryFn: () => patientsApi.listContacts(patientId),
+  });
+  const items = query.data ?? null;
+  const error = query.isError ? errMsg(query.error) : null;
+
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [isEmergency, setIsEmergency] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
-  const onAdd = async (e: FormEvent): Promise<void> => {
-    e.preventDefault();
-    if (!name.trim() || !phone.trim()) {
-      setFormError('Nome e telefone são obrigatórios.');
-      return;
-    }
-    setSaving(true);
-    setFormError(null);
-    try {
-      await patientsApi.createContact(patientId, { name, phone, isEmergency });
+  const addMutation = useMutation({
+    mutationFn: () => patientsApi.createContact(patientId, { name, phone, isEmergency }),
+    onSuccess: () => {
       setName('');
       setPhone('');
       setIsEmergency(false);
-      reload();
-    } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Falha ao adicionar contato.');
-    } finally {
-      setSaving(false);
+      toast.success('Contato adicionado.');
+      return queryClient.invalidateQueries({ queryKey: ['patient', patientId, 'contacts'] });
+    },
+    onError: (err) => toast.error(errMsg(err, 'Falha ao adicionar contato.')),
+  });
+
+  const onAdd = (e: FormEvent): void => {
+    e.preventDefault();
+    if (!name.trim() || !phone.trim()) {
+      toast.error('Nome e telefone são obrigatórios.');
+      return;
     }
+    addMutation.mutate();
   };
 
   return (
@@ -244,7 +220,7 @@ const ContactsSection = ({ patientId, patientsApi }: { patientId: string; patien
       <h2 id="contacts-heading">Contatos</h2>
       {error && <p role="alert">{error}</p>}
       {items === null && !error && <p role="status">Carregando contatos…</p>}
-      {items !== null && items.length === 0 && <p role="status">Nenhum contato cadastrado.</p>}
+      {items !== null && items.length === 0 && <EmptyState title="Nenhum contato cadastrado" />}
       {items !== null && items.length > 0 && (
         <ul>
           {items.map((c: PatientContact) => (
@@ -268,49 +244,58 @@ const ContactsSection = ({ patientId, patientsApi }: { patientId: string; patien
           />
           Contato de emergência
         </label>
-        <button type="submit" disabled={saving}>
-          {saving ? 'Adicionando…' : 'Adicionar contato'}
-        </button>
-        {formError && <p role="alert">{formError}</p>}
+        <Button type="submit" className="mt-4" disabled={addMutation.isPending}>
+          {addMutation.isPending ? 'Adicionando…' : 'Adicionar contato'}
+        </Button>
       </form>
     </section>
   );
 };
 
 const AllergiesSection = ({ patientId, patientsApi }: { patientId: string; patientsApi: Api }): JSX.Element => {
-  const { items, error, reload } = useList(() => patientsApi.listAllergies(patientId));
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: ['patient', patientId, 'allergies'],
+    queryFn: () => patientsApi.listAllergies(patientId),
+  });
+  const items = query.data ?? null;
+  const error = query.isError ? errMsg(query.error) : null;
+
   const [substance, setSubstance] = useState('');
   const [severity, setSeverity] = useState<AllergySeverity>('unknown');
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
-  const onAdd = async (e: FormEvent): Promise<void> => {
-    e.preventDefault();
-    if (!substance.trim()) {
-      setFormError('Substância é obrigatória.');
-      return;
-    }
-    setSaving(true);
-    setFormError(null);
-    try {
-      await patientsApi.createAllergy(patientId, { substance, severity });
+  const addMutation = useMutation({
+    mutationFn: () => patientsApi.createAllergy(patientId, { substance, severity }),
+    onSuccess: () => {
       setSubstance('');
       setSeverity('unknown');
-      reload();
-    } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Falha ao adicionar alergia.');
-    } finally {
-      setSaving(false);
+      toast.success('Alergia adicionada.');
+      return queryClient.invalidateQueries({ queryKey: ['patient', patientId, 'allergies'] });
+    },
+    onError: (err) => toast.error(errMsg(err, 'Falha ao adicionar alergia.')),
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: ({ allergyId, status }: { allergyId: string; status: AllergyStatus }) =>
+      patientsApi.updateAllergyStatus(patientId, allergyId, status),
+    onSuccess: () => {
+      toast.success('Status da alergia atualizado.');
+      return queryClient.invalidateQueries({ queryKey: ['patient', patientId, 'allergies'] });
+    },
+    onError: (err) => toast.error(errMsg(err, 'Falha ao atualizar status.')),
+  });
+
+  const onAdd = (e: FormEvent): void => {
+    e.preventDefault();
+    if (!substance.trim()) {
+      toast.error('Substância é obrigatória.');
+      return;
     }
+    addMutation.mutate();
   };
 
-  const onStatusChange = async (allergyId: string, status: AllergyStatus): Promise<void> => {
-    try {
-      await patientsApi.updateAllergyStatus(patientId, allergyId, status);
-      reload();
-    } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Falha ao atualizar status.');
-    }
+  const onStatusChange = (allergyId: string, status: AllergyStatus): void => {
+    statusMutation.mutate({ allergyId, status });
   };
 
   return (
@@ -318,7 +303,7 @@ const AllergiesSection = ({ patientId, patientsApi }: { patientId: string; patie
       <h2 id="allergies-heading">Alergias</h2>
       {error && <p role="alert">{error}</p>}
       {items === null && !error && <p role="status">Carregando alergias…</p>}
-      {items !== null && items.length === 0 && <p role="status">Nenhuma alergia registrada.</p>}
+      {items !== null && items.length === 0 && <EmptyState title="Nenhuma alergia registrada" />}
       {items !== null && items.length > 0 && (
         <ul>
           {items.map((a: PatientAllergy) => (
@@ -352,38 +337,42 @@ const AllergiesSection = ({ patientId, patientsApi }: { patientId: string; patie
           <option value="moderate">Moderada</option>
           <option value="severe">Grave</option>
         </select>
-        <button type="submit" disabled={saving}>
-          {saving ? 'Adicionando…' : 'Adicionar alergia'}
-        </button>
-        {formError && <p role="alert">{formError}</p>}
+        <Button type="submit" className="mt-4" disabled={addMutation.isPending}>
+          {addMutation.isPending ? 'Adicionando…' : 'Adicionar alergia'}
+        </Button>
       </form>
     </section>
   );
 };
 
 const AntecedentsSection = ({ patientId, patientsApi }: { patientId: string; patientsApi: Api }): JSX.Element => {
-  const { items, error, reload } = useList(() => patientsApi.listAntecedents(patientId));
-  const [description, setDescription] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: ['patient', patientId, 'antecedents'],
+    queryFn: () => patientsApi.listAntecedents(patientId),
+  });
+  const items = query.data ?? null;
+  const error = query.isError ? errMsg(query.error) : null;
 
-  const onAdd = async (e: FormEvent): Promise<void> => {
+  const [description, setDescription] = useState('');
+
+  const addMutation = useMutation({
+    mutationFn: () => patientsApi.createAntecedent(patientId, { description }),
+    onSuccess: () => {
+      setDescription('');
+      toast.success('Antecedente adicionado.');
+      return queryClient.invalidateQueries({ queryKey: ['patient', patientId, 'antecedents'] });
+    },
+    onError: (err) => toast.error(errMsg(err, 'Falha ao adicionar antecedente.')),
+  });
+
+  const onAdd = (e: FormEvent): void => {
     e.preventDefault();
     if (!description.trim()) {
-      setFormError('Descrição é obrigatória.');
+      toast.error('Descrição é obrigatória.');
       return;
     }
-    setSaving(true);
-    setFormError(null);
-    try {
-      await patientsApi.createAntecedent(patientId, { description });
-      setDescription('');
-      reload();
-    } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Falha ao adicionar antecedente.');
-    } finally {
-      setSaving(false);
-    }
+    addMutation.mutate();
   };
 
   return (
@@ -391,7 +380,7 @@ const AntecedentsSection = ({ patientId, patientsApi }: { patientId: string; pat
       <h2 id="antecedents-heading">Antecedentes</h2>
       {error && <p role="alert">{error}</p>}
       {items === null && !error && <p role="status">Carregando antecedentes…</p>}
-      {items !== null && items.length === 0 && <p role="status">Nenhum antecedente registrado.</p>}
+      {items !== null && items.length === 0 && <EmptyState title="Nenhum antecedente registrado" />}
       {items !== null && items.length > 0 && (
         <ul>
           {items.map((a: PatientAntecedent) => (
@@ -406,10 +395,9 @@ const AntecedentsSection = ({ patientId, patientsApi }: { patientId: string; pat
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
-        <button type="submit" disabled={saving}>
-          {saving ? 'Adicionando…' : 'Adicionar antecedente'}
-        </button>
-        {formError && <p role="alert">{formError}</p>}
+        <Button type="submit" className="mt-4" disabled={addMutation.isPending}>
+          {addMutation.isPending ? 'Adicionando…' : 'Adicionar antecedente'}
+        </Button>
       </form>
     </section>
   );
@@ -422,28 +410,33 @@ const ContinuousMedicationsSection = ({
   patientId: string;
   patientsApi: Api;
 }): JSX.Element => {
-  const { items, error, reload } = useList(() => patientsApi.listContinuousMedications(patientId));
-  const [medication, setMedication] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: ['patient', patientId, 'continuous-medications'],
+    queryFn: () => patientsApi.listContinuousMedications(patientId),
+  });
+  const items = query.data ?? null;
+  const error = query.isError ? errMsg(query.error) : null;
 
-  const onAdd = async (e: FormEvent): Promise<void> => {
+  const [medication, setMedication] = useState('');
+
+  const addMutation = useMutation({
+    mutationFn: () => patientsApi.createContinuousMedication(patientId, { medication }),
+    onSuccess: () => {
+      setMedication('');
+      toast.success('Medicamento adicionado.');
+      return queryClient.invalidateQueries({ queryKey: ['patient', patientId, 'continuous-medications'] });
+    },
+    onError: (err) => toast.error(errMsg(err, 'Falha ao adicionar medicamento.')),
+  });
+
+  const onAdd = (e: FormEvent): void => {
     e.preventDefault();
     if (!medication.trim()) {
-      setFormError('Medicamento é obrigatório.');
+      toast.error('Medicamento é obrigatório.');
       return;
     }
-    setSaving(true);
-    setFormError(null);
-    try {
-      await patientsApi.createContinuousMedication(patientId, { medication });
-      setMedication('');
-      reload();
-    } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Falha ao adicionar medicamento.');
-    } finally {
-      setSaving(false);
-    }
+    addMutation.mutate();
   };
 
   return (
@@ -451,7 +444,7 @@ const ContinuousMedicationsSection = ({
       <h2 id="medications-heading">Medicamentos de uso contínuo</h2>
       {error && <p role="alert">{error}</p>}
       {items === null && !error && <p role="status">Carregando medicamentos…</p>}
-      {items !== null && items.length === 0 && <p role="status">Nenhum medicamento registrado.</p>}
+      {items !== null && items.length === 0 && <EmptyState title="Nenhum medicamento registrado" />}
       {items !== null && items.length > 0 && (
         <ul>
           {items.map((m: PatientContinuousMedication) => (
@@ -462,10 +455,9 @@ const ContinuousMedicationsSection = ({
       <form onSubmit={(e) => void onAdd(e)}>
         <label htmlFor="medication-name">Medicamento</label>
         <input id="medication-name" value={medication} onChange={(e) => setMedication(e.target.value)} />
-        <button type="submit" disabled={saving}>
-          {saving ? 'Adicionando…' : 'Adicionar medicamento'}
-        </button>
-        {formError && <p role="alert">{formError}</p>}
+        <Button type="submit" className="mt-4" disabled={addMutation.isPending}>
+          {addMutation.isPending ? 'Adicionando…' : 'Adicionar medicamento'}
+        </Button>
       </form>
     </section>
   );
@@ -478,28 +470,33 @@ const ActiveProblemsSection = ({
   patientId: string;
   patientsApi: Api;
 }): JSX.Element => {
-  const { items, error, reload } = useList(() => patientsApi.listActiveProblems(patientId));
-  const [description, setDescription] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: ['patient', patientId, 'active-problems'],
+    queryFn: () => patientsApi.listActiveProblems(patientId),
+  });
+  const items = query.data ?? null;
+  const error = query.isError ? errMsg(query.error) : null;
 
-  const onAdd = async (e: FormEvent): Promise<void> => {
+  const [description, setDescription] = useState('');
+
+  const addMutation = useMutation({
+    mutationFn: () => patientsApi.createActiveProblem(patientId, { description }),
+    onSuccess: () => {
+      setDescription('');
+      toast.success('Problema adicionado.');
+      return queryClient.invalidateQueries({ queryKey: ['patient', patientId, 'active-problems'] });
+    },
+    onError: (err) => toast.error(errMsg(err, 'Falha ao adicionar problema.')),
+  });
+
+  const onAdd = (e: FormEvent): void => {
     e.preventDefault();
     if (!description.trim()) {
-      setFormError('Descrição é obrigatória.');
+      toast.error('Descrição é obrigatória.');
       return;
     }
-    setSaving(true);
-    setFormError(null);
-    try {
-      await patientsApi.createActiveProblem(patientId, { description });
-      setDescription('');
-      reload();
-    } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Falha ao adicionar problema.');
-    } finally {
-      setSaving(false);
-    }
+    addMutation.mutate();
   };
 
   return (
@@ -507,7 +504,7 @@ const ActiveProblemsSection = ({
       <h2 id="problems-heading">Problemas / condições ativas</h2>
       {error && <p role="alert">{error}</p>}
       {items === null && !error && <p role="status">Carregando problemas…</p>}
-      {items !== null && items.length === 0 && <p role="status">Nenhum problema ativo registrado.</p>}
+      {items !== null && items.length === 0 && <EmptyState title="Nenhum problema ativo registrado" />}
       {items !== null && items.length > 0 && (
         <ul>
           {items.map((p: PatientActiveProblem) => (
@@ -524,10 +521,9 @@ const ActiveProblemsSection = ({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
-        <button type="submit" disabled={saving}>
-          {saving ? 'Adicionando…' : 'Adicionar problema'}
-        </button>
-        {formError && <p role="alert">{formError}</p>}
+        <Button type="submit" className="mt-4" disabled={addMutation.isPending}>
+          {addMutation.isPending ? 'Adicionando…' : 'Adicionar problema'}
+        </Button>
       </form>
     </section>
   );

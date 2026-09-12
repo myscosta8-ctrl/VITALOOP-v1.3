@@ -10,6 +10,8 @@ import { useState, type ReactNode, type SVGProps } from 'react';
 import { useSession } from '../context/session-context.js';
 import { VitaloopMark } from './VitaloopMark.js';
 import { hasAnyRoleGroup, type RoleGroup } from '../lib/role-groups.js';
+import { Button } from './ui/button.js';
+import { Badge } from './ui/badge.js';
 
 interface NavLink {
   href: string;
@@ -214,9 +216,10 @@ export const AppShell = ({ children }: { children: ReactNode }): JSX.Element => 
 
       <div className="vl-main-col">
         <div className="vl-topbar">
-          <button
+          <Button
             type="button"
-            className="vl-menu-toggle"
+            variant="outline"
+            size="icon"
             aria-label={navOpen ? 'Fechar menu' : 'Abrir menu'}
             aria-expanded={navOpen}
             onClick={() => setNavOpen((v) => !v)}
@@ -224,22 +227,28 @@ export const AppShell = ({ children }: { children: ReactNode }): JSX.Element => 
             <svg {...iconProps} width={17} height={17}>
               <path d="M4 6h16M4 12h16M4 18h16" />
             </svg>
-          </button>
+          </Button>
           <a href="#/filas" className="vl-topbar-title" onClick={() => setNavOpen(false)}>
             <VitaloopMark size={26} />
             Vitaloop
           </a>
           <div className="vl-topbar-right">
             {identity?.roles && identity.roles.length > 0 && (
-              <span className="vl-unit-chip">{identity.roles.join(', ')}</span>
+              <Badge
+                variant="secondary"
+                className="max-w-[180px] overflow-hidden text-ellipsis whitespace-nowrap font-normal"
+                title={identity.roles.join(', ')}
+              >
+                {identity.roles.join(', ')}
+              </Badge>
             )}
             <div className="vl-user-chip">
               <div className="vl-avatar">{initials(identity?.roles)}</div>
               <a href="#/perfil">Perfil</a>
             </div>
-            <button type="button" className="vl-btn-ghost" onClick={() => void logout()}>
+            <Button type="button" variant="ghost" onClick={() => void logout()}>
               Sair
-            </button>
+            </Button>
           </div>
         </div>
 

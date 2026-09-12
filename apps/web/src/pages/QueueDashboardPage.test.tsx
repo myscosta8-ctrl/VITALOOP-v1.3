@@ -5,6 +5,7 @@
 import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { QueueDashboardPage } from './QueueDashboardPage.js';
 
 const get = vi.fn();
@@ -16,6 +17,17 @@ const mockApi = { get, post, patch };
 vi.mock('../context/session-context.js', () => ({
   useSession: () => ({ api: mockApi }),
 }));
+
+// TanStack Query (Fase 3, 11/09/2026) exige um QueryClientProvider no
+// contexto — cliente novo por teste evita cache vazando entre casos.
+const renderPage = () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <QueueDashboardPage />
+    </QueryClientProvider>,
+  );
+};
 
 describe('QueueDashboardPage UI Tests', () => {
   beforeEach(() => {
@@ -49,7 +61,7 @@ describe('QueueDashboardPage UI Tests', () => {
       return [];
     });
 
-    render(<QueueDashboardPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText(/Painel de Gestão e Chamada de Filas/i)).toBeInTheDocument();
@@ -90,7 +102,7 @@ describe('QueueDashboardPage UI Tests', () => {
       callCount: 1,
     });
 
-    render(<QueueDashboardPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText('SENHA-A01')).toBeInTheDocument();

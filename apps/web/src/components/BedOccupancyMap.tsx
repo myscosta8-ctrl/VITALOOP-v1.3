@@ -1,5 +1,9 @@
 import React from 'react';
 import { SectorMapData, BedData } from '../lib/bed-api';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card.js';
+import { Badge } from './ui/badge.js';
+import { Button } from './ui/button.js';
+import { EmptyState } from './ui/empty-state.js';
 
 interface BedOccupancyMapProps {
   sectorsMap: SectorMapData[];
@@ -8,6 +12,15 @@ interface BedOccupancyMapProps {
   onOpenTransferModal?: (bed: BedData) => void;
   onDischargeBed?: (allocationId: string) => void;
 }
+
+const STATUS_BG: Record<BedData['status'], string> = {
+  available: 'var(--color-success-soft)',
+  occupied: 'var(--color-danger-soft)',
+  cleaning: 'var(--color-warning-soft)',
+  reserved: 'var(--color-primary-soft)',
+  blocked: 'var(--color-surface-sunken)',
+  maintenance: 'var(--color-surface-sunken)',
+};
 
 export const BedOccupancyMap: React.FC<BedOccupancyMapProps> = ({
   sectorsMap,
@@ -22,115 +35,128 @@ export const BedOccupancyMap: React.FC<BedOccupancyMapProps> = ({
   const getStatusBadge = (status: BedData['status']) => {
     switch (status) {
       case 'available':
-        return <span className="vl-badge vl-badge-success">Livre</span>;
+        return <Badge variant="success">Livre</Badge>;
       case 'occupied':
-        return <span className="vl-badge vl-badge-danger">Ocupado</span>;
+        return <Badge variant="destructive">Ocupado</Badge>;
       case 'cleaning':
-        return <span className="vl-badge vl-badge-warning">Higienização</span>;
+        return <Badge variant="warning">Higienização</Badge>;
       case 'reserved':
-        return <span className="vl-badge vl-badge-info">Reservado</span>;
+        return <Badge>Reservado</Badge>;
       case 'blocked':
       case 'maintenance':
-        return <span className="vl-badge vl-badge-neutral">Bloqueado</span>;
+        return <Badge variant="outline">Bloqueado</Badge>;
       default:
         return null;
     }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-      <h2>Mapa de Ocupação de Leitos UPA 24h</h2>
+    <div className="flex flex-col gap-4">
+      <h2 className="text-lg font-semibold">Ocupação de leitos por setor — UPA 24h</h2>
 
       {sectorsMap.length === 0 ? (
-        <p role="status">Nenhum setor cadastrado.</p>
+        <EmptyState title="Nenhum setor cadastrado" description="Cadastre setores em Configurações de leitos para começar a alocar pacientes." />
       ) : (
         sectorsMap.map(({ sector, beds, metrics }) => (
-          <div key={sector.id} className="vl-panel">
-            <div className="vl-panel-head">
+          <Card key={sector.id}>
+            <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0">
               <div>
-                <h3>{sector.name}</h3>
-                <p style={{ margin: 0 }}>{sector.description || `Código: ${sector.code}`}</p>
+                <CardTitle>{sector.name}</CardTitle>
+                <p className="mt-0.5 text-sm text-muted-foreground">{sector.description || `Código: ${sector.code}`}</p>
               </div>
-              <div className="vl-sector-stats">
-                <span>Total: <strong>{metrics.totalBeds}</strong></span>
-                <span>Ocupados: <strong>{metrics.occupiedBeds}</strong></span>
-                <span>Livres: <strong>{metrics.availableBeds}</strong></span>
-                <span>Higienização: <strong>{metrics.cleaningBeds}</strong></span>
-                <span className="rate">{metrics.occupancyRatePercentage}% Ocupação</span>
+              <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-muted-foreground">
+                <span>Total: <strong className="font-mono text-foreground">{metrics.totalBeds}</strong></span>
+                <span>Ocupados: <strong className="font-mono text-foreground">{metrics.occupiedBeds}</strong></span>
+                <span>Livres: <strong className="font-mono text-foreground">{metrics.availableBeds}</strong></span>
+                <span>Higienização: <strong className="font-mono text-foreground">{metrics.cleaningBeds}</strong></span>
+                <span className="rounded-full bg-primary-soft px-2.5 py-0.5 font-mono font-bold text-primary">
+                  {metrics.occupancyRatePercentage}% Ocupação
+                </span>
               </div>
-            </div>
+            </CardHeader>
 
-            <div className="vl-bed-grid">
-              {beds.map((bed) => (
-                <div key={bed.id} className={`vl-bed-card ${bed.status}`}>
-                  <div className="vl-bed-card-head">
-                    <span className="vl-bed-number">
-                      {bed.bedNumber} {bed.isExtra && <span>(Extra)</span>}
-                    </span>
-                    {getStatusBadge(bed.status)}
-                  </div>
-
-                  {bed.isIsolation && <span className="vl-badge vl-badge-info">Isolamento</span>}
-
-                  {bed.isExtra && bed.status === 'available' && bed.expiresAt && (
-                    <p className="vl-bed-patient">Expira em {minutesUntil(bed.expiresAt)} min se não for utilizado</p>
-                  )}
-
-                  {bed.status === 'occupied' && (
-                    <div className="vl-bed-patient">
-                      <p>{bed.patientName || 'Paciente em Observação'}</p>
-                      {bed.stayHours !== undefined && (
-                        <p className={bed.is24hLimitExceeded ? 'stay-exceeded' : undefined}>
-                          Permanência: {bed.stayHours}h {bed.is24hLimitExceeded && '⚠️ Estouro de 24h!'}
-                        </p>
-                      )}
+            <CardContent>
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3">
+                {beds.map((bed) => (
+                  <div
+                    key={bed.id}
+                    className="flex flex-col gap-2 rounded-md border border-border p-3"
+                    style={{ backgroundColor: STATUS_BG[bed.status] }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-sm font-bold">
+                        {bed.bedNumber} {bed.isExtra && <span className="font-normal">(Extra)</span>}
+                      </span>
+                      {getStatusBadge(bed.status)}
                     </div>
-                  )}
 
-                  {bed.status === 'cleaning' && (
-                    <p className="vl-bed-patient">Leito aguardando conclusão da higienização...</p>
-                  )}
+                    {bed.isIsolation && <Badge>Isolamento</Badge>}
 
-                  <div className="vl-bed-card-actions">
-                    {bed.status === 'available' && onSelectBed && (
-                      <button type="button" className="vl-btn-sm vl-btn-success" onClick={() => onSelectBed(bed)}>
-                        Alocar
-                      </button>
+                    {bed.isExtra && bed.status === 'available' && bed.expiresAt && (
+                      <p className="text-xs text-muted-foreground">Expira em {minutesUntil(bed.expiresAt)} min se não for utilizado</p>
                     )}
 
                     {bed.status === 'occupied' && (
-                      <>
-                        {onOpenTransferModal && (
-                          <button type="button" className="vl-btn-sm" onClick={() => onOpenTransferModal(bed)}>
-                            Transferir
-                          </button>
+                      <div className="text-xs">
+                        <p className="m-0">{bed.patientName || 'Paciente em Observação'}</p>
+                        {bed.stayHours !== undefined && (
+                          <p className={`m-0 ${bed.is24hLimitExceeded ? 'font-bold text-destructive' : ''}`}>
+                            Permanência: {bed.stayHours}h {bed.is24hLimitExceeded && '⚠️ Estouro de 24h!'}
+                          </p>
                         )}
-                        {onDischargeBed && bed.allocationId && (
-                          <button
-                            type="button"
-                            className="vl-btn-sm vl-btn-danger"
-                            onClick={() => onDischargeBed(bed.allocationId!)}
-                          >
-                            Alta Leito
-                          </button>
+                        {bed.encounterId && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            <Button asChild variant="ghost" size="sm">
+                              <a href={`#/atendimentos/${bed.encounterId}/consulta`}>Ficha clínica</a>
+                            </Button>
+                            <Button asChild variant="ghost" size="sm">
+                              <a href={`#/atendimentos/${bed.encounterId}/enfermagem`}>Enfermagem</a>
+                            </Button>
+                            <Button asChild variant="ghost" size="sm">
+                              <a href={`#/atendimentos/${bed.encounterId}/acoes`}>Solicitações</a>
+                            </Button>
+                          </div>
                         )}
-                      </>
+                      </div>
                     )}
 
-                    {bed.status === 'cleaning' && onUpdateBedStatus && (
-                      <button
-                        type="button"
-                        className="vl-btn-sm vl-btn-warning"
-                        onClick={() => onUpdateBedStatus(bed.id, 'available')}
-                      >
-                        Concluir Higienização
-                      </button>
+                    {bed.status === 'cleaning' && (
+                      <p className="text-xs text-muted-foreground">Leito aguardando conclusão da higienização...</p>
                     )}
+
+                    <div className="mt-auto flex flex-wrap justify-end gap-1.5 border-t border-border pt-2">
+                      {bed.status === 'available' && onSelectBed && (
+                        <Button size="sm" onClick={() => onSelectBed(bed)}>
+                          Alocar
+                        </Button>
+                      )}
+
+                      {bed.status === 'occupied' && (
+                        <>
+                          {onOpenTransferModal && (
+                            <Button size="sm" variant="secondary" onClick={() => onOpenTransferModal(bed)}>
+                              Transferir
+                            </Button>
+                          )}
+                          {onDischargeBed && bed.allocationId && (
+                            <Button size="sm" variant="destructive" onClick={() => onDischargeBed(bed.allocationId!)}>
+                              Alta Leito
+                            </Button>
+                          )}
+                        </>
+                      )}
+
+                      {bed.status === 'cleaning' && onUpdateBedStatus && (
+                        <Button size="sm" onClick={() => onUpdateBedStatus(bed.id, 'available')}>
+                          Concluir Higienização
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         ))
       )}
     </div>

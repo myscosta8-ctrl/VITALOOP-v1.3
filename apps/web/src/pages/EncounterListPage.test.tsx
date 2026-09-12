@@ -3,6 +3,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { EncounterListPage } from './EncounterListPage.js';
 import type { Encounter } from '../lib/encounters-api.js';
 
@@ -15,6 +16,17 @@ const mockApi = { get, post, patch };
 vi.mock('../context/session-context.js', () => ({
   useSession: () => ({ api: mockApi }),
 }));
+
+// TanStack Query (Fase 3, 11/09/2026) exige um QueryClientProvider no
+// contexto — cliente novo por teste evita cache vazando entre casos.
+const renderPage = () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <EncounterListPage />
+    </QueryClientProvider>,
+  );
+};
 
 describe('EncounterListPage UI Component', () => {
   const mockEncounters: Encounter[] = [
@@ -39,7 +51,7 @@ describe('EncounterListPage UI Component', () => {
   it('carrega e lista os atendimentos', async () => {
     get.mockResolvedValue(mockEncounters);
 
-    render(<EncounterListPage />);
+    renderPage();
 
     expect(await screen.findByText('Atendimentos abertos (UPA 24h)')).toBeInTheDocument();
     expect(await screen.findByText('Dor no peito')).toBeInTheDocument();
@@ -54,7 +66,7 @@ describe('EncounterListPage UI Component', () => {
     });
 
     const user = userEvent.setup();
-    render(<EncounterListPage />);
+    renderPage();
 
     const advanceBtn = await screen.findByText('Avançar Status');
     await user.click(advanceBtn);

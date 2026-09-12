@@ -6,7 +6,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PatientDetailPage } from './PatientDetailPage.js';
+
+const renderPage = (patientId: string) => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <PatientDetailPage patientId={patientId} />
+    </QueryClientProvider>,
+  );
+};
 
 const get = vi.fn();
 const post = vi.fn();
@@ -56,7 +66,7 @@ describe('PatientDetailPage', () => {
 
   it('carrega e mostra a identificação do paciente (Doc 1 §12)', async () => {
     routesFor();
-    render(<PatientDetailPage patientId="p1" />);
+    renderPage("p1");
     expect(screen.getByText(/carregando/i)).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Maria Souza' })).toBeInTheDocument();
     expect(screen.getByText('2026000001')).toBeInTheDocument();
@@ -67,7 +77,7 @@ describe('PatientDetailPage', () => {
     routesFor({ contacts: [{ id: 'c1', name: 'Ana Contato', phone: '11988887777', isEmergency: true }] });
     post.mockResolvedValueOnce({ id: 'c2', name: 'Novo Contato', phone: '11977776666', isEmergency: false });
     const user = userEvent.setup();
-    render(<PatientDetailPage patientId="p1" />);
+    renderPage("p1");
     await screen.findByText(/ana contato/i);
 
     await user.type(screen.getByLabelText(/^nome$/i), 'Novo Contato');
@@ -80,7 +90,7 @@ describe('PatientDetailPage', () => {
     routesFor({ allergies: [{ id: 'a1', substance: 'Dipirona', reaction: null, severity: 'moderate', status: 'active' }] });
     patch.mockResolvedValueOnce({ id: 'a1', substance: 'Dipirona', status: 'resolved' });
     const user = userEvent.setup();
-    render(<PatientDetailPage patientId="p1" />);
+    renderPage("p1");
     await screen.findByText(/dipirona/i);
 
     await user.selectOptions(screen.getByLabelText(/alterar status/i), 'resolved');
@@ -91,7 +101,7 @@ describe('PatientDetailPage', () => {
     routesFor({ antecedents: [{ id: 'an1', description: 'Hipertensão' }] });
     post.mockResolvedValueOnce({ id: 'an2', description: 'Diabetes' });
     const user = userEvent.setup();
-    render(<PatientDetailPage patientId="p1" />);
+    renderPage("p1");
     await screen.findByText(/hipertensão/i);
 
     await user.type(screen.getByLabelText(/descrição/i, { selector: '#antecedent-description' }), 'Diabetes');
@@ -103,7 +113,7 @@ describe('PatientDetailPage', () => {
     routesFor({ medications: [{ id: 'm1', medication: 'Losartana' }] });
     post.mockResolvedValueOnce({ id: 'm2', medication: 'Metformina' });
     const user = userEvent.setup();
-    render(<PatientDetailPage patientId="p1" />);
+    renderPage("p1");
     await screen.findByText(/losartana/i);
 
     await user.type(screen.getByLabelText(/^medicamento$/i), 'Metformina');
@@ -117,7 +127,7 @@ describe('PatientDetailPage', () => {
     routesFor({ problems: [{ id: 'pr1', description: 'Diabetes tipo 2', status: 'active' }] });
     post.mockResolvedValueOnce({ id: 'pr2', description: 'Asma', status: 'active' });
     const user = userEvent.setup();
-    render(<PatientDetailPage patientId="p1" />);
+    renderPage("p1");
     await screen.findByText(/diabetes tipo 2/i);
 
     await user.type(screen.getByLabelText(/descrição/i, { selector: '#problem-description' }), 'Asma');
@@ -131,7 +141,7 @@ describe('PatientDetailPage', () => {
         { eventId: 'e1', type: 'PatientRegistered', aggregateType: 'patient', actorUserId: 'u1', occurredAt: '2026-08-20T10:00:00Z', payload: {} },
       ],
     });
-    render(<PatientDetailPage patientId="p1" />);
+    renderPage("p1");
     expect(await screen.findByText(/PatientRegistered/)).toBeInTheDocument();
   });
 
@@ -139,7 +149,7 @@ describe('PatientDetailPage', () => {
     routesFor();
     patch.mockResolvedValueOnce({ ...patient, status: 'inactive' });
     const user = userEvent.setup();
-    render(<PatientDetailPage patientId="p1" />);
+    renderPage("p1");
     await screen.findByRole('heading', { name: 'Maria Souza' });
 
     await user.click(screen.getByRole('button', { name: /inativar paciente/i }));

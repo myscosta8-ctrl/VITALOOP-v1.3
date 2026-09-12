@@ -7,8 +7,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PatientRegisterPage } from './PatientRegisterPage.js';
 import { ApiError } from '../lib/api-client.js';
+
+const renderPage = () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <PatientRegisterPage />
+    </QueryClientProvider>,
+  );
+};
 
 const post = vi.fn();
 const patch = vi.fn();
@@ -31,14 +41,14 @@ describe('PatientRegisterPage', () => {
   });
 
   it('1. abre a tela de cadastro com o formulário visível', () => {
-    render(<PatientRegisterPage />);
+    renderPage();
     expect(screen.getByRole('heading', { name: /cadastro de paciente/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/nome completo/i)).toBeInTheDocument();
   });
 
   it('3. impede envio de formulário vazio (nome obrigatório)', async () => {
     const user = userEvent.setup();
-    render(<PatientRegisterPage />);
+    renderPage();
     await user.click(screen.getByRole('button', { name: /cadastrar paciente/i }));
     expect(await screen.findByText(/nome completo é obrigatório/i)).toBeInTheDocument();
     expect(post).not.toHaveBeenCalled();
@@ -46,7 +56,7 @@ describe('PatientRegisterPage', () => {
 
   it('4. valida campos obrigatórios antes de chamar a API', async () => {
     const user = userEvent.setup();
-    render(<PatientRegisterPage />);
+    renderPage();
     await user.click(screen.getByRole('button', { name: /cadastrar paciente/i }));
     expect(post).not.toHaveBeenCalled();
   });
@@ -56,7 +66,7 @@ describe('PatientRegisterPage', () => {
       new ApiError(400, { code: 'PATIENT_INVALID_CPF', message: 'CPF inválido.', requestId: 'r1' }),
     );
     const user = userEvent.setup();
-    render(<PatientRegisterPage />);
+    renderPage();
     await fillRequiredAndSubmit(user);
     expect(await screen.findByText(/cpf inválido/i)).toBeInTheDocument();
   });
@@ -66,7 +76,7 @@ describe('PatientRegisterPage', () => {
       new ApiError(400, { code: 'PATIENT_INVALID_CNS', message: 'CNS inválido.', requestId: 'r1' }),
     );
     const user = userEvent.setup();
-    render(<PatientRegisterPage />);
+    renderPage();
     await fillRequiredAndSubmit(user);
     expect(await screen.findByText(/cns inválido/i)).toBeInTheDocument();
   });
@@ -78,7 +88,7 @@ describe('PatientRegisterPage', () => {
       fullName: 'Maria Souza',
     });
     const user = userEvent.setup();
-    render(<PatientRegisterPage />);
+    renderPage();
     await fillRequiredAndSubmit(user);
     expect(await screen.findByText(/cadastrado com sucesso/i)).toBeInTheDocument();
     expect(screen.getByText(/2026000001/)).toBeInTheDocument();
@@ -89,7 +99,7 @@ describe('PatientRegisterPage', () => {
       new ApiError(500, { code: 'INTERNAL_ERROR', message: 'Erro interno.', requestId: 'r1' }),
     );
     const user = userEvent.setup();
-    render(<PatientRegisterPage />);
+    renderPage();
     await fillRequiredAndSubmit(user);
     expect(await screen.findByText(/erro interno/i)).toBeInTheDocument();
   });
@@ -105,7 +115,7 @@ describe('PatientRegisterPage', () => {
     );
     post.mockResolvedValueOnce({ id: 'p2', medicalRecordNumber: '2026000002', fullName: 'Maria Souza' });
     const user = userEvent.setup();
-    render(<PatientRegisterPage />);
+    renderPage();
     await fillRequiredAndSubmit(user);
 
     expect(await screen.findByText(/possível duplicidade encontrada/i)).toBeInTheDocument();
@@ -130,7 +140,7 @@ describe('PatientRegisterPage', () => {
       }),
     );
     const user = userEvent.setup();
-    render(<PatientRegisterPage />);
+    renderPage();
     await fillRequiredAndSubmit(user);
 
     expect(await screen.findByText(/conflito de identidade encontrado/i)).toBeInTheDocument();

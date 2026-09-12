@@ -2,6 +2,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ObservabilityDashboard } from './ObservabilityDashboard.js';
 
 const get = vi.fn();
@@ -12,6 +13,15 @@ const mockApi = { get, post };
 vi.mock('../context/session-context.js', () => ({
   useSession: () => ({ api: mockApi }),
 }));
+
+const renderPage = () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <ObservabilityDashboard />
+    </QueryClientProvider>,
+  );
+};
 
 describe('ObservabilityDashboard Component Test (PRD-011..020)', () => {
   beforeEach(() => {
@@ -34,7 +44,7 @@ describe('ObservabilityDashboard Component Test (PRD-011..020)', () => {
       return Promise.reject(new Error(`unexpected GET ${path}`));
     });
 
-    render(<ObservabilityDashboard />);
+    renderPage();
 
     expect(screen.getByTestId('observability-dashboard')).toBeTruthy();
 

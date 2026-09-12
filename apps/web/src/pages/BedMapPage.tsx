@@ -1,51 +1,73 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSession } from '../context/session-context.js';
 import { ApiError } from '../lib/api-client.js';
 import {
   createBedApi,
   type BedData,
-  type BedSectorData,
-  type SectorMapData,
 } from '../lib/bed-api.js';
+import { createEncountersApi } from '../lib/encounters-api.js';
 import { BedOccupancyMap } from '../components/BedOccupancyMap.js';
 import { BedTransferModal } from '../components/BedTransferModal.js';
 import { BedAllocationModal } from '../components/BedAllocationModal.js';
+import { toast } from '../lib/toast.js';
+
+const errMsg = (err: unknown, fallback: string): string => (err instanceof ApiError ? err.message : fallback);
 
 export const BedMapPage: React.FC = () => {
   const { api } = useSession();
   const bedApi = createBedApi(api);
+  const encountersApi = createEncountersApi(api);
+  const queryClient = useQueryClient();
 
-  const [sectorsMap, setSectorsMap] = useState<SectorMapData[]>([]);
-  const [sectors, setSectors] = useState<BedSectorData[]>([]);
   const [transferBed, setTransferBed] = useState<BedData | null>(null);
   const [allocationBed, setAllocationBed] = useState<BedData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setErrorMessage(null);
-    try {
-      const [map, sectorList] = await Promise.all([bedApi.getBedsMap(), bedApi.getSectors()]);
-      setSectorsMap(map);
-      setSectors(sectorList);
-    } catch (e) {
-      setErrorMessage(e instanceof ApiError ? e.message : 'Falha ao carregar o mapa de leitos.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const mapQuery = useQuery({ queryKey: ['beds-map'], queryFn: () => bedApi.getBedsMap() });
+  const sectorsQuery = useQuery({ queryKey: ['bed-sectors'], queryFn: () => bedApi.getSectors() });
+  const encountersQuery = useQuery({ queryKey: ['encounters'], queryFn: () => encountersApi.listEncounters() });
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const sectorsMap = mapQuery.data ?? [];
+  const sectors = sectorsQuery.data ?? [];
+  const encounters = encountersQuery.data ?? [];
+  const loading = mapQuery.isLoading || sectorsQuery.isLoading || encountersQuery.isLoading;
+  const errorMessage = mapQuery.isError
+    ? errMsg(mapQuery.error, 'Falha ao carregar o mapa de leitos.')
+    : sectorsQuery.isError
+      ? errMsg(sectorsQuery.error, 'Falha ao carregar os setores.')
+      : encountersQuery.isError
+        ? errMsg(encountersQuery.error, 'Falha ao carregar os atendimentos.')
+        : null;
+
+  const reload = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['beds-map'] }),
+      queryClient.invalidateQueries({ queryKey: ['bed-sectors'] }),
+      queryClient.invalidateQueries({ queryKey: ['encounters'] }),
+    ]);
+
+  // Só oferece, na alocação de leito, atendimentos que ainda não têm leito
+  // ativo e que não estão encerrados — antes o campo era texto livre e
+  // exigia que quem alocasse já soubesse o UUID do atendimento de cor
+  // (achado de auditoria em 10/09/2026: PA e Internação pareciam
+  // desconectados por causa dessa falta de busca).
+  const allocatedEncounterIds = new Set(
+    sectorsMap.flatMap((s) => s.beds).map((b) => b.encounterId).filter((id): id is string => Boolean(id)),
+  );
+  const candidateEncounters = encounters.filter(
+    (e) => e.status !== 'completed' && e.status !== 'canceled' && !allocatedEncounterIds.has(e.id),
+  );
 
   return (
     <main>
-      <h1>Mapa de leitos</h1>
-      {errorMessage && <p role="alert">{errorMessage}</p>}
+      <h1>Prontuário de Internação</h1>
+      {errorMessage && (
+        <p role="alert" className="mb-4 rounded-md bg-[var(--color-danger-soft)] px-3 py-2 text-sm text-[var(--color-danger)]">
+          {errorMessage}
+        </p>
+      )}
       {loading ? (
-        <p role="status">Carregando…</p>
+        <p role="status" className="text-sm text-muted-foreground">Carregando…</p>
       ) : (
         <BedOccupancyMap
           sectorsMap={sectorsMap}
@@ -53,11 +75,23 @@ export const BedMapPage: React.FC = () => {
             if (bed.status === 'available') setAllocationBed(bed);
           }}
           onUpdateBedStatus={(bedId, status) => {
-            void bedApi.updateBedStatus(bedId, status).then(load);
+            void bedApi
+              .updateBedStatus(bedId, status)
+              .then(() => {
+                toast.success('Status do leito atualizado.');
+                return reload();
+              })
+              .catch((e) => toast.error(errMsg(e, 'Falha ao atualizar status do leito.')));
           }}
           onOpenTransferModal={(bed) => setTransferBed(bed)}
           onDischargeBed={(allocationId) => {
-            void bedApi.dischargeBed(allocationId).then(load);
+            void bedApi
+              .dischargeBed(allocationId)
+              .then(() => {
+                toast.success('Alta do leito registrada.');
+                return reload();
+              })
+              .catch((e) => toast.error(errMsg(e, 'Falha ao registrar alta do leito.')));
           }}
         />
       )}
@@ -70,7 +104,8 @@ export const BedMapPage: React.FC = () => {
           onConfirmTransfer={async (allocationId, targetBedId, transferReason) => {
             await bedApi.transferBed(allocationId, targetBedId, transferReason);
             setTransferBed(null);
-            await load();
+            toast.success('Leito transferido com sucesso.');
+            await reload();
           }}
         />
       )}
@@ -79,15 +114,18 @@ export const BedMapPage: React.FC = () => {
         <BedAllocationModal
           bed={allocationBed}
           sectors={sectors}
+          candidateEncounters={candidateEncounters}
           onClose={() => setAllocationBed(null)}
           onConfirmAllocation={async (encounterId, bedId, patientId, regulationCode) => {
             await bedApi.allocateBed(encounterId, bedId, patientId, regulationCode);
             setAllocationBed(null);
-            await load();
+            toast.success('Leito alocado com sucesso.');
+            await reload();
           }}
           onCreateExtraBed={async (sectorId, bedNumber, isIsolation) => {
             await bedApi.createExtraBed(sectorId, bedNumber, isIsolation);
-            await load();
+            toast.success('Leito extra criado.');
+            await reload();
           }}
         />
       )}

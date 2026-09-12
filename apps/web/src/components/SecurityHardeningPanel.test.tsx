@@ -2,6 +2,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SecurityHardeningPanel } from './SecurityHardeningPanel.js';
 
 const get = vi.fn();
@@ -12,6 +13,15 @@ const mockApi = { get, post };
 vi.mock('../context/session-context.js', () => ({
   useSession: () => ({ api: mockApi }),
 }));
+
+const renderPage = () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <SecurityHardeningPanel />
+    </QueryClientProvider>,
+  );
+};
 
 describe('SecurityHardeningPanel Component Test (SEC-T-001..011)', () => {
   beforeEach(() => {
@@ -33,7 +43,7 @@ describe('SecurityHardeningPanel Component Test (SEC-T-001..011)', () => {
     });
     post.mockResolvedValue({ id: 'evt-123', eventType: 'IDOR_ATTEMPT' });
 
-    render(<SecurityHardeningPanel />);
+    renderPage();
 
     expect(screen.getByTestId('security-hardening-panel')).toBeTruthy();
     expect(screen.getByText('Painel de Segurança Técnica e Hardening (SEC-T-001..011)')).toBeTruthy();
@@ -42,7 +52,7 @@ describe('SecurityHardeningPanel Component Test (SEC-T-001..011)', () => {
       expect(get).toHaveBeenCalledWith('/api/v1/security/hardening-status');
     });
 
-    expect(screen.getByTestId('security-checklist')).toBeTruthy();
+    expect(await screen.findByTestId('security-checklist')).toBeTruthy();
 
     const alertBtn = screen.getByTestId('test-alert-btn');
     fireEvent.click(alertBtn);

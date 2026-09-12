@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BedData, SectorMapData } from '../lib/bed-api';
 import { Overlay } from './BedAllocationModal.js';
+import { Button } from './ui/button.js';
 
 interface BedTransferModalProps {
   currentBed: BedData;
@@ -58,7 +59,11 @@ export const BedTransferModal: React.FC<BedTransferModalProps> = ({
 
   return (
     <Overlay title="Transferência Interna de Leito (BED-006)" onClose={onClose}>
-      {error && <div role="alert">{error}</div>}
+      {error && (
+        <p role="alert" className="mb-3 rounded-md bg-[var(--color-danger-soft)] px-3 py-2 text-sm text-[var(--color-danger)]">
+          {error}
+        </p>
+      )}
 
       <div className="vl-info-box">
         <p style={{ margin: 0, fontWeight: 700 }}>Leito de Origem: {currentBed.bedNumber}</p>
@@ -89,12 +94,12 @@ export const BedTransferModal: React.FC<BedTransferModalProps> = ({
         />
 
         <div className="vl-modal-actions">
-          <button type="button" className="vl-btn-ghost" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancelar
-          </button>
-          <button type="submit" disabled={loading || availableBeds.length === 0}>
+          </Button>
+          <Button type="submit" disabled={loading || availableBeds.length === 0}>
             {loading ? 'Transferindo...' : 'Confirmar Transferência'}
-          </button>
+          </Button>
         </div>
       </form>
     </Overlay>

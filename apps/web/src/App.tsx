@@ -10,6 +10,9 @@
  */
 
 import { useEffect, useState } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'sonner';
+import { queryClient } from './lib/query-client.js';
 import { SessionProvider, useSession } from './context/session-context.js';
 import { AppShell } from './components/AppShell.js';
 import { ShiftSectorGate } from './components/ShiftSectorGate.js';
@@ -279,7 +282,21 @@ const Shell = (): JSX.Element => {
 };
 
 export const App = (): JSX.Element => (
-  <SessionProvider>
-    <Shell />
-  </SessionProvider>
+  <QueryClientProvider client={queryClient}>
+    <SessionProvider>
+      <Shell />
+      <Toaster
+        position="top-right"
+        richColors
+        toastOptions={{
+          style: {
+            background: 'var(--color-surface)',
+            color: 'var(--color-text)',
+            border: '1px solid var(--color-border)',
+            fontFamily: 'var(--font-ui)',
+          },
+        }}
+      />
+    </SessionProvider>
+  </QueryClientProvider>
 );

@@ -14,6 +14,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createApiClient, ApiError, type ApiClient } from '../lib/api-client.js';
+import { createDemoApiClient } from '../lib/demo-api-client.js';
 
 export interface MeResponse {
   readonly authUserId: string;
@@ -44,18 +45,28 @@ const API_BASE_URL =
 
 export const SessionProvider = ({ children }: { children: ReactNode }): JSX.Element => {
   const [token, setToken] = useState<string | null>(null);
+  const [isDemo, setIsDemo] = useState(false);
   const [state, setState] = useState<SessionState>({
     status: 'idle',
     identity: null,
     error: null,
   });
 
+  // Antes o Modo de Demonstração só fingia a identidade — todo GET/POST
+  // real caía no backend de verdade sem token e voltava 401
+  // ("Autenticação necessária." em toda tela). Agora, enquanto o modo demo
+  // está ativo, o cliente de API é substituído por um mock em memória
+  // (ver demo-api-client.ts) com pacientes/leitos/profissionais fictícios.
   const api = useMemo(
-    () => createApiClient({ baseUrl: API_BASE_URL, getAccessToken: () => token }),
-    [token],
+    () =>
+      isDemo
+        ? createDemoApiClient()
+        : createApiClient({ baseUrl: API_BASE_URL, getAccessToken: () => token }),
+    [token, isDemo],
   );
 
   const loginDemo = useCallback(() => {
+    setIsDemo(true);
     setState({
       status: 'authenticated',
       identity: {
@@ -80,6 +91,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }): JSX.Elem
 
   const login = useCallback(
     async (username: string, password: string) => {
+      setIsDemo(false);
       setState({ status: 'authenticating', identity: null, error: null });
       try {
         const result = await api.post<{ accessToken: string }>('/api/v1/auth/login', {
@@ -97,12 +109,13 @@ export const SessionProvider = ({ children }: { children: ReactNode }): JSX.Elem
 
   const logout = useCallback(async () => {
     try {
-      await api.post('/api/v1/auth/logout');
+      if (!isDemo) await api.post('/api/v1/auth/logout');
     } finally {
+      setIsDemo(false);
       setToken(null);
       setState({ status: 'idle', identity: null, error: null });
     }
-  }, [api]);
+  }, [api, isDemo]);
 
   useEffect(() => {
     if (token) void refreshIdentity();

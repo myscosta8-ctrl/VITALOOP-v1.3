@@ -2,6 +2,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { InteroperabilityDashboardPage } from './InteroperabilityDashboardPage.js';
 
 const get = vi.fn();
@@ -12,6 +13,15 @@ const mockApi = { get, post };
 vi.mock('../context/session-context.js', () => ({
   useSession: () => ({ api: mockApi }),
 }));
+
+const renderPage = () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <InteroperabilityDashboardPage />
+    </QueryClientProvider>,
+  );
+};
 
 describe('InteroperabilityDashboardPage Component Test (INT-001..003, INT-009)', () => {
   beforeEach(() => {
@@ -31,7 +41,7 @@ describe('InteroperabilityDashboardPage Component Test (INT-001..003, INT-009)',
     ]);
     post.mockResolvedValue({ id: 'msg-2', messageType: 'HL7_ORU_R01', status: 'processed' });
 
-    render(<InteroperabilityDashboardPage />);
+    renderPage();
 
     expect(screen.getByTestId('interoperability-dashboard')).toBeTruthy();
     expect(screen.getByText('Painel de Interoperabilidade e Barramento FHIR R4 / HL7 (INT-001..003, INT-009)')).toBeTruthy();
@@ -40,7 +50,7 @@ describe('InteroperabilityDashboardPage Component Test (INT-001..003, INT-009)',
       expect(get).toHaveBeenCalledWith('/api/v1/integration/messages');
     });
 
-    expect(screen.getByTestId('messages-table')).toBeTruthy();
+    expect(await screen.findByTestId('messages-table')).toBeTruthy();
 
     const sendBtn = screen.getByTestId('send-hl7-btn');
     fireEvent.click(sendBtn);

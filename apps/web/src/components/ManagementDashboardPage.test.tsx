@@ -2,6 +2,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ManagementDashboardPage } from './ManagementDashboardPage.js';
 
 const get = vi.fn();
@@ -13,6 +14,15 @@ const mockApi = { get, post, getText };
 vi.mock('../context/session-context.js', () => ({
   useSession: () => ({ api: mockApi }),
 }));
+
+const renderPage = () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <ManagementDashboardPage />
+    </QueryClientProvider>,
+  );
+};
 
 describe('ManagementDashboardPage Component Test (MGT-001..010)', () => {
   beforeEach(() => {
@@ -41,7 +51,7 @@ describe('ManagementDashboardPage Component Test (MGT-001..010)', () => {
       ],
     });
 
-    render(<ManagementDashboardPage />);
+    renderPage();
 
     expect(screen.getByTestId('loading-dashboard')).toBeTruthy();
 

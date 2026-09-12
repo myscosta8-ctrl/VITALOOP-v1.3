@@ -1,18 +1,23 @@
 import React, { useState } from 'react';
 import { useSession } from '../context/session-context.js';
 import { createTriagesApi, ManchesterRiskColor } from '../lib/triages-api.js';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
+import { Button } from '../components/ui/button.js';
 
 interface TriageOpenPageProps {
   encounterId: string;
   onSuccess?: () => void;
 }
 
+// Valores canônicos (--triage-*) vivem em global.css — ver
+// QueueDashboardPage.tsx MANCHESTER_BADGE_STYLE (mesma fonte, era
+// duplicado em hex aqui antes de 10/09/2026).
 export const MANCHESTER_COLOR_LABEL: Record<ManchesterRiskColor, { label: string; bg: string; target: string }> = {
-  red: { label: 'Vermelho (Emergência)', bg: '#ef4444', target: '0 minutos (Atendimento Imediato)' },
-  orange: { label: 'Laranja (Muito Urgente)', bg: '#f97316', target: '10 minutos' },
-  yellow: { label: 'Amarelo (Urgente)', bg: '#eab308', target: '60 minutos' },
-  green: { label: 'Verde (Pouco Urgente)', bg: '#22c55e', target: '120 minutos' },
-  blue: { label: 'Azul (Não Urgente)', bg: '#3b82f6', target: '240 minutos' },
+  red: { label: 'Vermelho (Emergência)', bg: 'var(--triage-red-bg)', target: '0 minutos (Atendimento Imediato)' },
+  orange: { label: 'Laranja (Muito Urgente)', bg: 'var(--triage-orange-bg)', target: '10 minutos' },
+  yellow: { label: 'Amarelo (Urgente)', bg: 'var(--triage-yellow-bg)', target: '60 minutos' },
+  green: { label: 'Verde (Pouco Urgente)', bg: 'var(--triage-green-bg)', target: '120 minutos' },
+  blue: { label: 'Azul (Não Urgente)', bg: 'var(--triage-blue-bg)', target: '240 minutos' },
 };
 
 export const TriageOpenPage: React.FC<TriageOpenPageProps> = ({ encounterId, onSuccess }) => {
@@ -90,14 +95,17 @@ export const TriageOpenPage: React.FC<TriageOpenPageProps> = ({ encounterId, onS
   const selectedManchester = MANCHESTER_COLOR_LABEL[riskColor];
 
   return (
-    <div style={{ maxWidth: 800, margin: '20px auto', padding: 20, border: '1px solid #ccc', borderRadius: 8 }}>
-      <h2>Triagem e Classificação de Risco (Manchester)</h2>
-      <p style={{ color: '#666' }}>Atendimento ID: {encounterId}</p>
-
+    <div className="mx-auto max-w-3xl py-5">
+      <Card>
+        <CardHeader>
+          <CardTitle>Triagem e Classificação de Risco (Manchester)</CardTitle>
+          <p className="text-sm text-muted-foreground">Atendimento ID: {encounterId}</p>
+        </CardHeader>
+        <CardContent>
       {errorMsg && (
-        <div style={{ padding: 10, backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: 4, marginBottom: 15 }}>
+        <p role="alert" className="mb-4 rounded-md bg-[var(--color-danger-soft)] px-3 py-2 text-sm text-[var(--color-danger)]">
           {errorMsg}
-        </div>
+        </p>
       )}
 
       <form onSubmit={handleSubmit}>
@@ -314,22 +322,16 @@ export const TriageOpenPage: React.FC<TriageOpenPageProps> = ({ encounterId, onS
         </fieldset>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-          <button
-            type="button"
-            onClick={() => (window.location.hash = '#/atendimentos')}
-            style={{ padding: '8px 16px', background: '#ccc', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-          >
+          <Button type="button" variant="secondary" onClick={() => (window.location.hash = '#/atendimentos')}>
             Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            style={{ padding: '8px 16px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-          >
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Salvando...' : 'Concluir Triagem'}
-          </button>
+          </Button>
         </div>
       </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };

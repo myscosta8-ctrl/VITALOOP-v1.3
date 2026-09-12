@@ -5,6 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PatientSearchPage } from './PatientSearchPage.js';
 import { ApiError } from '../lib/api-client.js';
 
@@ -16,6 +17,15 @@ vi.mock('../context/session-context.js', () => ({
   useSession: () => ({ api: { get, post, patch } }),
 }));
 
+const renderPage = () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <PatientSearchPage />
+    </QueryClientProvider>,
+  );
+};
+
 describe('PatientSearchPage', () => {
   beforeEach(() => {
     get.mockReset();
@@ -25,7 +35,7 @@ describe('PatientSearchPage', () => {
     let resolvePromise: (v: unknown) => void = () => {};
     get.mockReturnValueOnce(new Promise((resolve) => (resolvePromise = resolve)));
     const user = userEvent.setup();
-    render(<PatientSearchPage />);
+    renderPage();
     await user.type(screen.getByLabelText(/^nome$/i), 'Maria');
     await user.click(screen.getByRole('button', { name: /buscar/i }));
     expect(screen.getByText(/carregando/i)).toBeInTheDocument();
@@ -37,7 +47,7 @@ describe('PatientSearchPage', () => {
       { id: 'p1', fullName: 'Maria Souza', socialName: null, medicalRecordNumber: '2026000001', birthDate: null, cpf: null },
     ]);
     const user = userEvent.setup();
-    render(<PatientSearchPage />);
+    renderPage();
     await user.type(screen.getByLabelText(/^nome$/i), 'Maria');
     await user.click(screen.getByRole('button', { name: /buscar/i }));
     expect(await screen.findByText('Maria Souza')).toBeInTheDocument();
@@ -49,7 +59,7 @@ describe('PatientSearchPage', () => {
       { id: 'p2', fullName: 'João Pedro', socialName: null, medicalRecordNumber: '2026000002', birthDate: null, cpf: '11144477735' },
     ]);
     const user = userEvent.setup();
-    render(<PatientSearchPage />);
+    renderPage();
     await user.type(screen.getByLabelText(/^cpf$/i), '11144477735');
     await user.click(screen.getByRole('button', { name: /buscar/i }));
     expect(await screen.findByText('João Pedro')).toBeInTheDocument();
@@ -61,7 +71,7 @@ describe('PatientSearchPage', () => {
       { id: 'p3', fullName: 'Ana Lima', socialName: null, medicalRecordNumber: '2026000003', birthDate: null, cpf: null },
     ]);
     const user = userEvent.setup();
-    render(<PatientSearchPage />);
+    renderPage();
     await user.type(screen.getByLabelText(/^cns$/i), '777082203934924');
     await user.click(screen.getByRole('button', { name: /buscar/i }));
     expect(await screen.findByText('Ana Lima')).toBeInTheDocument();
@@ -73,7 +83,7 @@ describe('PatientSearchPage', () => {
       { id: 'p4', fullName: 'Carlos Alves', socialName: null, medicalRecordNumber: '2026000004', birthDate: null, cpf: null },
     ]);
     const user = userEvent.setup();
-    render(<PatientSearchPage />);
+    renderPage();
     await user.type(screen.getByLabelText(/número de prontuário/i), '2026000004');
     await user.click(screen.getByRole('button', { name: /buscar/i }));
     expect(await screen.findByText('Carlos Alves')).toBeInTheDocument();
@@ -83,7 +93,7 @@ describe('PatientSearchPage', () => {
   it('16. trata ausência de resultados de forma explícita', async () => {
     get.mockResolvedValueOnce([]);
     const user = userEvent.setup();
-    render(<PatientSearchPage />);
+    renderPage();
     await user.type(screen.getByLabelText(/^nome$/i), 'Inexistente');
     await user.click(screen.getByRole('button', { name: /buscar/i }));
     expect(await screen.findByText(/nenhum paciente encontrado/i)).toBeInTheDocument();
@@ -94,7 +104,7 @@ describe('PatientSearchPage', () => {
       new ApiError(403, { code: 'ACCESS_DENIED', message: 'Acesso negado.', requestId: 'r1' }),
     );
     const user = userEvent.setup();
-    render(<PatientSearchPage />);
+    renderPage();
     await user.type(screen.getByLabelText(/^nome$/i), 'Maria');
     await user.click(screen.getByRole('button', { name: /buscar/i }));
     expect(await screen.findByText(/não tem permissão/i)).toBeInTheDocument();
@@ -105,7 +115,7 @@ describe('PatientSearchPage', () => {
       new ApiError(401, { code: 'AUTH_REQUIRED', message: 'Autenticação necessária.', requestId: 'r1' }),
     );
     const user = userEvent.setup();
-    render(<PatientSearchPage />);
+    renderPage();
     await user.type(screen.getByLabelText(/^nome$/i), 'Maria');
     await user.click(screen.getByRole('button', { name: /buscar/i }));
     expect(await screen.findByText(/precisa entrar/i)).toBeInTheDocument();

@@ -8,6 +8,7 @@
  */
 
 import { useState, type FormEvent } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { useSession } from '../context/session-context.js';
 import { ApiError } from '../lib/api-client.js';
 import {
@@ -18,6 +19,7 @@ import {
 } from '../lib/patients-api.js';
 import { DuplicateWarning } from '../components/DuplicateWarning.js';
 import { AccessDeniedPage } from './AccessDeniedPage.js';
+import { Button } from '../components/ui/button.js';
 
 interface FormFields {
   fullName: string;
@@ -53,9 +55,7 @@ type FieldErrors = Partial<Record<keyof FormFields, string>>;
 
 type SubmitState =
   | { readonly kind: 'idle' }
-  | { readonly kind: 'submitting' }
   | { readonly kind: 'duplicate'; readonly matches: ReturnType<typeof parseDuplicateMatches> }
-  | { readonly kind: 'success'; readonly patient: Patient }
   | { readonly kind: 'denied'; readonly reason: 'unauthenticated' | 'forbidden' }
   | { readonly kind: 'error'; readonly message: string };
 
@@ -87,12 +87,10 @@ export const PatientRegisterPage = (): JSX.Element => {
     ...(confirmDuplicate ? { confirmDuplicate: true } : {}),
   });
 
-  const submit = async (confirmDuplicate: boolean): Promise<void> => {
-    setState({ kind: 'submitting' });
-    try {
-      const patient = await patientsApi.create(buildInput(confirmDuplicate));
-      setState({ kind: 'success', patient });
-    } catch (err) {
+  const createMutation = useMutation({
+    mutationFn: (confirmDuplicate: boolean) => patientsApi.create(buildInput(confirmDuplicate)),
+    onSuccess: () => setState({ kind: 'idle' }),
+    onError: (err) => {
       if (!(err instanceof ApiError)) {
         setState({ kind: 'error', message: 'Falha ao cadastrar paciente.' });
         return;
@@ -120,8 +118,8 @@ export const PatientRegisterPage = (): JSX.Element => {
         return;
       }
       setState({ kind: 'error', message: err.message });
-    }
-  };
+    },
+  });
 
   const onSubmit = (e: FormEvent): void => {
     e.preventDefault();
@@ -130,24 +128,27 @@ export const PatientRegisterPage = (): JSX.Element => {
       setFieldErrors({ fullName: 'Nome completo é obrigatório.' });
       return;
     }
-    void submit(false);
+    createMutation.mutate(false);
   };
 
   if (state.kind === 'denied') return <AccessDeniedPage reason={state.reason} />;
 
-  if (state.kind === 'success') {
+  if (createMutation.isSuccess) {
+    const patient: Patient = createMutation.data;
     return (
       <main aria-labelledby="patient-register-heading">
         <h1 id="patient-register-heading">Cadastro de paciente</h1>
         <p role="status">
-          Paciente cadastrado com sucesso. Prontuário {state.patient.medicalRecordNumber}.
+          Paciente cadastrado com sucesso. Prontuário {patient.medicalRecordNumber}.
         </p>
-        <p>
-          <a href={`#/pacientes/${state.patient.id}`}>Abrir prontuário</a>
-        </p>
-        <button type="button" onClick={() => { setForm(emptyForm); setState({ kind: 'idle' }); }}>
-          Cadastrar outro paciente
-        </button>
+        <div className="mt-4 flex gap-2">
+          <Button asChild variant="secondary">
+            <a href={`#/pacientes/${patient.id}`}>Abrir prontuário</a>
+          </Button>
+          <Button type="button" variant="ghost" onClick={() => { setForm(emptyForm); createMutation.reset(); }}>
+            Cadastrar outro paciente
+          </Button>
+        </div>
       </main>
     );
   }
@@ -160,7 +161,7 @@ export const PatientRegisterPage = (): JSX.Element => {
         <DuplicateWarning
           matches={state.matches}
           confirming={false}
-          onConfirm={() => void submit(true)}
+          onConfirm={() => createMutation.mutate(true)}
           onCancel={() => setState({ kind: 'idle' })}
         />
       )}
@@ -228,9 +229,9 @@ export const PatientRegisterPage = (): JSX.Element => {
           <label htmlFor="state">Estado</label>
           <input id="state" value={form.state} onChange={(e) => setField('state', e.target.value)} />
 
-          <button type="submit" disabled={state.kind === 'submitting'}>
-            {state.kind === 'submitting' ? 'Cadastrando…' : 'Cadastrar paciente'}
-          </button>
+          <Button type="submit" className="mt-4" disabled={createMutation.isPending}>
+            {createMutation.isPending ? 'Cadastrando…' : 'Cadastrar paciente'}
+          </Button>
 
           {state.kind === 'error' && <p role="alert">{state.message}</p>}
         </form>

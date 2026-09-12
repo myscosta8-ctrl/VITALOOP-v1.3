@@ -46,7 +46,7 @@ describe('Componente BedOccupancyMap', () => {
 
     render(<BedOccupancyMap sectorsMap={mockMapData} />);
 
-    expect(screen.getByText('Mapa de Ocupação de Leitos UPA 24h')).toBeDefined();
+    expect(screen.getByText('Ocupação de leitos por setor — UPA 24h')).toBeDefined();
     expect(screen.getByText('Observação Adulto')).toBeDefined();
     expect(screen.getByText('50% Ocupação')).toBeDefined();
     expect(screen.getByText('Leito 01')).toBeDefined();

@@ -2,6 +2,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { QualityAccessibilityDashboard } from './QualityAccessibilityDashboard.js';
 
 const get = vi.fn();
@@ -12,6 +13,15 @@ const mockApi = { get, post };
 vi.mock('../context/session-context.js', () => ({
   useSession: () => ({ api: mockApi }),
 }));
+
+const renderPage = () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <QualityAccessibilityDashboard />
+    </QueryClientProvider>,
+  );
+};
 
 describe('QualityAccessibilityDashboard Component Test (QLT-001..015)', () => {
   beforeEach(() => {
@@ -34,7 +44,7 @@ describe('QualityAccessibilityDashboard Component Test (QLT-001..015)', () => {
       return Promise.reject(new Error(`unexpected POST ${path}`));
     });
 
-    render(<QualityAccessibilityDashboard />);
+    renderPage();
 
     expect(screen.getByTestId('quality-accessibility-dashboard')).toBeTruthy();
     expect(screen.getByText('Painel de Qualidade Global, Impressão PDF & Acessibilidade (QLT-001..015)')).toBeTruthy();

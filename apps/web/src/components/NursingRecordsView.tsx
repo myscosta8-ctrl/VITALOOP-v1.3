@@ -7,6 +7,12 @@ interface NursingRecordsViewProps {
   disabled?: boolean;
 }
 
+const RECORD_BADGE: Record<'admission' | 'evolution' | 'annotation', { label: string; className: string }> = {
+  admission: { label: 'Admissão', className: 'vl-badge vl-badge-warning' },
+  evolution: { label: 'Evolução', className: 'vl-badge vl-badge-info' },
+  annotation: { label: 'Anotação', className: 'vl-badge vl-badge-neutral' },
+};
+
 export const NursingRecordsView: React.FC<NursingRecordsViewProps> = ({ records, onAddRecord, disabled = false }) => {
   const [recordType, setRecordType] = useState<'admission' | 'evolution' | 'annotation'>('annotation');
   const [content, setContent] = useState('');
@@ -35,100 +41,91 @@ export const NursingRecordsView: React.FC<NursingRecordsViewProps> = ({ records,
     }
   };
 
-  const getRecordBadge = (type: string) => {
-    switch (type) {
-      case 'admission':
-        return <span className="bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded font-semibold">Admissão</span>;
-      case 'evolution':
-        return <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-semibold">Evolução</span>;
-      default:
-        return <span className="bg-gray-100 text-gray-800 text-xs px-2 py-0.5 rounded font-semibold">Anotação</span>;
-    }
-  };
-
   return (
-    <div className="bg-white p-4 rounded border border-gray-200 shadow-sm space-y-4">
-      <h3 className="text-lg font-bold text-gray-900 border-b pb-2">Registros e Anotações de Enfermagem (NUR-001..003)</h3>
+    <div className="vl-panel">
+      <div className="vl-panel-head">
+        <h3>Registros e Anotações de Enfermagem (NUR-001..003)</h3>
+      </div>
+      <div className="vl-panel-body">
+        {error && <p role="alert">{error}</p>}
 
-      {error && <div className="p-3 bg-red-50 text-red-700 text-sm rounded border border-red-200">{error}</div>}
+        <form onSubmit={handleSubmit} style={{ border: 'none', padding: 0, boxShadow: 'none', maxWidth: 'none' }}>
+          <label style={{ marginTop: 0 }}>Tipo de Registro</label>
+          <div className="vl-field-inline" style={{ flexWrap: 'wrap', rowGap: 4 }}>
+            <label style={{ marginTop: 0, fontWeight: 400 }}>
+              <input
+                type="radio"
+                name="recordType"
+                value="annotation"
+                checked={recordType === 'annotation'}
+                onChange={() => setRecordType('annotation')}
+                disabled={disabled}
+              />{' '}
+              Anotação
+            </label>
+            <label style={{ marginTop: 0, fontWeight: 400 }}>
+              <input
+                type="radio"
+                name="recordType"
+                value="evolution"
+                checked={recordType === 'evolution'}
+                onChange={() => setRecordType('evolution')}
+                disabled={disabled}
+              />{' '}
+              Evolução (Enfermeiro)
+            </label>
+            <label style={{ marginTop: 0, fontWeight: 400 }}>
+              <input
+                type="radio"
+                name="recordType"
+                value="admission"
+                checked={recordType === 'admission'}
+                onChange={() => setRecordType('admission')}
+                disabled={disabled}
+              />{' '}
+              Admissão no Setor
+            </label>
+          </div>
 
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="flex gap-4">
-          <label className="text-sm font-medium text-gray-700">Tipo de Registro:</label>
-          <label className="inline-flex items-center text-sm">
-            <input
-              type="radio"
-              name="recordType"
-              value="annotation"
-              checked={recordType === 'annotation'}
-              onChange={() => setRecordType('annotation')}
-              disabled={disabled}
-              className="mr-1"
-            />
-            Anotação
-          </label>
-          <label className="inline-flex items-center text-sm">
-            <input
-              type="radio"
-              name="recordType"
-              value="evolution"
-              checked={recordType === 'evolution'}
-              onChange={() => setRecordType('evolution')}
-              disabled={disabled}
-              className="mr-1"
-            />
-            Evolução (Enfermeiro)
-          </label>
-          <label className="inline-flex items-center text-sm">
-            <input
-              type="radio"
-              name="recordType"
-              value="admission"
-              checked={recordType === 'admission'}
-              onChange={() => setRecordType('admission')}
-              disabled={disabled}
-              className="mr-1"
-            />
-            Admissão no Setor
-          </label>
-        </div>
+          <label htmlFor="nursing-record-content">Registro</label>
+          <textarea
+            id="nursing-record-content"
+            rows={3}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            disabled={disabled || loading}
+            placeholder="Descreva as observações, queixas do paciente, repouso, sinais vitais ou evolução da enfermagem..."
+          />
 
-        <textarea
-          rows={3}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          disabled={disabled || loading}
-          placeholder="Descreva as observações, queixas do paciente, repouso, sinais vitais ou evolução da enfermagem..."
-          className="w-full p-2 border rounded focus:ring-1 focus:ring-blue-500 text-sm"
-        />
+          <button type="submit" className="vl-btn vl-btn-success" disabled={disabled || loading || !content.trim()}>
+            {loading ? 'Gravando...' : 'Salvar Registro de Enfermagem'}
+          </button>
+        </form>
 
-        <button
-          type="submit"
-          disabled={disabled || loading || !content.trim()}
-          className="px-4 py-2 bg-emerald-600 text-white rounded text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {loading ? 'Gravando...' : 'Salvar Registro de Enfermagem'}
-        </button>
-      </form>
-
-      <div className="mt-6 space-y-3">
-        <h4 className="font-semibold text-sm text-gray-700 border-b pb-1">Histórico de Enfermagem</h4>
-        {records.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">Nenhum registro de enfermagem até o momento.</p>
-        ) : (
-          records.map((r) => (
-            <div key={r.id} className="p-3 bg-gray-50 border rounded text-sm space-y-1">
-              <div className="flex justify-between items-center text-xs text-gray-500">
-                <div className="flex items-center gap-2">
-                  {getRecordBadge(r.recordType)}
-                  <span>Por: {r.professionalId}</span>
-                </div>
-                <span>{new Date(r.createdAt).toLocaleString('pt-BR')}</span>
-              </div>
-              <p className="text-gray-800 whitespace-pre-wrap">{r.content}</p>
+        <div style={{ marginTop: 'var(--space-5)' }}>
+          <h4>Histórico de Enfermagem</h4>
+          {records.length === 0 ? (
+            <p role="status">Nenhum registro de enfermagem até o momento.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              {records.map((r) => {
+                const badge = RECORD_BADGE[r.recordType];
+                return (
+                  <div key={r.id} className="vl-schedule-card">
+                    <div className="vl-schedule-card-head">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span className={badge.className}>{badge.label}</span>
+                        <span className="vl-text-muted">Por: {r.professionalId}</span>
+                      </div>
+                      <span className="vl-text-muted">{new Date(r.createdAt).toLocaleString('pt-BR')}</span>
+                    </div>
+                    <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{r.content}</p>
+                  </div>
+                );
+              })}
             </div>
-          ))
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

@@ -15,9 +15,29 @@
  * aparência consistente automaticamente, sem precisar editar cada arquivo.
  * Estilos inline existentes (ex.: badges de risco, botões de ação semântica)
  * continuam funcionando normalmente — inline sempre vence sobre estas regras.
+ *
+ * Tailwind (adicionado em 10/09/2026, ver VITALOOP_1.3_STATUS.md): entra só
+ * como camada de utilitários, SEM o Preflight (o reset de elementos nativos
+ * do Tailwind) — o reset abaixo já é o nosso e não deve ser substituído.
+ * O bloco de tokens abaixo virou `@theme` (em vez de `:root` puro) para que
+ * o Tailwind gere classes utilitárias (`bg-primary`, `text-danger`...) a
+ * partir dos MESMOS valores — nenhuma cor/token muda, nenhuma tela existente
+ * é afetada. Continua valendo: cores de Manchester nunca entram aqui.
  */
+/* Ordem das camadas TEM que ser declarada antes de qualquer @import que
+   populate uma delas — em CSS, a ordem de prioridade é fixada pela primeira
+   vez que cada nome de camada aparece no arquivo inteiro. Declarando aqui
+   em cima garante `utilities` sempre vencendo `base`, então um componente
+   shadcn/ui (só classes Tailwind) consegue se estilizar mesmo num elemento
+   nativo (<button>, <input>...) que o reset abaixo também estiliza — sem
+   isso, o reset nativo do Vitaloop (sem camada = prioridade máxima em CSS)
+   venceria QUALQUER classe Tailwind, sempre. */
+@layer theme, base, utilities;
 
-:root {
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@theme {
   /* Cor — derivada do emblema Vitaloop (infinito mint/branco sobre fundo
      azul-petróleo, pulso vital em vermelho). O emblema deixa de ser só um
      ícone e passa a ser a origem da paleta do produto inteiro. */
@@ -81,7 +101,60 @@
   --radius-md: 8px;
 
   --shadow-card: 0 1px 2px rgba(18, 35, 45, 0.06);
+
+  /* Ponte para o vocabulário shadcn/ui (10/09/2026) — pura tradução dos
+     tokens acima para os nomes que os componentes shadcn esperam. Nenhuma
+     cor nova: cada um aponta para um token de marca já existente, então um
+     <Button> ou <Card> shadcn nasce automaticamente na paleta do Vitaloop.
+     Precisa do prefixo `--color-*`: é o único namespace que o Tailwind v4
+     reconhece para gerar utilitários de cor (`bg-card`, `text-muted-
+     foreground`...) — sem o prefixo, o token existe mas nenhuma classe é
+     gerada a partir dele (bug real encontrado e corrigido nesta sessão). */
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-text);
+  --color-card: var(--color-surface);
+  --color-card-foreground: var(--color-text);
+  --color-popover: var(--color-surface);
+  --color-popover-foreground: var(--color-text);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--color-surface-sunken);
+  --color-secondary-foreground: var(--color-text);
+  --color-muted: var(--color-surface-sunken);
+  --color-muted-foreground: var(--color-text-muted);
+  --color-accent: var(--color-primary-soft);
+  --color-accent-foreground: var(--color-primary);
+  --color-destructive: var(--color-danger);
+  --color-destructive-foreground: #ffffff;
+  --color-input: var(--color-border-strong);
+  --color-ring: var(--color-primary);
+  --radius: var(--radius-md);
 }
+
+/* Cores clínicas do Protocolo de Manchester — DELIBERADAMENTE fora do
+   @theme acima (ver nota no topo do arquivo): são dado de risco
+   assistencial, não tema visual, e não podem mudar junto de uma troca de
+   paleta do produto. Vivem no próprio namespace `--triage-*`, consumidas
+   via var() em MANCHESTER_BADGE_STYLE (QueueDashboardPage.tsx) — o valor
+   canônico agora mora aqui, não espalhado em hex dentro de um objeto JS. */
+:root {
+  --triage-red-bg: #ef4444;
+  --triage-red-text: #ffffff;
+  --triage-orange-bg: #f97316;
+  --triage-orange-text: #ffffff;
+  --triage-yellow-bg: #eab308;
+  --triage-yellow-text: #000000;
+  --triage-green-bg: #22c55e;
+  --triage-green-text: #ffffff;
+  --triage-blue-bg: #3b82f6;
+  --triage-blue-text: #ffffff;
+}
+
+/* Todo o reset/design system pré-existente do Vitaloop entra na camada
+   `base` (ver declaração de ordem acima) — nenhuma regra abaixo mudou de
+   conteúdo, só passou a viver dentro de `@layer base { ... }` até o fim do
+   arquivo, pra que utilitários Tailwind (camada `utilities`) consigam
+   vencer quando os dois miram o mesmo elemento (ex.: um <button> shadcn). */
+@layer base {
 
 @media (prefers-reduced-motion: no-preference) {
   :root {
@@ -463,6 +536,11 @@ tbody tr:hover { background: var(--color-surface-sunken); }
   flex-shrink: 0;
   margin-top: 0;
 }
+.vl-menu-toggle svg {
+  /* Sem isso o Chromium encolhe o ícone quase a zero de largura mesmo
+     sobrando espaço no botão (o svg herda flex-shrink:1 como item flex). */
+  flex-shrink: 0;
+}
 .vl-shell.vl-nav-open .vl-menu-toggle {
   background: var(--color-primary-soft);
   border-color: var(--color-primary);
@@ -820,3 +898,5 @@ tbody tr:hover { background: var(--color-surface-sunken); }
   font-size: 0.875rem;
   color: var(--vl-text-muted, #6b7280);
 }
+
+} /* fim de @layer base */

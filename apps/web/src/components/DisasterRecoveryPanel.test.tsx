@@ -2,6 +2,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DisasterRecoveryPanel } from './DisasterRecoveryPanel.js';
 
 const get = vi.fn();
@@ -12,6 +13,15 @@ const mockApi = { get, post };
 vi.mock('../context/session-context.js', () => ({
   useSession: () => ({ api: mockApi }),
 }));
+
+const renderPage = () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <DisasterRecoveryPanel />
+    </QueryClientProvider>,
+  );
+};
 
 describe('DisasterRecoveryPanel Component Test (QLT-011..013)', () => {
   beforeEach(() => {
@@ -28,7 +38,7 @@ describe('DisasterRecoveryPanel Component Test (QLT-011..013)', () => {
     });
     get.mockResolvedValue([{ id: 'job-1', jobType: 'backup_logical', status: 'completed', snapshotHash: 'SHA256-SNAP-1' }]);
 
-    render(<DisasterRecoveryPanel />);
+    renderPage();
 
     expect(screen.getByTestId('disaster-recovery-panel')).toBeTruthy();
     expect(screen.getByText('Painel de Disaster Recovery, Backup & Restore (QLT-011..013)')).toBeTruthy();

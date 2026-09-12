@@ -6,6 +6,8 @@ import {
   type EncounterOrigin,
   type EncounterType,
 } from '../lib/encounters-api.js';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
+import { Button } from '../components/ui/button.js';
 
 export const EncounterOpenPage: React.FC = () => {
   const { api } = useSession();
@@ -57,102 +59,75 @@ export const EncounterOpenPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow">
-      <h1 className="text-2xl font-bold mb-6 text-gray-800">Abertura de Atendimento (UPA 24h)</h1>
+    <main className="mx-auto max-w-2xl py-5">
+      <Card>
+        <CardHeader>
+          <CardTitle>Abertura de Atendimento (UPA 24h)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {errorMessage && (
+            <p role="alert" className="mb-4 rounded-md bg-[var(--color-danger-soft)] px-3 py-2 text-sm text-[var(--color-danger)]">
+              {errorMessage}
+            </p>
+          )}
+          {successMessage && (
+            <p role="status" className="mb-4 rounded-md bg-[var(--color-success-soft)] px-3 py-2 text-sm text-[var(--color-success)]">
+              {successMessage}
+            </p>
+          )}
 
-      {errorMessage && (
-        <div role="alert" className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-          {errorMessage}
-        </div>
-      )}
+          <form onSubmit={handleSubmit} style={{ border: 'none', padding: 0, boxShadow: 'none', maxWidth: 'none' }}>
+            <label htmlFor="patientId">ID do Paciente *</label>
+            <input
+              id="patientId"
+              type="text"
+              value={patientId}
+              onChange={(e) => setPatientId(e.target.value)}
+              placeholder="Cole o ID (UUID) do paciente"
+            />
 
-      {successMessage && (
-        <div role="status" className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
-          {successMessage}
-        </div>
-      )}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+              <div>
+                <label htmlFor="encounterType">Tipo de Atendimento *</label>
+                <select id="encounterType" value={encounterType} onChange={(e) => setEncounterType(e.target.value as EncounterType)}>
+                  <option value="urgency">Urgência</option>
+                  <option value="emergency">Emergência</option>
+                  <option value="elective">Eletivo / Consulta</option>
+                  <option value="return">Retorno</option>
+                </select>
+              </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="patientId" className="block text-sm font-medium text-gray-700 mb-1">
-            ID do Paciente *
-          </label>
-          <input
-            id="patientId"
-            type="text"
-            value={patientId}
-            onChange={(e) => setPatientId(e.target.value)}
-            placeholder="Cole o ID (UUID) do paciente"
-            className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
+              <div>
+                <label htmlFor="origin">Origem da Chegada *</label>
+                <select id="origin" value={origin} onChange={(e) => setOrigin(e.target.value as EncounterOrigin)}>
+                  <option value="spontaneous">Demanda Espontânea</option>
+                  <option value="samu">SAMU</option>
+                  <option value="transfer">Transferência Inter-hospitalar</option>
+                  <option value="rescue_other">Resgate / Outros</option>
+                </select>
+              </div>
+            </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="encounterType" className="block text-sm font-medium text-gray-700 mb-1">
-              Tipo de Atendimento *
-            </label>
-            <select
-              id="encounterType"
-              value={encounterType}
-              onChange={(e) => setEncounterType(e.target.value as EncounterType)}
-              className="w-full p-2 border border-gray-300 rounded"
-            >
-              <option value="urgency">Urgência</option>
-              <option value="emergency">Emergência</option>
-              <option value="elective">Eletivo / Consulta</option>
-              <option value="return">Retorno</option>
-            </select>
-          </div>
+            <label htmlFor="chiefComplaint">Queixa Principal / Motivo do Atendimento *</label>
+            <textarea
+              id="chiefComplaint"
+              rows={3}
+              value={chiefComplaint}
+              onChange={(e) => setChiefComplaint(e.target.value)}
+              placeholder="Descreva a queixa principal trazida pelo paciente ou acompanhante"
+            />
 
-          <div>
-            <label htmlFor="origin" className="block text-sm font-medium text-gray-700 mb-1">
-              Origem da Chegável *
-            </label>
-            <select
-              id="origin"
-              value={origin}
-              onChange={(e) => setOrigin(e.target.value as EncounterOrigin)}
-              className="w-full p-2 border border-gray-300 rounded"
-            >
-              <option value="spontaneous">Demanda Espontânea</option>
-              <option value="samu">SAMU</option>
-              <option value="transfer">Transferência Inter-hospitalar</option>
-              <option value="rescue_other">Resgate / Outros</option>
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label htmlFor="chiefComplaint" className="block text-sm font-medium text-gray-700 mb-1">
-            Queixa Principal / Motivo do Atendimento *
-          </label>
-          <textarea
-            id="chiefComplaint"
-            rows={3}
-            value={chiefComplaint}
-            onChange={(e) => setChiefComplaint(e.target.value)}
-            placeholder="Descreva a queixa principal trazida pelo paciente ou acompanhante"
-            className="w-full p-2 border border-gray-300 rounded"
-          />
-        </div>
-
-        <div className="flex justify-end space-x-3 pt-4">
-          <a
-            href="#/atendimentos"
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-          >
-            Voltar para Fila
-          </a>
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? 'Abrindo Atendimento...' : 'Abrir Atendimento'}
-          </button>
-        </div>
-      </form>
-    </div>
+            <div className="vl-modal-actions">
+              <Button asChild variant="ghost">
+                <a href="#/atendimentos">Voltar para Fila</a>
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Abrindo Atendimento...' : 'Abrir Atendimento'}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </main>
   );
 };
