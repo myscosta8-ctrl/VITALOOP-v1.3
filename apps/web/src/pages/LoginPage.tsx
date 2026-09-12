@@ -3,7 +3,7 @@ import { useSession } from '../context/session-context.js';
 import { VitaloopMark } from '../components/VitaloopMark.js';
 
 export const LoginPage = (): JSX.Element => {
-  const { login, loginDemo, status, error } = useSession();
+  const { login, status, error } = useSession();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
@@ -41,9 +41,6 @@ export const LoginPage = (): JSX.Element => {
         />
         <button type="submit" disabled={status === 'authenticating'}>
           {status === 'authenticating' ? 'Entrando…' : 'Entrar'}
-        </button>
-        <button type="button" className="vl-btn-success" onClick={() => loginDemo()}>
-          🚀 Entrar em Modo de Demonstração (Liberar Todas as Telas)
         </button>
       </form>
       {status === 'error' && error && (

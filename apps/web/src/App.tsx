@@ -82,8 +82,8 @@ const RequireSession = ({
 };
 
 // A rota '/' e '/login' mostravam sempre a LoginPage, mesmo já
-// autenticado (ex.: logo após o Modo de Demonstração) — nada redirecionava
-// pra dentro do app, então o clique em "Entrar" parecia não fazer nada.
+// autenticado — nada redirecionava pra dentro do app, então o clique em
+// "Entrar" parecia não fazer nada.
 const LoginOrRedirect = (): JSX.Element => {
   const { identity, status } = useSession();
   useEffect(() => {
