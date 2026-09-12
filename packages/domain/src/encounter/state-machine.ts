@@ -1,13 +1,24 @@
 import { AppError, ErrorCategory } from '@vitaloop/shared';
 import type { EncounterStatus, PostConsultationDetail } from './types.js';
 
+// 'admitted' (internado) é um estado ATIVO de cuidado contínuo, não um
+// desfecho — pode durar dias, com evolução/reavaliação (daí a auto-transição
+// admitted -> admitted permitida por isValidEncounterStatusTransition abaixo
+// via `from === to`). Só sai de 'admitted' para 'completed' (alta
+// hospitalar via app.encounter_outcomes/summaries, migration 0031); nunca
+// para 'canceled' — internação não se "cancela", se encerra por alta/óbito/
+// transferência. O banco reforça isso em profundidade (migration 0082,
+// trigger app.guard_encounter_admission_transition): rejeita internar sem
+// leito ativo alocado, e rejeita concluir com leito ou internação ainda
+// ativos — mesmo que este código permita a transição.
 const ALLOWED_TRANSITIONS: Record<EncounterStatus, readonly EncounterStatus[]> = {
   created: ['triage_pending', 'canceled'],
   triage_pending: ['triaged', 'canceled'],
   triaged: ['consultation_pending', 'canceled'],
   consultation_pending: ['in_consultation', 'canceled'],
-  in_consultation: ['post_consultation', 'completed', 'canceled'],
-  post_consultation: ['completed', 'canceled'],
+  in_consultation: ['post_consultation', 'admitted', 'completed', 'canceled'],
+  post_consultation: ['admitted', 'completed', 'canceled'],
+  admitted: ['completed'],
   completed: [],
   canceled: [],
 };

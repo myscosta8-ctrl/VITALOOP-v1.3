@@ -12,6 +12,7 @@ import {
 } from '../../../lib/exams-api.js';
 import { createOutcomesApi, type EncounterOutcome, type EncounterSummary } from '../../../lib/outcomes-api.js';
 import { createBedApi, type BedData } from '../../../lib/bed-api.js';
+import { createAdmissionApi, type Admission } from '../../../lib/admission-api.js';
 
 /**
  * Carrega e mantém tudo que a Ficha Clínica precisa ler para as 7 abas
@@ -29,9 +30,11 @@ export const useEncounterClinicalData = (api: ApiClient, encounterId: string) =>
   const examsApi = createExamsApi(api);
   const outcomesApi = createOutcomesApi(api);
   const bedApi = createBedApi(api);
+  const admissionApi = createAdmissionApi(api);
 
   const [triage, setTriage] = useState<Triage | null>(null);
   const [bedInfo, setBedInfo] = useState<BedData | null>(null);
+  const [admission, setAdmission] = useState<Admission | null>(null);
   const [existingConsultation, setExistingConsultation] = useState<MedicalConsultation | null>(null);
   const [diagnoses, setDiagnoses] = useState<readonly EncounterDiagnosis[]>([]);
   const [prescriptions, setPrescriptions] = useState<readonly Prescription[]>([]);
@@ -81,6 +84,12 @@ export const useEncounterClinicalData = (api: ApiClient, encounterId: string) =>
       } catch {
         setBedInfo(null);
       }
+
+      try {
+        setAdmission(await admissionApi.getAdmission(encounterId));
+      } catch {
+        setAdmission(null);
+      }
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : 'Erro ao carregar prontuário médico.';
       setErrorMessage(msg);
@@ -96,6 +105,8 @@ export const useEncounterClinicalData = (api: ApiClient, encounterId: string) =>
   return {
     triage,
     bedInfo,
+    admission,
+    setAdmission,
     existingConsultation,
     diagnoses,
     prescriptions,

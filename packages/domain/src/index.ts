@@ -11,6 +11,7 @@ export * from './exam/index.js';
 export * from './outcome/index.js';
 export * from './nursing/index.js';
 export * from './bed/index.js';
+export * from './admission/index.js';
 export * from './document/index.js';
 export * from './safety/index.js';
 export * from './management/index.js';

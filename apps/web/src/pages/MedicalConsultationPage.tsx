@@ -9,6 +9,7 @@ import { useDiagnoses } from './medical-consultation/hooks/useDiagnoses.js';
 import { usePrescriptions } from './medical-consultation/hooks/usePrescriptions.js';
 import { useExamsAndProcedures } from './medical-consultation/hooks/useExamsAndProcedures.js';
 import { useOutcome } from './medical-consultation/hooks/useOutcome.js';
+import { useAdmission } from './medical-consultation/hooks/useAdmission.js';
 import { TriagemTab } from './medical-consultation/tabs/TriagemTab.js';
 import { ConsultaTab } from './medical-consultation/tabs/ConsultaTab.js';
 import { DiagnosticosTab } from './medical-consultation/tabs/DiagnosticosTab.js';
@@ -63,6 +64,10 @@ export const MedicalConsultationPage: React.FC<Props> = ({ encounterId }) => {
     reload: data.reload,
     setOutcome: data.setOutcome,
     setSummary: data.setSummary,
+  });
+  const admissionForm = useAdmission(api, encounterId, {
+    reload: data.reload,
+    setAdmission: data.setAdmission,
   });
 
   if (data.loading) {
@@ -123,7 +128,9 @@ export const MedicalConsultationPage: React.FC<Props> = ({ encounterId }) => {
               </>
             )}
 
-            {activeTab === 'internacao' && <InternacaoTab bedInfo={data.bedInfo} />}
+            {activeTab === 'internacao' && (
+              <InternacaoTab bedInfo={data.bedInfo} admission={data.admission} form={admissionForm} />
+            )}
           </div>
         </CardContent>
       </Card>

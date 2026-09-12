@@ -29,6 +29,7 @@ import { registerExamRoutes } from './routes/exams.js';
 import { registerOutcomeRoutes } from './routes/outcomes.js';
 import { registerNursingRoutes } from './routes/nursing.js';
 import { registerBedRoutes } from './routes/beds.js';
+import { registerAdmissionRoutes } from './routes/admissions.js';
 import { registerDocumentRoutes } from './routes/documents.js';
 import { registerSafetyRoutes } from './routes/safety.js';
 import { registerManagementRoutes } from './routes/management.js';
@@ -127,6 +128,7 @@ export const buildServer = (config: LoadedConfig): BuiltServer => {
   registerOutcomeRoutes(app, db);
   registerNursingRoutes(app, db);
   registerBedRoutes(app, db);
+  registerAdmissionRoutes(app, db);
   registerDocumentRoutes(app, db);
   registerSafetyRoutes(app, db);
   registerManagementRoutes(app, db);

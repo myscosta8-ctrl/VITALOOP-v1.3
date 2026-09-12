@@ -12,6 +12,7 @@ export type EncounterStatus =
   | 'consultation_pending'
   | 'in_consultation'
   | 'post_consultation'
+  | 'admitted'
   | 'completed'
   | 'canceled';
 
