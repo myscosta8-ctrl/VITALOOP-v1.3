@@ -6,6 +6,44 @@ import { getBodySchema, sanitizeBodyFieldValues, validateBodyFieldValues } from 
 import { success } from '../http/envelope.js';
 import { withSecurityContext } from '../db/security-context.js';
 import { requirePermission } from '../security/require-auth.js';
+import { generateSinanFormPdf, isSinanFormAvailable, type SinanFormData } from '../pdf/sinan-forms.js';
+
+/**
+ * Calcula idade + unidade (código do impresso SINAN: 1-Hora, 2-Dia, 3-Mês,
+ * 4-Ano) a partir da data de nascimento e uma data de referência (data da
+ * notificação). Segue a convenção real do impresso: recém-nascido
+ * atendido no mesmo dia é registrado em horas, não "0 anos" — por isso a
+ * escolha de unidade cai pra baixo (ano → mês → dia → hora) conforme o
+ * valor na unidade maior chegaria a zero.
+ */
+const computeAge = (birthDate: string | null, referenceDate: Date): { age: string; ageUnit: '1' | '2' | '3' | '4' } | null => {
+  if (!birthDate) return null;
+  const birth = new Date(`${birthDate}T00:00:00Z`);
+  if (Number.isNaN(birth.getTime())) return null;
+
+  const msPerHour = 3600_000;
+  const totalHours = Math.floor((referenceDate.getTime() - birth.getTime()) / msPerHour);
+  if (totalHours < 0) return null;
+
+  const totalDays = Math.floor(totalHours / 24);
+  const years = referenceDate.getUTCFullYear() - birth.getUTCFullYear() -
+    (referenceDate.getUTCMonth() < birth.getUTCMonth() ||
+    (referenceDate.getUTCMonth() === birth.getUTCMonth() && referenceDate.getUTCDate() < birth.getUTCDate())
+      ? 1
+      : 0);
+
+  if (years >= 1) return { age: String(years), ageUnit: '4' };
+
+  const months = (referenceDate.getUTCFullYear() - birth.getUTCFullYear()) * 12 + (referenceDate.getUTCMonth() - birth.getUTCMonth()) -
+    (referenceDate.getUTCDate() < birth.getUTCDate() ? 1 : 0);
+  if (months >= 1) return { age: String(months), ageUnit: '3' };
+
+  if (totalDays >= 1) return { age: String(totalDays), ageUnit: '2' };
+
+  return { age: String(totalHours), ageUnit: '1' };
+};
+
+const SEX_TO_SINAN: Record<string, SinanFormData['sex']> = { female: 'F', male: 'M', undetermined: 'I' };
 
 const createNotificationSchema = z.object({
   diseaseId: z.string().uuid(),
@@ -21,17 +59,20 @@ const createNotificationSchema = z.object({
 });
 
 export const registerCompulsoryNotificationRoutes = (app: FastifyInstance, pool: pg.Pool | null): void => {
-  // 1. GET /api/v1/notifiable-diseases — lista fixa de agravos notificáveis
+  // 1. GET /api/v1/notifiable-diseases — lista fixa de agravos notificáveis.
+  // `pdfAvailable` indica se a ficha oficial tem cabeçalho calibrado pra
+  // exportação em PDF (ver isSinanFormAvailable) — a tela usa isso pra
+  // mostrar/esconder o botão "Imprimir Ficha SINAN" por doença.
   app.get(
     '/api/v1/notifiable-diseases',
     { preHandler: requirePermission(pool, 'notification.read') },
     async (req, reply) => {
       const identity = req.identity!;
       const diseases = await withSecurityContext(pool!, { userId: identity.appUserId!, roles: identity.roles }, async (client) => {
-        const { rows } = await client.query(
+        const { rows } = await client.query<{ id: string; code: string; name: string }>(
           `select id, code, name from app.notifiable_diseases where active = true order by name asc`,
         );
-        return rows;
+        return rows.map((d) => ({ ...d, pdfAvailable: isSinanFormAvailable(d.code) }));
       });
 
       return reply.status(200).send(success(diseases, req.id));
@@ -140,6 +181,80 @@ export const registerCompulsoryNotificationRoutes = (app: FastifyInstance, pool:
     async (req, reply) => {
       const schema = getBodySchema(req.params.code) ?? null;
       return reply.status(200).send(success(schema, req.id));
+    },
+  );
+
+  // 5. GET /api/v1/compulsory-notifications/:id/pdf — gera a ficha SINAN
+  // oficial preenchida (cabeçalho) a partir dos dados já persistidos da
+  // notificação + do paciente. Preenche só o CABEÇALHO (campos 1-16) —
+  // campos do corpo (17+) ainda não têm coordenada calibrada em nenhuma
+  // ficha (ver `packages/domain/src/notification/schemas`, que cobre a tela,
+  // não o PDF). 404 explícito quando a doença não tem cabeçalho calibrado,
+  // em vez de gerar um PDF genérico — nunca usar modelo não-oficial.
+  app.get<{ Params: { id: string } }>(
+    '/api/v1/compulsory-notifications/:id/pdf',
+    { preHandler: requirePermission(pool, 'notification.read') },
+    async (req, reply) => {
+      const identity = req.identity!;
+      const record = await withSecurityContext(pool!, { userId: identity.appUserId!, roles: identity.roles }, async (client) => {
+        const { rows } = await client.query(
+          `select n.symptom_onset_date as "symptomOnsetDate", n.created_at as "createdAt",
+                  d.code as "diseaseCode",
+                  p.full_name as "patientName", p.birth_date as "birthDate", p.sex,
+                  p.mother_name as "motherName", p.cns, p.city, p.cpf, p.state,
+                  i.name as "institutionName"
+           from app.compulsory_notifications n
+           join app.notifiable_diseases d on d.id = n.disease_id
+           join app.patients p on p.id = n.patient_id
+           left join app.institutions i on i.id = p.institution_id
+           where n.id = $1`,
+          [req.params.id],
+        );
+        return rows[0] ?? null;
+      });
+
+      if (!record) {
+        throw new AppError({
+          category: ErrorCategory.NOT_FOUND,
+          code: 'NOT_FOUND_NOTIFICATION',
+          message: 'Notificação não encontrada.',
+        });
+      }
+
+      if (!isSinanFormAvailable(record.diseaseCode)) {
+        throw new AppError({
+          category: ErrorCategory.NOT_FOUND,
+          code: 'NOT_FOUND_SINAN_FORM_NOT_AVAILABLE',
+          message: 'Ficha SINAN desta doença ainda não está calibrada para impressão.',
+        });
+      }
+
+      const referenceDate = new Date(record.createdAt);
+      const ageInfo = computeAge(record.birthDate, referenceDate);
+
+      const formData: SinanFormData = {
+        notificationDate: record.createdAt,
+        symptomOnsetDate: record.symptomOnsetDate,
+        notifyingUnit: record.institutionName,
+        patientName: record.patientName,
+        birthDate: record.birthDate,
+        age: ageInfo?.age ?? null,
+        ageUnit: ageInfo?.ageUnit ?? null,
+        sex: SEX_TO_SINAN[record.sex ?? ''] ?? null,
+        motherName: record.motherName,
+        cns: record.cns,
+        municipality: record.city,
+        cpf: record.cpf,
+        state: record.state,
+      };
+
+      const pdfBytes = await generateSinanFormPdf(record.diseaseCode, formData);
+
+      return reply
+        .status(200)
+        .header('Content-Type', 'application/pdf')
+        .header('Content-Disposition', `inline; filename="sinan-${record.diseaseCode.toLowerCase()}-${req.params.id}.pdf"`)
+        .send(Buffer.from(pdfBytes));
     },
   );
 };
