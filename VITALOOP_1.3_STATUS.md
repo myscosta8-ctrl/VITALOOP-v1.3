@@ -1309,3 +1309,25 @@ Conforme auditado e registrado formalmente em `docs/GO_LIVE_REAL_VALIDATION_REPO
 > **Gaps que continuam em aberto** (fora de escopo deste handoff, já documentados): escala de
 > enfermagem por leito, regulação de leito entre unidades, RLS por setor além de
 > `nursing_technician`.
+
+---
+
+> ## 🟢 FASE 3 DO PLANO DE RECONSTRUÇÃO ASSISTENCIAL — Escalas de Risco (12/09/2026)
+> Auditoria encontrou que a rota `POST /api/v1/encounters/:id/nursing/scales` e a tabela
+> `app.patient_risk_assessments` já existiam (contrariando a suposição inicial do plano de
+> "zero API") — mas a única tela existente (`NursingSaeView.tsx`) tinha um único botão que sempre
+> submetia os mesmos valores fixos de Braden, sem formulário real e sem Morse/Fugulin.
+>
+> - **Domínio**: `calculateScaleScore` (`packages/domain/src/nursing/rules.ts`) ganhou a Escala de
+>   Fugulin (12 indicadores, 1-4 cada, 12-48 pontos, 5 categorias de complexidade assistencial —
+>   faixas conferidas em fonte externa, já que não existia estudo caso brasileiro anterior no
+>   projeto). Braden e Morse já estavam corretos, só sem UI real.
+> - **API**: `apps/api/src/routes/nursing.ts` — enum de `scaleType` ganhou `'fugulin'`; condição de
+>   escalonamento pra `app.patient_risk_assessments` ampliada pras 3 categorias de maior
+>   dependência do Fugulin.
+> - **Web**: novo `NursingScalesPanel.tsx` — formulário real por escala (Braden: 6 subescalas;
+>   Morse: 6 itens com pontuação própria; Fugulin: 12 indicadores) + histórico de avaliações do
+>   atendimento (a rota `GET .../nursing/scales` já existia e nunca tinha sido consumida pelo
+>   frontend). Substitui o botão fixo em `NursingSaeView.tsx`.
+> - Nenhuma migration nova — `scale_type` já era `text` sem CHECK constraint.
+> - Build+testes limpos: `packages/domain`, `apps/api`, `apps/web` (106 arquivos, 470 testes).

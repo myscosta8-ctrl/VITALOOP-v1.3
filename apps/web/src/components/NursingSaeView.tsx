@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSession } from '../context/session-context.js';
 import { createNursingSaeApi } from '../lib/nursing-sae-api.js';
+import { NursingScalesPanel } from './NursingScalesPanel.js';
 
 interface NursingSaeViewProps {
   encounterId: string;
@@ -23,18 +24,6 @@ export const NursingSaeView: React.FC<NursingSaeViewProps> = ({ encounterId }) =
         prescriptions: [{ careDescription: careDesc || 'Mudança de decúbito 2 em 2 horas' }],
       });
       setMsg('SAE registrada com sucesso.');
-    } catch (err: unknown) {
-      setMsg((err as Error).message);
-    }
-  };
-
-  const handleApplyBraden = async () => {
-    try {
-      const res = await nursingSaeApi.applyNursingScale(encounterId, {
-        scaleType: 'braden',
-        scoreDetails: { sensory: 2, moisture: 2, activity: 2, mobility: 2, nutrition: 2, friction: 1 },
-      });
-      setMsg(`Escala de Braden aplicada. Escore: ${res.total_score} (Risco: ${res.risk_level})`);
     } catch (err: unknown) {
       setMsg((err as Error).message);
     }
@@ -73,12 +62,7 @@ export const NursingSaeView: React.FC<NursingSaeViewProps> = ({ encounterId }) =
         <button type="submit">Salvar SAE</button>
       </form>
 
-      <div>
-        <h4>2. Escalas Assistenciais (NUR-010)</h4>
-        <button type="button" onClick={handleApplyBraden} data-testid="apply-braden-btn">
-          Aplicar Escala de Braden
-        </button>
-      </div>
+      <NursingScalesPanel encounterId={encounterId} />
 
       <p>
         <em>Balanço Hídrico: ver tela dedicada "Balanço Hídrico" na central de ações do atendimento (NUR-009).</em>

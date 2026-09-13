@@ -48,6 +48,26 @@ describe('Regras de Domínio de Enfermagem SAE, Escalas, Balanço e Dispositivos
     expect(mewsHigh.riskLevel).toBe('severe');
   });
 
+  it('calcula pontuação e categoria de cuidado da Escala de Fugulin (NUR-010)', () => {
+    // 12 indicadores, 1 ponto cada = 12 -> Cuidados Mínimos
+    const minimal = calculateScaleScore('fugulin', {
+      mentalState: 1, oxygenation: 1, vitalSigns: 1, motility: 1, ambulation: 1,
+      feeding: 1, bodyCare: 1, elimination: 1, therapeutics: 1, skinIntegrity: 1,
+      dressingProcedure: 1, dressingTime: 1,
+    });
+    expect(minimal.totalScore).toBe(12);
+    expect(minimal.riskLevel).toBe('minimal_care');
+
+    // 12 indicadores, 4 pontos cada = 48 -> Cuidados Intensivos
+    const intensive = calculateScaleScore('fugulin', {
+      mentalState: 4, oxygenation: 4, vitalSigns: 4, motility: 4, ambulation: 4,
+      feeding: 4, bodyCare: 4, elimination: 4, therapeutics: 4, skinIntegrity: 4,
+      dressingProcedure: 4, dressingTime: 4,
+    });
+    expect(intensive.totalScore).toBe(48);
+    expect(intensive.riskLevel).toBe('intensive_care');
+  });
+
   it('valida estrutura de diagnósticos e intervenções SAE (NUR-004/005/006)', () => {
     expect(() => {
       validateNursingSaeInput({

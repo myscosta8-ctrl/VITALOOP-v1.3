@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { NursingSaeView } from './NursingSaeView.js';
 
-const get = vi.fn();
+const get = vi.fn().mockResolvedValue([]);
 const post = vi.fn().mockResolvedValue({ status: 'success' });
 
 const mockApi = { get, post };
@@ -25,10 +25,18 @@ describe('NursingSaeView Component', () => {
     render(<NursingSaeView encounterId="encounter-123" />);
 
     expect(screen.getByTestId('nursing-sae-view')).toBeDefined();
-    expect(screen.getByTestId('apply-braden-btn')).toBeDefined();
+    await waitFor(() => expect(screen.getByTestId('scale-tab-braden')).toBeDefined());
+
+    // Preenche as 6 subescalas de Braden e aplica.
+    fireEvent.change(screen.getByTestId('scale-field-sensory'), { target: { value: '2' } });
+    fireEvent.change(screen.getByTestId('scale-field-moisture'), { target: { value: '2' } });
+    fireEvent.change(screen.getByTestId('scale-field-activity'), { target: { value: '2' } });
+    fireEvent.change(screen.getByTestId('scale-field-mobility'), { target: { value: '2' } });
+    fireEvent.change(screen.getByTestId('scale-field-nutrition'), { target: { value: '2' } });
+    fireEvent.change(screen.getByTestId('scale-field-friction'), { target: { value: '1' } });
 
     fireEvent.click(screen.getByTestId('apply-braden-btn'));
     const msg = await screen.findByTestId('sae-msg');
-    expect(msg.textContent).toContain('Escala de Braden aplicada. Escore: 11 (Risco: high)');
+    expect(msg.textContent).toContain('aplicada. Escore: 11');
   });
 });

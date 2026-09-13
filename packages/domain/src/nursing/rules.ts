@@ -93,7 +93,11 @@ export function calculateDefaultScheduleTimes(frequency: string, referenceTime: 
   return times;
 }
 
-export function calculateScaleScore(scaleType: string, scoreDetails: Record<string, unknown>): { totalScore: number; riskLevel: 'low' | 'moderate' | 'high' | 'severe' } {
+export type ScaleRiskLevel =
+  | 'low' | 'moderate' | 'high' | 'severe'
+  | 'minimal_care' | 'intermediate_care' | 'high_dependency' | 'semi_intensive_care' | 'intensive_care';
+
+export function calculateScaleScore(scaleType: string, scoreDetails: Record<string, unknown>): { totalScore: number; riskLevel: ScaleRiskLevel } {
   let totalScore = 0;
   for (const val of Object.values(scoreDetails)) {
     if (typeof val === 'number') {
@@ -127,6 +131,17 @@ export function calculateScaleScore(scaleType: string, scoreDetails: Record<stri
     if (totalScore >= 5) return { totalScore, riskLevel: 'severe' };
     if (totalScore >= 3) return { totalScore, riskLevel: 'moderate' };
     return { totalScore, riskLevel: 'low' };
+  }
+
+  if (scaleType === 'fugulin') {
+    // Fugulin (SCP-EEUSP): 12 indicadores, 1..4 cada, soma 12..48.
+    // Faixas oficiais: 12-17 Mínimos, 18-22 Intermediários, 23-28 Alta
+    // Dependência, 29-34 Semi-Intensivos, >34 Intensivos.
+    if (totalScore <= 17) return { totalScore, riskLevel: 'minimal_care' };
+    if (totalScore <= 22) return { totalScore, riskLevel: 'intermediate_care' };
+    if (totalScore <= 28) return { totalScore, riskLevel: 'high_dependency' };
+    if (totalScore <= 34) return { totalScore, riskLevel: 'semi_intensive_care' };
+    return { totalScore, riskLevel: 'intensive_care' };
   }
 
   return { totalScore, riskLevel: 'low' };

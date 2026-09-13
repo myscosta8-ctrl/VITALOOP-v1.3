@@ -548,7 +548,7 @@ export const registerNursingRoutes = (app: FastifyInstance, pool: pg.Pool | null
 
   // 2. Escalas Assistenciais (NUR-010)
   const applyScaleSchema = z.object({
-    scaleType: z.enum(['braden', 'morse', 'glasgow', 'mews', 'ramsay']),
+    scaleType: z.enum(['braden', 'morse', 'glasgow', 'mews', 'ramsay', 'fugulin']),
     scoreDetails: z.record(z.unknown()),
   });
 
@@ -585,7 +585,10 @@ export const registerNursingRoutes = (app: FastifyInstance, pool: pg.Pool | null
           );
           const evRow = evalRes.rows[0];
 
-          if (riskLevel === 'high' || riskLevel === 'severe') {
+          if (
+            riskLevel === 'high' || riskLevel === 'severe'
+            || riskLevel === 'high_dependency' || riskLevel === 'semi_intensive_care' || riskLevel === 'intensive_care'
+          ) {
             await client.query(
               `insert into app.patient_risk_assessments (encounter_id, patient_id, evaluator_id, risk_type, risk_level)
                values ($1, $2, $3, $4, $5)`,
