@@ -9,6 +9,19 @@ export type OutcomeType =
   | 'admission_bed'
   | 'death';
 
+export type DeathManner = 'natural' | 'violent' | 'undetermined';
+
+export interface DeathCertificateData {
+  causeMortisA: string;
+  causeMortisB?: string | null | undefined;
+  causeMortisC?: string | null | undefined;
+  causeMortisD?: string | null | undefined;
+  deathManner: DeathManner;
+  declarantName?: string | null | undefined;
+  declarantDocument?: string | null | undefined;
+  registryOfficeInfo?: string | null | undefined;
+}
+
 export interface EncounterOutcome {
   readonly id: string;
   readonly encounterId: string;
@@ -21,6 +34,7 @@ export interface EncounterOutcome {
   readonly regulationCode?: string | null | undefined;
   readonly deathTimestamp?: string | null | undefined;
   readonly deathCertificateInfo?: string | null | undefined;
+  readonly deathCertificateData?: DeathCertificateData | null | undefined;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -49,6 +63,7 @@ export interface CreateOutcomePayload {
   regulationCode?: string | null | undefined;
   deathTimestamp?: string | null | undefined;
   deathCertificateInfo?: string | null | undefined;
+  deathCertificateData?: DeathCertificateData | null | undefined;
   dischargeInstructions?: string | null | undefined;
   dischargePrescription?: unknown;
 }

@@ -81,6 +81,50 @@ describe('Outcome Domain Rules & Events', () => {
         }),
       ).toThrowError(/exige a descrição da causa mortis/);
     });
+
+    it('exige Causa Mortis A na Declaração de Óbito estruturada', () => {
+      expect(() =>
+        validateOutcomeCreateInput({
+          encounterId: 'enc-1',
+          patientId: 'pat-1',
+          outcomeType: 'death',
+          deathTimestamp: new Date().toISOString(),
+          notes: 'Óbito constatado após parada cardiorrespiratória irreversível.',
+        }),
+      ).toThrowError(/exige a Causa Mortis A/);
+    });
+
+    it('exige circunstância do óbito (deathManner) na Declaração de Óbito estruturada', () => {
+      expect(() =>
+        validateOutcomeCreateInput({
+          encounterId: 'enc-1',
+          patientId: 'pat-1',
+          outcomeType: 'death',
+          deathTimestamp: new Date().toISOString(),
+          notes: 'Óbito constatado após parada cardiorrespiratória irreversível.',
+          deathCertificateData: { causeMortisA: 'Choque séptico' } as never,
+        }),
+      ).toThrowError(/exige a indicação da circunstância do óbito/);
+    });
+
+    it('aceita óbito com Declaração de Óbito estruturada completa', () => {
+      const result = validateOutcomeCreateInput({
+        encounterId: 'enc-1',
+        patientId: 'pat-1',
+        outcomeType: 'death',
+        deathTimestamp: new Date().toISOString(),
+        notes: 'Óbito constatado após parada cardiorrespiratória irreversível.',
+        deathCertificateData: {
+          causeMortisA: '  Choque séptico  ',
+          causeMortisB: 'Pneumonia bacteriana',
+          deathManner: 'natural',
+        },
+      });
+
+      expect(result.deathCertificateData?.causeMortisA).toBe('Choque séptico');
+      expect(result.deathCertificateData?.causeMortisB).toBe('Pneumonia bacteriana');
+      expect(result.deathCertificateData?.deathManner).toBe('natural');
+    });
   });
 
   describe('Domain Events', () => {

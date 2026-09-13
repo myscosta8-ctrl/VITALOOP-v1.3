@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { ApiError, type ApiClient } from '../../../lib/api-client.js';
-import { createOutcomesApi, type EncounterOutcome, type EncounterSummary, type OutcomeType } from '../../../lib/outcomes-api.js';
+import {
+  createOutcomesApi,
+  type DeathManner,
+  type EncounterOutcome,
+  type EncounterSummary,
+  type OutcomeType,
+} from '../../../lib/outcomes-api.js';
 import { toast } from '../../../lib/toast.js';
 
 interface Deps {
@@ -18,6 +24,13 @@ export const useOutcome = (api: ApiClient, encounterId: string, deps: Deps) => {
   const [outcomeNotes, setOutcomeNotes] = useState('');
   const [destinationUnit, setDestinationUnit] = useState('');
   const [dischargeInstructions, setDischargeInstructions] = useState('');
+  const [causeMortisA, setCauseMortisA] = useState('');
+  const [causeMortisB, setCauseMortisB] = useState('');
+  const [causeMortisC, setCauseMortisC] = useState('');
+  const [causeMortisD, setCauseMortisD] = useState('');
+  const [deathManner, setDeathManner] = useState<DeathManner>('natural');
+  const [declarantName, setDeclarantName] = useState('');
+  const [declarantDocument, setDeclarantDocument] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const handleCreateOutcome = async (e: React.FormEvent) => {
@@ -30,6 +43,17 @@ export const useOutcome = (api: ApiClient, encounterId: string, deps: Deps) => {
         notes: outcomeNotes.trim() || null,
         destinationUnit: destinationUnit.trim() || null,
         dischargeInstructions: dischargeInstructions.trim() || null,
+        deathCertificateData: selectedOutcomeType === 'death'
+          ? {
+              causeMortisA: causeMortisA.trim(),
+              causeMortisB: causeMortisB.trim() || null,
+              causeMortisC: causeMortisC.trim() || null,
+              causeMortisD: causeMortisD.trim() || null,
+              deathManner,
+              declarantName: declarantName.trim() || null,
+              declarantDocument: declarantDocument.trim() || null,
+            }
+          : null,
       });
 
       setOutcome(res.outcome);
@@ -48,6 +72,13 @@ export const useOutcome = (api: ApiClient, encounterId: string, deps: Deps) => {
     outcomeNotes, setOutcomeNotes,
     destinationUnit, setDestinationUnit,
     dischargeInstructions, setDischargeInstructions,
+    causeMortisA, setCauseMortisA,
+    causeMortisB, setCauseMortisB,
+    causeMortisC, setCauseMortisC,
+    causeMortisD, setCauseMortisD,
+    deathManner, setDeathManner,
+    declarantName, setDeclarantName,
+    declarantDocument, setDeclarantDocument,
     submitting,
     handleCreateOutcome,
   };

@@ -15,6 +15,13 @@ export const DesfechoTab: React.FC<Props> = ({ outcome, summary, form }) => {
     outcomeNotes, setOutcomeNotes,
     destinationUnit, setDestinationUnit,
     dischargeInstructions, setDischargeInstructions,
+    causeMortisA, setCauseMortisA,
+    causeMortisB, setCauseMortisB,
+    causeMortisC, setCauseMortisC,
+    causeMortisD, setCauseMortisD,
+    deathManner, setDeathManner,
+    declarantName, setDeclarantName,
+    declarantDocument, setDeclarantDocument,
     submitting,
     handleCreateOutcome,
   } = form;
@@ -33,6 +40,15 @@ export const DesfechoTab: React.FC<Props> = ({ outcome, summary, form }) => {
           </div>
           {outcome.notes && <div style={{ fontSize: 13, color: '#475569', marginBottom: 10 }}><strong>Observações:</strong> {outcome.notes}</div>}
           {outcome.destinationUnit && <div style={{ fontSize: 13, color: '#475569', marginBottom: 10 }}><strong>Unidade de Destino:</strong> {outcome.destinationUnit}</div>}
+          {outcome.deathCertificateData && (
+            <div style={{ fontSize: 13, color: '#475569', marginBottom: 10 }}>
+              <strong>Declaração de Óbito:</strong> Causa Mortis A: {outcome.deathCertificateData.causeMortisA}
+              {outcome.deathCertificateData.causeMortisB && ` | B: ${outcome.deathCertificateData.causeMortisB}`}
+              {outcome.deathCertificateData.causeMortisC && ` | C: ${outcome.deathCertificateData.causeMortisC}`}
+              {outcome.deathCertificateData.causeMortisD && ` | D: ${outcome.deathCertificateData.causeMortisD}`}
+              {' '}— Circunstância: {outcome.deathCertificateData.deathManner}
+            </div>
+          )}
 
           {summary && <MedicalSummaryView summary={summary} patientName="Paciente UPA" />}
         </div>
@@ -81,6 +97,82 @@ export const DesfechoTab: React.FC<Props> = ({ outcome, summary, form }) => {
               style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
             />
           </div>
+
+          {selectedOutcomeType === 'death' && (
+            <div style={{ marginBottom: 15, padding: 12, backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6 }}>
+              <h5 style={{ margin: '0 0 8px 0', color: '#7f1d1d' }}>Declaração de Óbito — Causa Mortis (Bloco V)</h5>
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold' }}>Causa Mortis A — Causa Terminal *</label>
+                <input
+                  type="text"
+                  value={causeMortisA}
+                  onChange={(e) => setCauseMortisA(e.target.value)}
+                  placeholder="Causa imediata da morte"
+                  style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+                  required
+                />
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold' }}>Causa Mortis B (antecedente)</label>
+                <input
+                  type="text"
+                  value={causeMortisB}
+                  onChange={(e) => setCauseMortisB(e.target.value)}
+                  style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+                />
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold' }}>Causa Mortis C (antecedente)</label>
+                <input
+                  type="text"
+                  value={causeMortisC}
+                  onChange={(e) => setCauseMortisC(e.target.value)}
+                  style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+                />
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold' }}>Causa Mortis D (causa básica)</label>
+                <input
+                  type="text"
+                  value={causeMortisD}
+                  onChange={(e) => setCauseMortisD(e.target.value)}
+                  style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+                />
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold' }}>Circunstância do Óbito *</label>
+                <select
+                  value={deathManner}
+                  onChange={(e) => setDeathManner(e.target.value as typeof deathManner)}
+                  style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+                >
+                  <option value="natural">Natural</option>
+                  <option value="violent">Violento (causa externa)</option>
+                  <option value="undetermined">Indeterminado</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold' }}>Nome do Declarante</label>
+                  <input
+                    type="text"
+                    value={declarantName}
+                    onChange={(e) => setDeclarantName(e.target.value)}
+                    style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold' }}>Documento do Declarante</label>
+                  <input
+                    type="text"
+                    value={declarantDocument}
+                    onChange={(e) => setDeclarantDocument(e.target.value)}
+                    style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           <div style={{ marginBottom: 15 }}>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold' }}>Observações / Motivo / Justificativa *</label>

@@ -86,6 +86,25 @@ export const validateOutcomeCreateInput = (input: OutcomeCreateInput): OutcomeCr
         message: 'O registro de óbito exige a descrição da causa mortis / circunstâncias em observações.',
       });
     }
+
+    // Declaração de Óbito estruturada (Fase 4): Causa Mortis A (causa
+    // terminal, linha "a" do bloco V do SVO/CGIAE) é sempre obrigatória —
+    // é a única linha que toda declaração de óbito real exige preenchida.
+    const causeMortisA = (input.deathCertificateData?.causeMortisA || '').trim();
+    if (!causeMortisA) {
+      throw new AppError({
+        category: ErrorCategory.VALIDATION,
+        code: 'DEATH_CERTIFICATE_CAUSE_MORTIS_A_REQUIRED',
+        message: 'O registro de óbito exige a Causa Mortis A (causa terminal) na Declaração de Óbito estruturada.',
+      });
+    }
+    if (!input.deathCertificateData?.deathManner) {
+      throw new AppError({
+        category: ErrorCategory.VALIDATION,
+        code: 'DEATH_CERTIFICATE_MANNER_REQUIRED',
+        message: 'O registro de óbito exige a indicação da circunstância do óbito (natural, violento ou indeterminado).',
+      });
+    }
   }
 
   return {
@@ -94,5 +113,17 @@ export const validateOutcomeCreateInput = (input: OutcomeCreateInput): OutcomeCr
     destinationUnit: input.destinationUnit ? input.destinationUnit.trim() : null,
     regulationCode: input.regulationCode ? input.regulationCode.trim() : null,
     dischargeInstructions: input.dischargeInstructions ? input.dischargeInstructions.trim() : null,
+    deathCertificateData: input.deathCertificateData
+      ? {
+          causeMortisA: input.deathCertificateData.causeMortisA.trim(),
+          causeMortisB: input.deathCertificateData.causeMortisB ? input.deathCertificateData.causeMortisB.trim() : null,
+          causeMortisC: input.deathCertificateData.causeMortisC ? input.deathCertificateData.causeMortisC.trim() : null,
+          causeMortisD: input.deathCertificateData.causeMortisD ? input.deathCertificateData.causeMortisD.trim() : null,
+          deathManner: input.deathCertificateData.deathManner,
+          declarantName: input.deathCertificateData.declarantName ? input.deathCertificateData.declarantName.trim() : null,
+          declarantDocument: input.deathCertificateData.declarantDocument ? input.deathCertificateData.declarantDocument.trim() : null,
+          registryOfficeInfo: input.deathCertificateData.registryOfficeInfo ? input.deathCertificateData.registryOfficeInfo.trim() : null,
+        }
+      : null,
   };
 };

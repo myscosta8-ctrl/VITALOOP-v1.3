@@ -23,6 +23,7 @@ import { success } from '../http/envelope.js';
 import { requirePermission } from '../security/require-auth.js';
 import { withSecurityContext } from '../db/security-context.js';
 import { sha256Hex } from '../security/hash.js';
+import { transitionEncounterStatus } from '../services/encounter-status.js';
 
 const requireOutcomeWriteAndRead = (db: pg.Pool | null) => [
   requirePermission(db, 'outcome.write'),
@@ -88,6 +89,7 @@ interface DbOutcomeRow {
   regulation_code: string | null;
   death_timestamp: Date | null;
   death_certificate_info: string | null;
+  death_certificate_data: unknown;
   created_at: Date;
   updated_at: Date;
 }
@@ -121,6 +123,7 @@ const mapRowToEncounterOutcome = (row: DbOutcomeRow): EncounterOutcome => ({
   regulationCode: row.regulation_code,
   deathTimestamp: row.death_timestamp ? new Date(row.death_timestamp).toISOString() : null,
   deathCertificateInfo: row.death_certificate_info,
+  deathCertificateData: row.death_certificate_data as EncounterOutcome['deathCertificateData'],
   createdAt: new Date(row.created_at).toISOString(),
   updatedAt: new Date(row.updated_at).toISOString(),
 });
@@ -157,6 +160,16 @@ const createOutcomeBodySchema = z.object({
   regulationCode: z.string().optional().nullable(),
   deathTimestamp: z.string().optional().nullable(),
   deathCertificateInfo: z.string().optional().nullable(),
+  deathCertificateData: z.object({
+    causeMortisA: z.string(),
+    causeMortisB: z.string().optional().nullable(),
+    causeMortisC: z.string().optional().nullable(),
+    causeMortisD: z.string().optional().nullable(),
+    deathManner: z.enum(['natural', 'violent', 'undetermined']),
+    declarantName: z.string().optional().nullable(),
+    declarantDocument: z.string().optional().nullable(),
+    registryOfficeInfo: z.string().optional().nullable(),
+  }).optional().nullable(),
   dischargeInstructions: z.string().optional().nullable(),
   dischargePrescription: z.any().optional().nullable(),
 });
@@ -253,6 +266,7 @@ export const registerOutcomeRoutes = (app: FastifyInstance, pool: pg.Pool | null
             regulationCode: parsedBody.regulationCode,
             deathTimestamp: parsedBody.deathTimestamp,
             deathCertificateInfo: parsedBody.deathCertificateInfo,
+            deathCertificateData: parsedBody.deathCertificateData,
             dischargeInstructions: parsedBody.dischargeInstructions,
             dischargePrescription: parsedBody.dischargePrescription,
             hasPrimaryDiagnosis,
@@ -261,8 +275,8 @@ export const registerOutcomeRoutes = (app: FastifyInstance, pool: pg.Pool | null
           // 6. Inserção do desfecho assistencial em app.encounter_outcomes
           const outcomeRes = await client.query<DbOutcomeRow>(
             `insert into app.encounter_outcomes (
-               encounter_id, patient_id, consultation_id, doctor_id, outcome_type, notes, destination_unit, regulation_code, death_timestamp, death_certificate_info
-             ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+               encounter_id, patient_id, consultation_id, doctor_id, outcome_type, notes, destination_unit, regulation_code, death_timestamp, death_certificate_info, death_certificate_data
+             ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
              returning *`,
             [
               encounterId,
@@ -275,18 +289,24 @@ export const registerOutcomeRoutes = (app: FastifyInstance, pool: pg.Pool | null
               validated.regulationCode ?? null,
               validated.deathTimestamp ?? null,
               validated.deathCertificateInfo ?? null,
+              validated.deathCertificateData ? JSON.stringify(validated.deathCertificateData) : null,
             ],
           );
 
           const outcomeRow = outcomeRes.rows[0]!;
           const createdOutcome = mapRowToEncounterOutcome(outcomeRow);
 
-          // 7. Atualização do estado do atendimento em app.encounters
+          // 7. Atualização do estado do atendimento em app.encounters — via
+          // transitionEncounterStatus (mesma função usada por triages.ts/
+          // queues.ts, achado de auditoria do fluxo Pronto Atendimento) em
+          // vez do UPDATE direto que existia aqui, que pulava a validação
+          // da máquina de estados e não emitia EncounterStatusChanged/Closed.
           const targetStatus = determineTargetEncounterStatus(validated.outcomeType);
-          await client.query(
-            `update app.encounters set status = $1, updated_at = now() where id = $2`,
-            [targetStatus, encounterId],
-          );
+          await transitionEncounterStatus(client, {
+            encounterId,
+            toStatus: targetStatus,
+            actorUserId: doctorId as UUID,
+          });
 
           // 8. Atualização/finalização de bilhetes de fila ativos em app.queue_tickets
           await client.query(

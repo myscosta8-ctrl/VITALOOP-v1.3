@@ -1331,3 +1331,24 @@ Conforme auditado e registrado formalmente em `docs/GO_LIVE_REAL_VALIDATION_REPO
 >   frontend). Substitui o botão fixo em `NursingSaeView.tsx`.
 > - Nenhuma migration nova — `scale_type` já era `text` sem CHECK constraint.
 > - Build+testes limpos: `packages/domain`, `apps/api`, `apps/web` (106 arquivos, 470 testes).
+
+---
+
+> ## 🟢 FASE 4 DO PLANO DE RECONSTRUÇÃO ASSISTENCIAL — Checklist de Alta + Óbito (12/09/2026)
+> - **Declaração de Óbito estruturada**: `app.encounter_outcomes` ganhou coluna `death_certificate_data`
+>   jsonb (Causa Mortis A obrigatória/B/C/D, circunstância do óbito, dados de declarante) —
+>   campos antigos (`death_timestamp`/`death_certificate_info`) mantidos intactos. Validação de
+>   domínio em `packages/domain/src/outcome/rules.ts` exige Causa Mortis A + circunstância.
+>   Formulário estruturado embutido em `DesfechoTab.tsx` (só aparece quando o tipo de desfecho é
+>   'death').
+> - **Checklist de Alta**: nova tabela `app.discharge_checklists` (mesmo padrão form_fields jsonb
+>   das outras fichas via engine `clinical-forms`), reaproveitando as permissões `outcome.read`/
+>   `outcome.write` já existentes. Novo botão "Checklist de Alta" na aba de Solicitações Médicas.
+> - **Achado colateral corrigido**: a rota de desfecho fazia `UPDATE` direto no status do
+>   atendimento (bypassando a máquina de estados, mesmo padrão de bug já corrigido na Fase 1 do
+>   fluxo Pronto Atendimento) — trocado por `transitionEncounterStatus`.
+> - **Achado colateral NÃO corrigido nesta rodada** (spawn de tarefa separada): desfecho tipo
+>   `admission_bed` ainda força o atendimento pra `completed` em vez de `admitted` — contradiz a
+>   Fase 1 (Internação como estado de 1ª classe). Fora de escopo desta fase, sinalizado à parte.
+> - Nenhuma migration quebra compatibilidade — tudo aditivo. Build+testes limpos: `packages/domain`,
+>   `apps/api`, `apps/web` (106 arquivos, 473 testes).

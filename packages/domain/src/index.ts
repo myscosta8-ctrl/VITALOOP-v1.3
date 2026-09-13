@@ -36,6 +36,7 @@ export * from './fluid-balance/index.js';
 export * from './nursing-therapeutic-plan/index.js';
 export * from './pharmacy-followup/index.js';
 export * from './vital-signs/index.js';
+export * from './discharge-checklist/index.js';
 
 
 
