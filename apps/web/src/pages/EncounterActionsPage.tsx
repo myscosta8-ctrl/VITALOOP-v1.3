@@ -20,6 +20,7 @@ import { NursingTherapeuticPlanModal } from '../components/NursingTherapeuticPla
 import { SbarTransferModal } from '../components/SbarTransferModal.js';
 import { SocialWorkAssessmentModal } from '../components/SocialWorkAssessmentModal.js';
 import { NutritionAssessmentModal } from '../components/NutritionAssessmentModal.js';
+import { NursingAdmissionFormModal } from '../components/NursingAdmissionFormModal.js';
 import { PhysiotherapyAssessmentModal } from '../components/PhysiotherapyAssessmentModal.js';
 import { FluidBalanceModal } from '../components/FluidBalanceModal.js';
 import { PharmacyFollowUpModal } from '../components/PharmacyFollowUpModal.js';
@@ -47,6 +48,7 @@ type OpenPanel =
   | 'sbar'
   | 'servico_social'
   | 'nutricao'
+  | 'ficha_enfermagem'
   | 'fisioterapia'
   | 'balanco_hidrico'
   | 'acompanhamento_farmaceutico'
@@ -77,6 +79,7 @@ const ACTIONS: ReadonlyArray<{ panel: Exclude<OpenPanel, null>; label: string; t
   { panel: 'evento', label: 'Reportar evento adverso', tab: 'medicas' },
   { panel: 'regulacao', label: 'Regulação externa (SISREG/CROSS)', tab: 'medicas' },
 
+  { panel: 'ficha_enfermagem', label: 'Ficha de Atendimento de Enfermagem', tab: 'enfermagem' },
   { panel: 'ser', label: 'Atualizar quadro clínico (SER)', tab: 'enfermagem' },
   { panel: 'sbar', label: 'Transferência interna (SBAR)', tab: 'enfermagem' },
   { panel: 'plano_multidisciplinar', label: 'Registrar projeto terapêutico multidisciplinar (Enfermagem)', tab: 'enfermagem' },
@@ -285,6 +288,11 @@ export const EncounterActionsPage: React.FC<Props> = ({ encounterId }) => {
       {open === 'sbar' && patientId && (
         <Overlay title="Transferência Interna (SBAR)" onClose={() => setOpen(null)}>
           <SbarTransferModal encounterId={encounterId} patientId={patientId} onSuccess={() => setOpen(null)} />
+        </Overlay>
+      )}
+      {open === 'ficha_enfermagem' && patientId && (
+        <Overlay title="Ficha de Atendimento de Enfermagem" onClose={() => setOpen(null)}>
+          <NursingAdmissionFormModal encounterId={encounterId} patientId={patientId} onSuccess={() => setOpen(null)} />
         </Overlay>
       )}
       {open === 'servico_social' && patientId && (

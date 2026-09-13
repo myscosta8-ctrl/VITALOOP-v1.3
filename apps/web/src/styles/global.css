@@ -258,6 +258,16 @@ input, select, textarea {
   padding: 8px 10px;
   width: 100%;
 }
+/* Rádio/checkbox NÃO devem herdar width:100%/padding de campo de texto —
+   sem isso, cada bolinha vira um bloco full-width com padding, empurrando o
+   rótulo pra cima/sobrepondo o próximo campo (achado de auditoria,
+   NursingRecordsView "Tipo de Registro" e qualquer outro radio/checkbox do
+   app usavam o estilo de <input> de texto por engano). */
+input[type="radio"], input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  border: none;
+}
 input::placeholder, textarea::placeholder {
   color: var(--color-text-faint);
 }
