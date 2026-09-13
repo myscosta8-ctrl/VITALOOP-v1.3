@@ -13,8 +13,9 @@ import type { EncounterOutcome, EncounterSummary } from './types.js';
 
 describe('Outcome Domain Rules & Events', () => {
   describe('determineTargetEncounterStatus', () => {
-    it('retorna canceled apenas para evasao', () => {
+    it('retorna canceled apenas para evasao, admitted apenas para internacao em leito', () => {
       expect(determineTargetEncounterStatus('evasion')).toBe('canceled');
+      expect(determineTargetEncounterStatus('admission_bed')).toBe('admitted');
       expect(determineTargetEncounterStatus('medical_discharge')).toBe('completed');
       expect(determineTargetEncounterStatus('transfer')).toBe('completed');
       expect(determineTargetEncounterStatus('death')).toBe('completed');

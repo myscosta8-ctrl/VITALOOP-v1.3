@@ -1,9 +1,16 @@
 import { AppError, ErrorCategory } from '@vitaloop/shared';
 import type { OutcomeCreateInput, OutcomeType } from './types.js';
 
-export const determineTargetEncounterStatus = (outcomeType: OutcomeType): 'completed' | 'canceled' => {
+export const determineTargetEncounterStatus = (outcomeType: OutcomeType): 'completed' | 'canceled' | 'admitted' => {
   if (outcomeType === 'evasion') {
     return 'canceled';
+  }
+  // Internação (admission_bed) mantém o atendimento como episódio de cuidado
+  // ATIVO (leito) — não é um desfecho que encerra o atendimento como os
+  // demais, por isso não transiciona para 'completed'. Ver comentário em
+  // encounter/state-machine.ts sobre o ciclo de vida de 'admitted'.
+  if (outcomeType === 'admission_bed') {
+    return 'admitted';
   }
   return 'completed';
 };

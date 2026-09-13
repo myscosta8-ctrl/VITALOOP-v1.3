@@ -315,27 +315,34 @@ export const registerOutcomeRoutes = (app: FastifyInstance, pool: pg.Pool | null
           );
 
           // 9. Geração do Sumário de Alta Estruturado em app.encounter_summaries
-          const summaryRes = await client.query<DbSummaryRow>(
-            `insert into app.encounter_summaries (
-               outcome_id, encounter_id, patient_id, doctor_id, chief_complaint, primary_diagnosis_code, primary_diagnosis_description, summary_notes, discharge_instructions, discharge_prescription
-             ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-             returning *`,
-            [
-              createdOutcome.id,
-              encounterId,
-              enc.patient_id,
-              doctorId,
-              cons ? cons.chief_complaint : null,
-              primaryCidCode,
-              primaryCidDesc,
-              validated.notes ?? null,
-              validated.dischargeInstructions ?? null,
-              validated.dischargePrescription ? JSON.stringify(validated.dischargePrescription) : null,
-            ],
-          );
+          // — não se aplica a admission_bed: o paciente não está recebendo
+          // alta, permanece em cuidado ativo (internado), então não há
+          // "sumário de alta" a gerar nem evento de encerramento a emitir.
+          const isAdmission = validated.outcomeType === 'admission_bed';
+          let createdSummary: EncounterSummary | null = null;
 
-          const summaryRow = summaryRes.rows[0]!;
-          const createdSummary = mapRowToEncounterSummary(summaryRow);
+          if (!isAdmission) {
+            const summaryRes = await client.query<DbSummaryRow>(
+              `insert into app.encounter_summaries (
+                 outcome_id, encounter_id, patient_id, doctor_id, chief_complaint, primary_diagnosis_code, primary_diagnosis_description, summary_notes, discharge_instructions, discharge_prescription
+               ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+               returning *`,
+              [
+                createdOutcome.id,
+                encounterId,
+                enc.patient_id,
+                doctorId,
+                cons ? cons.chief_complaint : null,
+                primaryCidCode,
+                primaryCidDesc,
+                validated.notes ?? null,
+                validated.dischargeInstructions ?? null,
+                validated.dischargePrescription ? JSON.stringify(validated.dischargePrescription) : null,
+              ],
+            );
+
+            createdSummary = mapRowToEncounterSummary(summaryRes.rows[0]!);
+          }
 
           // 10. Emissão dos Eventos de Domínio e Auditoria
           const ev1 = createOutcomeRecordedEvent(createdOutcome, doctorId as UUID);
@@ -350,29 +357,31 @@ export const registerOutcomeRoutes = (app: FastifyInstance, pool: pg.Pool | null
             schemaVersion: ev1.schemaVersion,
           });
 
-          const ev2 = createOutcomeEncounterClosedEvent(encounterId as UUID, enc.patient_id as UUID, validated.outcomeType, doctorId as UUID);
-          await persistDomainEvent(client, {
-            id: ev2.eventId,
-            eventType: ev2.type,
-            aggregateType: ev2.aggregateType,
-            aggregateId: ev2.aggregateId,
-            actorUserId: doctorId as UUID,
-            patientId: enc.patient_id as UUID,
-            payload: ev2.payload,
-            schemaVersion: ev2.schemaVersion,
-          });
+          if (!isAdmission) {
+            const ev2 = createOutcomeEncounterClosedEvent(encounterId as UUID, enc.patient_id as UUID, validated.outcomeType, doctorId as UUID);
+            await persistDomainEvent(client, {
+              id: ev2.eventId,
+              eventType: ev2.type,
+              aggregateType: ev2.aggregateType,
+              aggregateId: ev2.aggregateId,
+              actorUserId: doctorId as UUID,
+              patientId: enc.patient_id as UUID,
+              payload: ev2.payload,
+              schemaVersion: ev2.schemaVersion,
+            });
 
-          const ev3 = createSummaryGeneratedEvent(createdSummary, doctorId as UUID);
-          await persistDomainEvent(client, {
-            id: ev3.eventId,
-            eventType: ev3.type,
-            aggregateType: ev3.aggregateType,
-            aggregateId: ev3.aggregateId,
-            actorUserId: doctorId as UUID,
-            patientId: enc.patient_id as UUID,
-            payload: ev3.payload,
-            schemaVersion: ev3.schemaVersion,
-          });
+            const ev3 = createSummaryGeneratedEvent(createdSummary!, doctorId as UUID);
+            await persistDomainEvent(client, {
+              id: ev3.eventId,
+              eventType: ev3.type,
+              aggregateType: ev3.aggregateType,
+              aggregateId: ev3.aggregateId,
+              actorUserId: doctorId as UUID,
+              patientId: enc.patient_id as UUID,
+              payload: ev3.payload,
+              schemaVersion: ev3.schemaVersion,
+            });
+          }
 
           await auditAction(client, doctorId, 'create', 'encounter_outcome', createdOutcome.id, req, {
             encounterId,
