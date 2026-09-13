@@ -5,6 +5,11 @@ import {
   type ControlledMedicationDispensation,
   type EligiblePrescriptionItem,
 } from '../lib/controlled-medications-api.js';
+import { Button } from './ui/button.js';
+import { Input } from './ui/input.js';
+import { Label } from './ui/label.js';
+import { Select } from './ui/select.js';
+import { EmptyState } from './ui/empty-state.js';
 
 interface ControlledMedicationModalProps {
   encounterId: string;
@@ -85,66 +90,95 @@ export const ControlledMedicationModal: React.FC<ControlledMedicationModalProps>
   };
 
   return (
-    <div data-testid="controlled-medication-modal">
-      <h3>Medicamentos Controlados — Rastreio de Dispensação</h3>
-      {msg && <p data-testid="controlled-medication-status-msg">{msg}</p>}
+    <div data-testid="controlled-medication-modal" className="space-y-4">
+      {msg && <p data-testid="controlled-medication-status-msg" className="text-sm text-muted-foreground">{msg}</p>}
 
       {loading ? (
-        <p role="status">Carregando…</p>
+        <p role="status" className="text-sm text-muted-foreground">Carregando…</p>
       ) : items.length === 0 ? (
-        <p style={{ color: '#64748b', fontSize: 13 }}>
-          Nenhum item de prescrição controlado (Portaria 344/98) encontrado para este atendimento.
-        </p>
+        <EmptyState
+          className="p-3"
+          title="Nenhum item de prescrição controlado (Portaria 344/98) encontrado para este atendimento."
+        />
       ) : (
-        <form onSubmit={handleSubmit} data-testid="controlled-medication-form">
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold' }}>Item de Prescrição *</label>
-          <select
-            value={selectedItemId}
-            onChange={(e) => setSelectedItemId(e.target.value)}
-            style={{ width: '100%', padding: 8, marginBottom: 8 }}
-            required
-          >
-            <option value="">Selecione…</option>
-            {items.map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.medication_name} — {i.dose}{i.dose_unit} (Lista {i.controlled_class})
-              </option>
-            ))}
-          </select>
+        <form onSubmit={handleSubmit} data-testid="controlled-medication-form" className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="controlled-med-item">Item de Prescrição *</Label>
+            <Select
+              id="controlled-med-item"
+              value={selectedItemId}
+              onChange={(e) => setSelectedItemId(e.target.value)}
+              required
+            >
+              <option value="">Selecione…</option>
+              {items.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.medication_name} — {i.dose}{i.dose_unit} (Lista {i.controlled_class})
+                </option>
+              ))}
+            </Select>
+          </div>
 
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold' }}>Quantidade Dispensada *</label>
-          <input type="number" step="0.01" value={quantity} onChange={(e) => setQuantity(e.target.value)} style={{ width: '100%', padding: 8, marginBottom: 8 }} required />
+          <div className="space-y-1.5">
+            <Label htmlFor="controlled-med-qty">Quantidade Dispensada *</Label>
+            <Input
+              id="controlled-med-qty"
+              type="number"
+              step="0.01"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              required
+            />
+          </div>
 
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold' }}>Unidade *</label>
-          <input type="text" placeholder="Ex.: comprimido, ampola, ml" value={unit} onChange={(e) => setUnit(e.target.value)} style={{ width: '100%', padding: 8, marginBottom: 8 }} required />
+          <div className="space-y-1.5">
+            <Label htmlFor="controlled-med-unit">Unidade *</Label>
+            <Input
+              id="controlled-med-unit"
+              type="text"
+              placeholder="Ex.: comprimido, ampola, ml"
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+              required
+            />
+          </div>
 
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold' }}>
-            Número da Notificação de Receita {requiresNotification && '*'}
-          </label>
-          <input
-            type="text"
-            value={notificationNumber}
-            onChange={(e) => setNotificationNumber(e.target.value)}
-            placeholder={requiresNotification ? 'Obrigatório para listas A/B' : 'Não obrigatório para esta lista'}
-            style={{ width: '100%', padding: 8, marginBottom: 8 }}
-            required={requiresNotification}
-          />
+          <div className="space-y-1.5">
+            <Label htmlFor="controlled-med-notification">
+              Número da Notificação de Receita {requiresNotification && '*'}
+            </Label>
+            <Input
+              id="controlled-med-notification"
+              type="text"
+              value={notificationNumber}
+              onChange={(e) => setNotificationNumber(e.target.value)}
+              placeholder={requiresNotification ? 'Obrigatório para listas A/B' : 'Não obrigatório para esta lista'}
+              required={requiresNotification}
+            />
+          </div>
 
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold' }}>Nome da Testemunha (se aplicável)</label>
-          <input type="text" value={witnessName} onChange={(e) => setWitnessName(e.target.value)} style={{ width: '100%', padding: 8, marginBottom: 8 }} />
+          <div className="space-y-1.5">
+            <Label htmlFor="controlled-med-witness">Nome da Testemunha (se aplicável)</Label>
+            <Input
+              id="controlled-med-witness"
+              type="text"
+              value={witnessName}
+              onChange={(e) => setWitnessName(e.target.value)}
+            />
+          </div>
 
-          <button type="submit" disabled={submitting || !selectedItemId} data-testid="submit-controlled-medication-btn">
+          <Button type="submit" disabled={submitting || !selectedItemId} data-testid="submit-controlled-medication-btn">
             {submitting ? 'Registrando…' : 'Registrar Dispensação'}
-          </button>
+          </Button>
         </form>
       )}
 
       {dispensations.length > 0 && (
-        <div style={{ marginTop: 15 }}>
-          <h4>Histórico de Dispensações</h4>
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold text-foreground">Histórico de Dispensações</h4>
           {dispensations.map((d) => (
-            <div key={d.id} style={{ padding: 8, borderLeft: '4px solid #b91c1c', backgroundColor: '#fef2f2', marginBottom: 6, fontSize: 13 }}>
-              <div style={{ color: '#64748b', fontSize: 12 }}>{new Date(d.dispensedAt).toLocaleString('pt-BR')}</div>
+            <div key={d.id} className="rounded-md border-l-4 border-l-destructive bg-destructive/10 p-2 text-sm">
+              <div className="text-xs text-muted-foreground">{new Date(d.dispensedAt).toLocaleString('pt-BR')}</div>
               <div>Lista {d.controlledClass} — {d.quantityDispensed} {d.unit}{d.prescriptionNotificationNumber ? ` — Notificação: ${d.prescriptionNotificationNumber}` : ''}</div>
             </div>
           ))}

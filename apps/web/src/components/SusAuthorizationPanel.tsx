@@ -3,6 +3,10 @@ import { useSession } from '../context/session-context.js';
 import { createSusApi, type AihRequestRecord, type ApacRequestRecord } from '../lib/sus-api.js';
 import type { ClinicalFormSchema } from '../lib/clinical-form-types.js';
 import { DynamicClinicalForm } from './DynamicClinicalForm.js';
+import { Card, CardContent } from './ui/card.js';
+import { Badge } from './ui/badge.js';
+import { Button } from './ui/button.js';
+import { EmptyState } from './ui/empty-state.js';
 
 interface SusAuthorizationPanelProps {
   encounterId: string;
@@ -76,31 +80,33 @@ export const SusAuthorizationPanel: React.FC<SusAuthorizationPanelProps> = ({ en
   };
 
   const renderList = (type: DocType, requests: Array<AihRequestRecord | ApacRequestRecord>, label: string) => (
-    <div>
-      <h4>{label}</h4>
+    <div className="space-y-2">
+      <h4 className="text-sm font-semibold text-foreground">{label}</h4>
       {requests.length === 0 ? (
-        <p role="status">Nenhum laudo de {label.toUpperCase()} para este atendimento.</p>
+        <EmptyState className="p-3" title={`Nenhum laudo de ${label.toUpperCase()} para este atendimento.`} />
       ) : (
-        <table data-testid={`${type}-authorization-table`}>
+        <table data-testid={`${type}-authorization-table`} className="w-full text-left text-sm">
           <thead>
-            <tr>
-              <th>Procedimento</th>
-              <th>CID-10</th>
-              <th>Status</th>
-              <th>Ação</th>
+            <tr className="border-b border-border text-xs uppercase text-muted-foreground">
+              <th className="py-1.5 pr-3 font-medium">Procedimento</th>
+              <th className="py-1.5 pr-3 font-medium">CID-10</th>
+              <th className="py-1.5 pr-3 font-medium">Status</th>
+              <th className="py-1.5 pr-3 font-medium">Ação</th>
             </tr>
           </thead>
           <tbody>
             {requests.map((r) => (
-              <tr key={r.id}>
-                <td>{r.mainProcedureCode}</td>
-                <td>{r.mainCid10}</td>
-                <td>{r.status}</td>
-                <td>
+              <tr key={r.id} className="border-b border-border last:border-0">
+                <td className="py-1.5 pr-3">{r.mainProcedureCode}</td>
+                <td className="py-1.5 pr-3">{r.mainCid10}</td>
+                <td className="py-1.5 pr-3">
+                  <Badge variant={r.status === 'authorized' ? 'success' : 'outline'}>{r.status}</Badge>
+                </td>
+                <td className="py-1.5 pr-3">
                   {r.status !== 'authorized' && (
-                    <button type="button" onClick={() => startAuthorizing(type, r.id)} data-testid={`authorize-${type}-btn-${r.id}`}>
+                    <Button type="button" size="sm" variant="secondary" onClick={() => startAuthorizing(type, r.id)} data-testid={`authorize-${type}-btn-${r.id}`}>
                       Autorizar
-                    </button>
+                    </Button>
                   )}
                 </td>
               </tr>
@@ -114,24 +120,29 @@ export const SusAuthorizationPanel: React.FC<SusAuthorizationPanelProps> = ({ en
   const activeSchema = authorizing?.type === 'aih' ? aihAuthSchema : apacAuthSchema;
 
   return (
-    <div data-testid="sus-authorization-panel">
-      <h3>Autorização de Laudos AIH/APAC</h3>
-      {msg && <p data-testid="sus-authorization-msg">{msg}</p>}
+    <div data-testid="sus-authorization-panel" className="space-y-5">
+      {msg && <p data-testid="sus-authorization-msg" className="text-sm text-muted-foreground">{msg}</p>}
 
       {renderList('aih', aihRequests, 'AIH')}
       {renderList('apac', apacRequests, 'APAC')}
 
       {authorizing && activeSchema && (
-        <form onSubmit={handleAuthorize} data-testid="authorization-form">
-          <h4>Autorizar laudo de {authorizing.type.toUpperCase()}</h4>
-          <DynamicClinicalForm schema={activeSchema} values={formFields} onChange={setFormFields} />
-          <button type="submit" data-testid="submit-authorization-btn">
-            Confirmar Autorização
-          </button>
-          <button type="button" onClick={() => setAuthorizing(null)}>
-            Cancelar
-          </button>
-        </form>
+        <Card>
+          <CardContent className="space-y-3 pt-6">
+            <h4 className="text-sm font-semibold text-foreground">Autorizar laudo de {authorizing.type.toUpperCase()}</h4>
+            <form onSubmit={handleAuthorize} data-testid="authorization-form" className="space-y-3">
+              <DynamicClinicalForm schema={activeSchema} values={formFields} onChange={setFormFields} />
+              <div className="flex gap-2">
+                <Button type="submit" data-testid="submit-authorization-btn">
+                  Confirmar Autorização
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => setAuthorizing(null)}>
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

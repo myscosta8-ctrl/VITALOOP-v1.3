@@ -3,6 +3,11 @@ import { useSession } from '../context/session-context.js';
 import { createNotificationApi, type NotifiableDisease } from '../lib/notification-api.js';
 import type { ClinicalFormSchema } from '../lib/clinical-form-types.js';
 import { DynamicClinicalForm } from './DynamicClinicalForm.js';
+import { Button } from './ui/button.js';
+import { Textarea } from './ui/textarea.js';
+import { Label } from './ui/label.js';
+import { Select } from './ui/select.js';
+import { Input } from './ui/input.js';
 
 interface CompulsoryNotificationModalProps {
   encounterId: string;
@@ -86,46 +91,50 @@ export const CompulsoryNotificationModal: React.FC<CompulsoryNotificationModalPr
 
   return (
     <div data-testid="compulsory-notification-modal">
-      <h3>Notificação Compulsória de Agravo</h3>
-      <p>Registro interno da unidade — não substitui, por enquanto, o envio ao SINAN.</p>
-      {msg && <p data-testid="notification-status-msg">{msg}</p>}
+      <p className="mb-3 text-sm text-muted-foreground">
+        Registro interno da unidade — não substitui, por enquanto, o envio ao SINAN.
+      </p>
+      {msg && <p data-testid="notification-status-msg" className="mb-3 text-sm text-muted-foreground">{msg}</p>}
 
-      <form onSubmit={handleSubmit} data-testid="notification-form">
-        <label>
-          Agravo:
-          <select value={diseaseId} onChange={(e) => setDiseaseId(e.target.value)} data-testid="disease-select">
+      <form onSubmit={handleSubmit} data-testid="notification-form" className="max-w-none space-y-3 border-0 bg-transparent p-0 shadow-none">
+        <div className="space-y-1.5">
+          <Label htmlFor="notification-disease">Agravo</Label>
+          <Select id="notification-disease" value={diseaseId} onChange={(e) => setDiseaseId(e.target.value)} data-testid="disease-select">
             {diseases.map((d) => (
               <option key={d.id} value={d.id}>{d.name}</option>
             ))}
-          </select>
-        </label>
+          </Select>
+        </div>
 
-        <label>
-          Data de início dos sintomas (opcional):
-          <input
+        <div className="space-y-1.5">
+          <Label htmlFor="notification-onset">Data de início dos sintomas (opcional)</Label>
+          <Input
+            id="notification-onset"
             type="date"
             value={symptomOnsetDate}
             onChange={(e) => setSymptomOnsetDate(e.target.value)}
             data-testid="symptom-onset-input"
           />
-        </label>
+        </div>
 
         {bodySchema && (
           <DynamicClinicalForm schema={bodySchema} values={bodyFields} onChange={setBodyFields} />
         )}
 
-        <label>
-          Observações clínicas (opcional):
-          <textarea
+        <div className="space-y-1.5">
+          <Label htmlFor="notification-notes">Observações clínicas (opcional)</Label>
+          <Textarea
+            id="notification-notes"
+            rows={3}
             value={clinicalNotes}
             onChange={(e) => setClinicalNotes(e.target.value)}
             data-testid="clinical-notes-input"
           />
-        </label>
+        </div>
 
-        <button type="submit" data-testid="submit-notification-btn">
+        <Button type="submit" data-testid="submit-notification-btn">
           Registrar Notificação
-        </button>
+        </Button>
       </form>
     </div>
   );

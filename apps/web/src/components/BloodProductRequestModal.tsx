@@ -3,6 +3,9 @@ import { useSession } from '../context/session-context.js';
 import { createHemotherapyApi } from '../lib/hemotherapy-api.js';
 import type { ClinicalFormSchema } from '../lib/clinical-form-types.js';
 import { DynamicClinicalForm } from './DynamicClinicalForm.js';
+import { Button } from './ui/button.js';
+import { Textarea } from './ui/textarea.js';
+import { Label } from './ui/label.js';
 
 interface BloodProductRequestModalProps {
   encounterId: string;
@@ -52,29 +55,29 @@ export const BloodProductRequestModal: React.FC<BloodProductRequestModalProps> =
 
   return (
     <div data-testid="blood-product-request-modal">
-      <h3>Solicitação de Sangue, Componentes e Derivados</h3>
-      <p>Encaminhar à Fundação Hemopa conforme classificação de urgência informada abaixo.</p>
-      {msg && <p data-testid="blood-request-status-msg">{msg}</p>}
+      <p className="mb-3 text-sm text-muted-foreground">
+        Encaminhar à Fundação Hemopa conforme classificação de urgência informada abaixo.
+      </p>
+      {msg && <p data-testid="blood-request-status-msg" className="mb-3 text-sm text-muted-foreground">{msg}</p>}
 
       {!schema ? (
-        <p role="status">Carregando…</p>
+        <p role="status" className="text-sm text-muted-foreground">Carregando…</p>
       ) : (
-        <form onSubmit={handleSubmit} data-testid="blood-request-form">
-          <label htmlFor="blood-request-indication" style={{ display: 'block', marginBottom: 'var(--space-3)' }}>
-            Indicação Clínica / Cirurgia Proposta *
-            <textarea
+        <form onSubmit={handleSubmit} data-testid="blood-request-form" className="max-w-none space-y-3 border-0 bg-transparent p-0 shadow-none">
+          <div className="space-y-1.5">
+            <Label htmlFor="blood-request-indication">Indicação Clínica / Cirurgia Proposta *</Label>
+            <Textarea
               id="blood-request-indication"
               value={clinicalIndication}
               onChange={(e) => setClinicalIndication(e.target.value)}
-              style={{ width: '100%', padding: 'var(--space-2)' }}
             />
-          </label>
+          </div>
 
           <DynamicClinicalForm schema={schema} values={formFields} onChange={setFormFields} />
 
-          <button type="submit" data-testid="submit-blood-request-btn">
+          <Button type="submit" data-testid="submit-blood-request-btn">
             Registrar Solicitação
-          </button>
+          </Button>
         </form>
       )}
     </div>

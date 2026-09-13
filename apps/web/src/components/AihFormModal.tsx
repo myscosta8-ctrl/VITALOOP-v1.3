@@ -3,6 +3,10 @@ import { useSession } from '../context/session-context.js';
 import { createSusApi } from '../lib/sus-api.js';
 import type { ClinicalFormSchema } from '../lib/clinical-form-types.js';
 import { DynamicClinicalForm } from './DynamicClinicalForm.js';
+import { Button } from './ui/button.js';
+import { Input } from './ui/input.js';
+import { Textarea } from './ui/textarea.js';
+import { Label } from './ui/label.js';
 
 interface AihFormModalProps {
   encounterId: string;
@@ -76,49 +80,53 @@ export const AihFormModal: React.FC<AihFormModalProps> = ({ encounterId, patient
 
   return (
     <div data-testid="aih-form-modal">
-      <h3>Laudo para Emissão de AIH / Faturamento SUS (SUS-001..006)</h3>
-      {msg && <p data-testid="sus-msg">{msg}</p>}
-      {compatCheck && <p data-testid="compat-check-msg">{compatCheck}</p>}
+      <h3 className="mb-3 text-base font-semibold text-foreground">Laudo para Emissão de AIH / Faturamento SUS (SUS-001..006)</h3>
+      {msg && <p data-testid="sus-msg" className="mb-3 text-sm text-muted-foreground">{msg}</p>}
+      {compatCheck && <p data-testid="compat-check-msg" className="mb-3 text-sm font-medium text-foreground">{compatCheck}</p>}
 
-      <form onSubmit={handleSubmit} data-testid="aih-form">
-        <label>
-          Código Procedimento SIGTAP Principal:
-          <input
+      <form onSubmit={handleSubmit} data-testid="aih-form" className="max-w-none space-y-3 border-0 bg-transparent p-0 shadow-none">
+        <div className="space-y-1.5">
+          <Label htmlFor="aih-procedure-code">Código Procedimento SIGTAP Principal</Label>
+          <Input
+            id="aih-procedure-code"
             value={mainProcedureCode}
             onChange={(e) => setMainProcedureCode(e.target.value)}
             data-testid="procedure-code-input"
           />
-        </label>
+        </div>
 
-        <label>
-          CID-10 Principal:
-          <input
+        <div className="space-y-1.5">
+          <Label htmlFor="aih-cid10">CID-10 Principal</Label>
+          <Input
+            id="aih-cid10"
             value={mainCid10}
             onChange={(e) => setMainCid10(e.target.value)}
             data-testid="cid10-input"
           />
-        </label>
+        </div>
 
-        <label>
-          Justificativa Clínica:
-          <textarea
+        <div className="space-y-1.5">
+          <Label htmlFor="aih-justification">Justificativa Clínica</Label>
+          <Textarea
+            id="aih-justification"
+            rows={3}
             value={clinicalJustification}
             onChange={(e) => setClinicalJustification(e.target.value)}
             data-testid="justification-input"
           />
-        </label>
+        </div>
 
-        <button type="button" onClick={handleValidate} data-testid="validate-compat-btn">
+        <Button type="button" variant="secondary" onClick={handleValidate} data-testid="validate-compat-btn">
           Validar Compatibilidade SIGTAP
-        </button>
+        </Button>
 
         {clinicalFieldsSchema && (
           <DynamicClinicalForm schema={clinicalFieldsSchema} values={formFields} onChange={setFormFields} />
         )}
 
-        <button type="submit" data-testid="submit-aih-btn">
+        <Button type="submit" className="mt-2" data-testid="submit-aih-btn">
           Emitir Laudo AIH
-        </button>
+        </Button>
       </form>
     </div>
   );
