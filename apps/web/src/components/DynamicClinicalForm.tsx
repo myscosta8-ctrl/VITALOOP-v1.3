@@ -1,5 +1,9 @@
 import React from 'react';
 import type { ClinicalFormField, ClinicalFormSchema, ClinicalFormValues } from '../lib/clinical-form-types.js';
+import { Label } from './ui/label.js';
+import { Input } from './ui/input.js';
+import { Select } from './ui/select.js';
+import { Textarea } from './ui/textarea.js';
 
 interface DynamicClinicalFormProps {
   schema: ClinicalFormSchema;
@@ -19,21 +23,11 @@ const isFieldVisible = (field: ClinicalFormField, values: ClinicalFormValues): b
   return field.visibleWhen.equals.includes(controllingValue);
 };
 
-const fieldStyle: React.CSSProperties = { marginBottom: 'var(--space-3)' };
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  marginBottom: 'var(--space-1)',
-  color: 'var(--color-text)',
-  fontSize: '0.9em',
-};
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: 'var(--space-2)',
-  border: '1px solid var(--color-border)',
-  borderRadius: 4,
-  background: 'var(--color-surface)',
-  color: 'var(--color-text)',
-};
+// Campo 'text' sem limite (ou limite alto) é texto livre/descritivo — melhor
+// UX como área de texto multi-linha do que um <input> de uma linha só.
+// Limiar de 200 é heurístico (não vem do schema): abaixo disso presumimos
+// um campo curto (nome, código); acima, texto descritivo.
+const TEXTAREA_THRESHOLD = 200;
 
 const FieldInput: React.FC<{
   field: ClinicalFormField;
@@ -43,37 +37,45 @@ const FieldInput: React.FC<{
 }> = ({ field, value, onChange, fieldId }) => {
   if (field.type === 'code') {
     return (
-      <select id={fieldId} value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle} required={field.required}>
+      <Select id={fieldId} value={value} onChange={(e) => onChange(e.target.value)} required={field.required}>
         <option value="">Selecione…</option>
         {field.options?.map((opt) => (
           <option key={opt.code} value={opt.code}>
             {opt.code} — {opt.label}
           </option>
         ))}
-      </select>
+      </Select>
     );
   }
 
   if (field.type === 'date') {
-    return (
-      <input id={fieldId} type="date" value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle} required={field.required} />
-    );
+    return <Input id={fieldId} type="date" value={value} onChange={(e) => onChange(e.target.value)} required={field.required} />;
   }
 
   if (field.type === 'number') {
+    return <Input id={fieldId} type="number" value={value} onChange={(e) => onChange(e.target.value)} required={field.required} />;
+  }
+
+  if (!field.maxLength || field.maxLength > TEXTAREA_THRESHOLD) {
     return (
-      <input id={fieldId} type="number" value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle} required={field.required} />
+      <Textarea
+        id={fieldId}
+        rows={3}
+        value={value}
+        maxLength={field.maxLength}
+        onChange={(e) => onChange(e.target.value)}
+        required={field.required}
+      />
     );
   }
 
   return (
-    <input
+    <Input
       id={fieldId}
       type="text"
       value={value}
       maxLength={field.maxLength}
       onChange={(e) => onChange(e.target.value)}
-      style={inputStyle}
       required={field.required}
     />
   );
@@ -93,41 +95,29 @@ export const DynamicClinicalForm: React.FC<DynamicClinicalFormProps> = ({ schema
   };
 
   return (
-    <div data-testid="dynamic-clinical-form">
+    <div data-testid="dynamic-clinical-form" className="space-y-4">
       {schema.groups.map((group) => {
         const visibleFields = group.fields.filter((field) => isFieldVisible(field, values));
         if (visibleFields.length === 0) return null;
 
         return (
-          <fieldset
-            key={group.title}
-            style={{
-              marginBottom: 'var(--space-4)',
-              padding: 'var(--space-3)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 6,
-            }}
-          >
-            <legend style={{ color: 'var(--color-text)', fontWeight: 600, padding: '0 var(--space-2)' }}>
-              {group.title}
-            </legend>
-            {visibleFields.map((field) => {
-              const fieldId = `${prefix}-field-${field.code}`;
-              return (
-                <div key={field.code} style={fieldStyle}>
-                  <label htmlFor={fieldId} style={labelStyle}>
-                    {field.label}
-                    {field.required ? ' *' : ''}
-                  </label>
-                  <FieldInput field={field} value={values[field.code] ?? ''} onChange={(v) => setFieldValue(field.code, v)} fieldId={fieldId} />
-                  {field.helpText && (
-                    <p style={{ color: 'var(--color-text-faint)', fontSize: '0.8em', margin: 'var(--space-1) 0 0' }}>
-                      {field.helpText}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
+          <fieldset key={group.title} className="rounded-md border border-border p-3">
+            <legend className="px-2 font-semibold text-foreground">{group.title}</legend>
+            <div className="space-y-3">
+              {visibleFields.map((field) => {
+                const fieldId = `${prefix}-field-${field.code}`;
+                return (
+                  <div key={field.code} className="space-y-1.5">
+                    <Label htmlFor={fieldId}>
+                      {field.label}
+                      {field.required ? ' *' : ''}
+                    </Label>
+                    <FieldInput field={field} value={values[field.code] ?? ''} onChange={(v) => setFieldValue(field.code, v)} fieldId={fieldId} />
+                    {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+                  </div>
+                );
+              })}
+            </div>
           </fieldset>
         );
       })}

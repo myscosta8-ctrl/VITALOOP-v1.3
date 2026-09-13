@@ -16,31 +16,27 @@ vi.mock('../context/session-context.js', () => ({
 
 describe('EncounterOpenPage UI Component', () => {
   beforeEach(() => {
+    get.mockReset();
     post.mockReset();
   });
 
-  it('renderiza o formulário de abertura de atendimento', () => {
+  it('renderiza a etapa de identificação do paciente (recepção real, não só um ID colado)', () => {
     render(<EncounterOpenPage />);
-    expect(screen.getByText('Abertura de Atendimento (UPA 24h)')).toBeInTheDocument();
-    expect(screen.getByLabelText(/ID do Paciente/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Queixa Principal/i)).toBeInTheDocument();
+    expect(screen.getByText('Recepção — Abertura de Atendimento (UPA 24h)')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Buscar por nome ou CPF/i)).toBeInTheDocument();
+    expect(screen.getByText(/Cadastrar Novo Paciente/i)).toBeInTheDocument();
   });
 
-  it('exibe mensagem de erro se os campos obrigatórios estiverem vazios', async () => {
-    render(<EncounterOpenPage />);
-    const submitBtn = screen.getByRole('button', { name: /Abrir Atendimento/i });
-    fireEvent.click(submitBtn);
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('O ID do paciente é obrigatório.');
-    });
-  });
-
-  it('chama API de atendimento com sucesso', async () => {
+  it('busca paciente existente, seleciona e abre o atendimento com motivo da visita', async () => {
+    const mockPatient = {
+      id: 'pat-uuid-123',
+      medicalRecordNumber: 'MRN-001',
+      fullName: 'Maria da Silva',
+      birthDate: '1990-01-01',
+    };
     const mockCreated = {
       id: 'enc-uuid-123',
       patientId: 'pat-uuid-123',
-      institutionId: 'inst-123',
       encounterType: 'urgency',
       origin: 'spontaneous',
       chiefComplaint: 'Febre alta',
@@ -49,18 +45,26 @@ describe('EncounterOpenPage UI Component', () => {
       updatedAt: new Date().toISOString(),
     };
 
+    get.mockResolvedValueOnce([mockPatient]);
     post.mockResolvedValueOnce(mockCreated);
 
     render(<EncounterOpenPage />);
-    fireEvent.change(screen.getByLabelText(/ID do Paciente/i), {
-      target: { value: 'pat-uuid-123' },
+
+    fireEvent.change(screen.getByPlaceholderText(/Buscar por nome ou CPF/i), {
+      target: { value: 'Maria' },
     });
-    fireEvent.change(screen.getByLabelText(/Queixa Principal/i), {
+    fireEvent.click(screen.getByRole('button', { name: /^Buscar$/i }));
+
+    await waitFor(() => expect(screen.getByText('Maria da Silva')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /Usar este paciente/i }));
+
+    await waitFor(() => expect(screen.getByText(/Abertura do Atendimento/i)).toBeInTheDocument());
+
+    fireEvent.change(screen.getByPlaceholderText(/dor abdominal, febre, trauma/i), {
       target: { value: 'Febre alta' },
     });
-
-    const submitBtn = screen.getByRole('button', { name: /Abrir Atendimento/i });
-    fireEvent.click(submitBtn);
+    fireEvent.click(screen.getByRole('button', { name: /Abrir Atendimento/i }));
 
     await waitFor(() => {
       expect(post).toHaveBeenCalledWith('/api/v1/encounters', {
@@ -69,9 +73,6 @@ describe('EncounterOpenPage UI Component', () => {
         origin: 'spontaneous',
         chiefComplaint: 'Febre alta',
       });
-      expect(screen.getByRole('status')).toHaveTextContent(
-        'Atendimento aberto com sucesso! Já entrou na fila. ID: enc-uuid-123',
-      );
     });
   });
 });

@@ -3,6 +3,13 @@ import type { ExamRequest, ProcedureRequest, Interconsultation, Interconsultatio
 import { ExamSearchInput } from '../../../components/ExamSearchInput.js';
 import type { ExamsAndProceduresForm } from '../hooks/useExamsAndProcedures.js';
 import { EmptyState } from '../../../components/ui/empty-state.js';
+import { Card, CardContent } from '../../../components/ui/card.js';
+import { Badge } from '../../../components/ui/badge.js';
+import { Button } from '../../../components/ui/button.js';
+import { Input } from '../../../components/ui/input.js';
+import { Textarea } from '../../../components/ui/textarea.js';
+import { Label } from '../../../components/ui/label.js';
+import { Select } from '../../../components/ui/select.js';
 
 interface Props {
   examRequests: readonly ExamRequest[];
@@ -35,68 +42,63 @@ export const ExamesTab: React.FC<Props> = ({ examRequests, procedureRequests, in
   } = form;
 
   return (
-    <div style={{ marginTop: 20, borderTop: '2px solid #7c3aed', paddingTop: 15, marginBottom: 20 }}>
-      <h4 style={{ color: '#6d28d9' }}>Exames, Procedimentos Ambulatoriais e Interconsultas (EXM-001..009)</h4>
+    <div className="space-y-6">
+      <h4 className="text-sm font-semibold text-foreground">Exames, Procedimentos Ambulatoriais e Interconsultas (EXM-001..009)</h4>
 
       {/* 1. Solicitações de Exames */}
-      <div style={{ marginBottom: 20 }}>
-        <h5>Exames Laboratoriais e de Imagem</h5>
+      <div className="space-y-3">
+        <h5 className="text-sm font-semibold text-foreground">Exames Laboratoriais e de Imagem</h5>
         {examRequests.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 15 }}>
+          <div className="flex flex-col gap-2.5">
             {examRequests.map((exam) => (
-              <div key={exam.id} style={{ padding: 12, borderRadius: 6, border: '1px solid #e9d5ff', backgroundColor: '#faf5ff' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div key={exam.id} className="rounded-md border border-border bg-muted/40 p-3">
+                <div className="flex items-center justify-between gap-2">
                   <div>
-                    <strong style={{ fontSize: 14, color: '#581c87' }}>{exam.examName}</strong>
-                    <span style={{ fontSize: 12, color: '#64748b', marginLeft: 8 }}>({exam.examType})</span>
+                    <strong className="text-sm text-foreground">{exam.examName}</strong>
+                    <span className="ml-2 text-xs text-muted-foreground">({exam.examType})</span>
                   </div>
-                  <span
-                    style={{
-                      padding: '3px 8px',
-                      borderRadius: 4,
-                      fontSize: 11,
-                      fontWeight: 'bold',
-                      backgroundColor: exam.status === 'completed' ? '#dcfce7' : '#fef3c7',
-                      color: exam.status === 'completed' ? '#166534' : '#92400e',
-                    }}
-                  >
+                  <Badge variant={exam.status === 'completed' ? 'success' : 'warning'}>
                     {exam.status === 'completed' ? 'Concluído / Resultado' : 'Solicitado'}
-                  </span>
+                  </Badge>
                 </div>
-                <div style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>
+                <div className="mt-1 text-xs text-muted-foreground">
                   <strong>Indicação Clínica:</strong> {exam.clinicalIndication}
                 </div>
                 {exam.resultSummary && (
-                  <div style={{ marginTop: 6, padding: 8, backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 4, fontSize: 13 }}>
+                  <div className="mt-1.5 rounded-md border border-[var(--color-success)]/30 bg-[var(--color-success-soft)] p-2 text-sm">
                     <strong>Resultado / Laudo:</strong> {exam.resultSummary}
                   </div>
                 )}
 
                 {exam.status !== 'completed' && (
-                  <div style={{ marginTop: 8 }}>
+                  <div className="mt-2">
                     {recordingResultExamId === exam.id ? (
-                      <div style={{ padding: 8, backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: 4 }}>
-                        <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold' }}>Lançar Resultado / Laudo Técnico *</label>
-                        <input
+                      <div className="space-y-2 rounded-md border border-border bg-card p-2">
+                        <Label className="text-xs">Lançar Resultado / Laudo Técnico *</Label>
+                        <Input
                           type="text"
                           value={examResultSummary}
                           onChange={(e) => setExamResultSummary(e.target.value)}
                           placeholder="Descreva o laudo/resultado do exame..."
-                          style={{ width: '100%', padding: 6, margin: '4px 0 6px 0' }}
                         />
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button type="button" onClick={() => handleRecordExamResult(exam.id)} style={{ padding: '4px 10px', backgroundColor: '#16a34a', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>
+                        <div className="flex gap-1.5">
+                          <Button type="button" size="sm" onClick={() => handleRecordExamResult(exam.id)}>
                             Salvar Resultado
-                          </button>
-                          <button type="button" onClick={() => setRecordingResultExamId(null)} style={{ padding: '4px 10px', backgroundColor: '#94a3b8', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>
+                          </Button>
+                          <Button type="button" size="sm" variant="secondary" onClick={() => setRecordingResultExamId(null)}>
                             Cancelar
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     ) : (
-                      <button type="button" onClick={() => { setRecordingResultExamId(exam.id); setExamResultSummary(''); }} style={{ padding: '3px 8px', backgroundColor: '#7c3aed', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => { setRecordingResultExamId(exam.id); setExamResultSummary(''); }}
+                      >
                         Lançar Resultado
-                      </button>
+                      </Button>
                     )}
                   </div>
                 )}
@@ -107,51 +109,54 @@ export const ExamesTab: React.FC<Props> = ({ examRequests, procedureRequests, in
           <EmptyState className="p-4" title="Nenhum exame solicitado" />
         )}
 
-        <form onSubmit={handleCreateExamRequest} style={{ backgroundColor: '#faf5ff', padding: 12, borderRadius: 6, border: '1px solid #e9d5ff' }}>
-          <h6 style={{ margin: '0 0 8px 0', color: '#6d28d9' }}>Solicitar Novo Exame</h6>
-          <div style={{ marginBottom: 10 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold', marginBottom: 4 }}>Pesquisar Exame *</label>
-            <ExamSearchInput
-              selectedItem={selectedExamItem}
-              onSelect={(item) => setSelectedExamItem(item)}
-              onClear={() => setSelectedExamItem(null)}
-            />
-          </div>
-          <div style={{ marginBottom: 10 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold', marginBottom: 4 }}>Indicação Clínica * (Mínimo 5 caracteres)</label>
-            <input
-              type="text"
-              value={examClinicalIndication}
-              onChange={(e) => setExamClinicalIndication(e.target.value)}
-              placeholder="Ex: Suspeita de pneumonia / síndrome febril..."
-              style={{ width: '100%', padding: 6, borderRadius: 4, border: '1px solid #ccc' }}
-              required
-            />
-          </div>
-          <button type="submit" disabled={submitting} style={{ padding: '6px 14px', backgroundColor: '#7c3aed', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold', fontSize: 13 }}>
-            Solicitar Exame
-          </button>
-        </form>
+        <Card>
+          <CardContent className="space-y-3 pt-6">
+            <h6 className="text-sm font-semibold text-foreground">Solicitar Novo Exame</h6>
+            <form onSubmit={handleCreateExamRequest} className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Pesquisar Exame *</Label>
+                <ExamSearchInput
+                  selectedItem={selectedExamItem}
+                  onSelect={(item) => setSelectedExamItem(item)}
+                  onClear={() => setSelectedExamItem(null)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Indicação Clínica * (Mínimo 5 caracteres)</Label>
+                <Input
+                  type="text"
+                  value={examClinicalIndication}
+                  onChange={(e) => setExamClinicalIndication(e.target.value)}
+                  placeholder="Ex: Suspeita de pneumonia / síndrome febril..."
+                  required
+                />
+              </div>
+              <Button type="submit" disabled={submitting}>
+                Solicitar Exame
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
 
       {/* 2. Procedimentos Ambulatoriais */}
-      <div style={{ marginBottom: 20 }}>
-        <h5>Procedimentos Ambulatoriais</h5>
+      <div className="space-y-3">
+        <h5 className="text-sm font-semibold text-foreground">Procedimentos Ambulatoriais</h5>
         {procedureRequests.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 15 }}>
+          <div className="flex flex-col gap-2">
             {procedureRequests.map((proc) => (
-              <div key={proc.id} style={{ padding: 10, borderRadius: 6, border: '1px solid #fed7aa', backgroundColor: '#fff7ed', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div key={proc.id} className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 p-2.5">
                 <div>
-                  <strong style={{ fontSize: 13 }}>{proc.procedureName}</strong>
-                  {proc.instructions && <div style={{ fontSize: 12, color: '#64748b' }}>Instr: {proc.instructions}</div>}
+                  <strong className="text-sm text-foreground">{proc.procedureName}</strong>
+                  {proc.instructions && <div className="text-xs text-muted-foreground">Instr: {proc.instructions}</div>}
                 </div>
                 <div>
                   {proc.status === 'completed' ? (
-                    <span style={{ padding: '2px 6px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: 4, fontSize: 11, fontWeight: 'bold' }}>Executado</span>
+                    <Badge variant="success">Executado</Badge>
                   ) : (
-                    <button type="button" onClick={() => handleExecuteProcedure(proc.id)} style={{ padding: '3px 8px', backgroundColor: '#ea580c', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 11 }}>
+                    <Button type="button" size="sm" variant="secondary" onClick={() => handleExecuteProcedure(proc.id)}>
                       Marcar Executado
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
@@ -161,79 +166,84 @@ export const ExamesTab: React.FC<Props> = ({ examRequests, procedureRequests, in
           <EmptyState className="p-4" title="Nenhum procedimento solicitado" />
         )}
 
-        <form onSubmit={handleCreateProcedureRequest} style={{ backgroundColor: '#fff7ed', padding: 12, borderRadius: 6, border: '1px solid #fed7aa' }}>
-          <h6 style={{ margin: '0 0 8px 0', color: '#c2410c' }}>Solicitar Procedimento Ambulatorial</h6>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-            <input
-              type="text"
-              value={procedureNameInput}
-              onChange={(e) => setProcedureNameInput(e.target.value)}
-              placeholder="Nome do procedimento (ex: Sutura, Nebulização)..."
-              style={{ flex: 1, padding: 6 }}
-              required
-            />
-            <input
-              type="text"
-              value={procedureInstructionsInput}
-              onChange={(e) => setProcedureInstructionsInput(e.target.value)}
-              placeholder="Instruções / Observações..."
-              style={{ flex: 1, padding: 6 }}
-            />
-          </div>
-          <button type="submit" disabled={submitting} style={{ padding: '6px 14px', backgroundColor: '#ea580c', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold', fontSize: 13 }}>
-            Solicitar Procedimento
-          </button>
-        </form>
+        <Card>
+          <CardContent className="space-y-3 pt-6">
+            <h6 className="text-sm font-semibold text-foreground">Solicitar Procedimento Ambulatorial</h6>
+            <form onSubmit={handleCreateProcedureRequest} className="space-y-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Input
+                  type="text"
+                  value={procedureNameInput}
+                  onChange={(e) => setProcedureNameInput(e.target.value)}
+                  placeholder="Nome do procedimento (ex: Sutura, Nebulização)..."
+                  required
+                />
+                <Input
+                  type="text"
+                  value={procedureInstructionsInput}
+                  onChange={(e) => setProcedureInstructionsInput(e.target.value)}
+                  placeholder="Instruções / Observações..."
+                />
+              </div>
+              <Button type="submit" disabled={submitting}>
+                Solicitar Procedimento
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
 
       {/* 3. Interconsultas Médicas */}
-      <div>
-        <h5>Interconsultas Médicas Especializadas</h5>
+      <div className="space-y-3">
+        <h5 className="text-sm font-semibold text-foreground">Interconsultas Médicas Especializadas</h5>
         {interconsultations.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 15 }}>
+          <div className="flex flex-col gap-2.5">
             {interconsultations.map((inter) => (
-              <div key={inter.id} style={{ padding: 12, borderRadius: 6, border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <strong>Parecer Especialidade: {inter.specialty}</strong>
-                  <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: 11, fontWeight: 'bold', backgroundColor: inter.status === 'answered' ? '#dcfce7' : '#e0f2fe', color: inter.status === 'answered' ? '#166534' : '#0369a1' }}>
+              <div key={inter.id} className="rounded-md border border-border bg-muted/40 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <strong className="text-sm text-foreground">Parecer Especialidade: {inter.specialty}</strong>
+                  <Badge variant={inter.status === 'answered' ? 'success' : 'outline'}>
                     {inter.status === 'answered' ? 'Respondida' : 'Aguardando Parecer'}
-                  </span>
+                  </Badge>
                 </div>
-                <div style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>
+                <div className="mt-1 text-xs text-muted-foreground">
                   <strong>Resumo:</strong> {inter.clinicalSummary} | <strong>Quesito:</strong> {inter.question}
                 </div>
                 {inter.responseNotes && (
-                  <div style={{ marginTop: 6, padding: 8, backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 4, fontSize: 13 }}>
+                  <div className="mt-1.5 rounded-md border border-[var(--color-success)]/30 bg-[var(--color-success-soft)] p-2 text-sm">
                     <strong>Parecer Técnico:</strong> {inter.responseNotes}
                   </div>
                 )}
 
                 {inter.status !== 'answered' && (
-                  <div style={{ marginTop: 8 }}>
+                  <div className="mt-2">
                     {respondingInterId === inter.id ? (
-                      <div style={{ padding: 8, backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: 4 }}>
-                        <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold' }}>Emitir Parecer Técnico do Especialista * (Min 10 caracteres)</label>
-                        <textarea
+                      <div className="space-y-2 rounded-md border border-border bg-card p-2">
+                        <Label className="text-xs">Emitir Parecer Técnico do Especialista * (Min 10 caracteres)</Label>
+                        <Textarea
                           value={interResponseNotes}
                           onChange={(e) => setInterResponseNotes(e.target.value)}
                           rows={2}
                           placeholder="Descreva a avaliação e conduta do especialista..."
-                          style={{ width: '100%', padding: 6, margin: '4px 0 6px 0' }}
                           required
                         />
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button type="button" onClick={() => handleRespondInterconsultation(inter.id)} style={{ padding: '4px 10px', backgroundColor: '#16a34a', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>
+                        <div className="flex gap-1.5">
+                          <Button type="button" size="sm" onClick={() => handleRespondInterconsultation(inter.id)}>
                             Salvar Parecer
-                          </button>
-                          <button type="button" onClick={() => setRespondingInterId(null)} style={{ padding: '4px 10px', backgroundColor: '#94a3b8', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>
+                          </Button>
+                          <Button type="button" size="sm" variant="secondary" onClick={() => setRespondingInterId(null)}>
                             Cancelar
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     ) : (
-                      <button type="button" onClick={() => { setRespondingInterId(inter.id); setInterResponseNotes(''); }} style={{ padding: '3px 8px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => { setRespondingInterId(inter.id); setInterResponseNotes(''); }}
+                      >
                         Responder Interconsulta
-                      </button>
+                      </Button>
                     )}
                   </div>
                 )}
@@ -244,59 +254,56 @@ export const ExamesTab: React.FC<Props> = ({ examRequests, procedureRequests, in
           <EmptyState className="p-4" title="Nenhuma interconsulta solicitada" />
         )}
 
-        <form onSubmit={handleCreateInterconsultation} style={{ backgroundColor: '#f8fafc', padding: 12, borderRadius: 6, border: '1px solid #cbd5e1' }}>
-          <h6 style={{ margin: '0 0 8px 0' }}>Solicitar Nova Interconsulta</h6>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontSize: 12 }}>Especialidade *</label>
-              <input
-                type="text"
-                value={interSpecialty}
-                onChange={(e) => setInterSpecialty(e.target.value)}
-                placeholder="Ex: Cardiologia, Ortopedia"
-                style={{ width: '100%', padding: 6 }}
-                required
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontSize: 12 }}>Prioridade *</label>
-              <select
-                value={interPriority}
-                onChange={(e) => setInterPriority(e.target.value as InterconsultationPriority)}
-                style={{ width: '100%', padding: 6 }}
-              >
-                <option value="routine">Rotina</option>
-                <option value="urgent">Urgente</option>
-                <option value="emergency">Emergência</option>
-              </select>
-            </div>
-          </div>
-          <div style={{ marginBottom: 8 }}>
-            <label style={{ display: 'block', fontSize: 12 }}>Resumo Clínico *</label>
-            <input
-              type="text"
-              value={interClinicalSummary}
-              onChange={(e) => setInterClinicalSummary(e.target.value)}
-              placeholder="Breve histórico do caso..."
-              style={{ width: '100%', padding: 6 }}
-              required
-            />
-          </div>
-          <div style={{ marginBottom: 10 }}>
-            <label style={{ display: 'block', fontSize: 12 }}>Dúvida / Quesito para o Especialista *</label>
-            <input
-              type="text"
-              value={interQuestion}
-              onChange={(e) => setInterQuestion(e.target.value)}
-              placeholder="Quesito técnico para o parecer..."
-              style={{ width: '100%', padding: 6 }}
-              required
-            />
-          </div>
-          <button type="submit" disabled={submitting} style={{ padding: '6px 14px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold', fontSize: 13 }}>
-            Enviar Interconsulta
-          </button>
-        </form>
+        <Card>
+          <CardContent className="space-y-3 pt-6">
+            <h6 className="text-sm font-semibold text-foreground">Solicitar Nova Interconsulta</h6>
+            <form onSubmit={handleCreateInterconsultation} className="space-y-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Especialidade *</Label>
+                  <Input
+                    type="text"
+                    value={interSpecialty}
+                    onChange={(e) => setInterSpecialty(e.target.value)}
+                    placeholder="Ex: Cardiologia, Ortopedia"
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Prioridade *</Label>
+                  <Select value={interPriority} onChange={(e) => setInterPriority(e.target.value as InterconsultationPriority)}>
+                    <option value="routine">Rotina</option>
+                    <option value="urgent">Urgente</option>
+                    <option value="emergency">Emergência</option>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Resumo Clínico *</Label>
+                <Input
+                  type="text"
+                  value={interClinicalSummary}
+                  onChange={(e) => setInterClinicalSummary(e.target.value)}
+                  placeholder="Breve histórico do caso..."
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Dúvida / Quesito para o Especialista *</Label>
+                <Input
+                  type="text"
+                  value={interQuestion}
+                  onChange={(e) => setInterQuestion(e.target.value)}
+                  placeholder="Quesito técnico para o parecer..."
+                  required
+                />
+              </div>
+              <Button type="submit" disabled={submitting}>
+                Enviar Interconsulta
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

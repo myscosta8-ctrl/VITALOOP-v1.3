@@ -3,6 +3,7 @@ import { useSession } from '../context/session-context.js';
 import { createNursingTherapeuticPlanApi } from '../lib/nursing-therapeutic-plan-api.js';
 import type { ClinicalFormSchema } from '../lib/clinical-form-types.js';
 import { DynamicClinicalForm } from './DynamicClinicalForm.js';
+import { Button } from './ui/button.js';
 
 interface NursingTherapeuticPlanModalProps {
   encounterId: string;
@@ -46,18 +47,17 @@ export const NursingTherapeuticPlanModal: React.FC<NursingTherapeuticPlanModalPr
 
   return (
     <div data-testid="nursing-therapeutic-plan-modal">
-      <h3>Projeto Terapêutico Multidisciplinar (Enfermagem)</h3>
-      {msg && <p data-testid="nursing-therapeutic-plan-status-msg">{msg}</p>}
+      {msg && <p data-testid="nursing-therapeutic-plan-status-msg" className="mb-3 text-sm text-muted-foreground">{msg}</p>}
 
       {!schema ? (
-        <p role="status">Carregando…</p>
+        <p role="status" className="text-sm text-muted-foreground">Carregando…</p>
       ) : (
-        <form onSubmit={handleSubmit} data-testid="nursing-therapeutic-plan-form">
+        <form onSubmit={handleSubmit} data-testid="nursing-therapeutic-plan-form" className="max-w-none border-0 bg-transparent p-0 shadow-none">
           <DynamicClinicalForm schema={schema} values={formFields} onChange={setFormFields} />
 
-          <button type="submit" data-testid="submit-nursing-therapeutic-plan-btn">
+          <Button type="submit" className="mt-4" data-testid="submit-nursing-therapeutic-plan-btn">
             Registrar Projeto
-          </button>
+          </Button>
         </form>
       )}
     </div>

@@ -3,6 +3,13 @@ import type { Prescription, RouteOfAdministration } from '../../../lib/prescript
 import { MedicationSearchInput } from '../../../components/MedicationSearchInput.js';
 import type { PrescriptionsForm } from '../hooks/usePrescriptions.js';
 import { EmptyState } from '../../../components/ui/empty-state.js';
+import { Card, CardContent } from '../../../components/ui/card.js';
+import { Badge } from '../../../components/ui/badge.js';
+import { Button } from '../../../components/ui/button.js';
+import { Input } from '../../../components/ui/input.js';
+import { Textarea } from '../../../components/ui/textarea.js';
+import { Label } from '../../../components/ui/label.js';
+import { Select } from '../../../components/ui/select.js';
 
 interface Props {
   prescriptions: readonly Prescription[];
@@ -32,49 +39,35 @@ export const PrescricoesTab: React.FC<Props> = ({ prescriptions, form }) => {
   } = form;
 
   return (
-    <div style={{ marginTop: 20, borderTop: '2px solid #16a34a', paddingTop: 15, marginBottom: 20 }}>
-      <h4 style={{ color: '#15803d' }}>Prescrição Médica Estruturada & Alertas de Alergia (MEDC-001..019)</h4>
+    <div className="space-y-5">
+      <h4 className="text-sm font-semibold text-foreground">Prescrição Médica Estruturada &amp; Alertas de Alergia (MEDC-001..019)</h4>
 
-      <div style={{ marginBottom: 15 }}>
-        <h5>Prescrições Registradas no Atendimento</h5>
+      <div className="space-y-3">
+        <h5 className="text-sm font-semibold text-foreground">Prescrições Registradas no Atendimento</h5>
         {prescriptions.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+          <div className="flex flex-col gap-3.5">
             {prescriptions.map((presc) => (
               <div
                 key={presc.id}
-                style={{
-                  padding: 15,
-                  borderRadius: 6,
-                  border: '1px solid #cbd5e1',
-                  backgroundColor: presc.status === 'canceled' ? '#f1f5f9' : '#f0fdf4',
-                }}
+                className={`rounded-md border border-border p-4 ${presc.status === 'canceled' ? 'bg-muted/40' : 'bg-[var(--color-success-soft)]/40'}`}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div className="mb-2.5 flex items-center justify-between gap-2">
                   <div>
-                    <strong style={{ fontSize: 15, color: '#0f172a' }}>Prescrição Médica #{presc.id.substring(0, 8)}</strong>
-                    <span style={{ fontSize: 12, color: '#64748b', marginLeft: 10 }}>
+                    <strong className="text-[15px] text-foreground">Prescrição Médica #{presc.id.substring(0, 8)}</strong>
+                    <span className="ml-2.5 text-xs text-muted-foreground">
                       {new Date(presc.createdAt).toLocaleString()}
                     </span>
                   </div>
-                  <span
-                    style={{
-                      padding: '3px 10px',
-                      borderRadius: 4,
-                      fontSize: 12,
-                      fontWeight: 'bold',
-                      backgroundColor: presc.status === 'active' ? '#dcfce7' : '#fee2e2',
-                      color: presc.status === 'active' ? '#166534' : '#991b1b',
-                    }}
-                  >
+                  <Badge variant={presc.status === 'active' ? 'success' : 'destructive'}>
                     {presc.status === 'active' ? 'Ativa' : 'Cancelada'}
-                  </span>
+                  </Badge>
                 </div>
 
                 {presc.alerts && presc.alerts.length > 0 && (
-                  <div style={{ marginBottom: 10, padding: 8, backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 4 }}>
-                    <strong style={{ color: '#b91c1c', fontSize: 12 }}>⚠️ Alerta de Alergia Sobreposto com Justificativa:</strong>
+                  <div className="mb-2.5 rounded-md border border-destructive/40 bg-destructive/10 p-2">
+                    <strong className="text-xs text-[var(--color-danger)]">⚠️ Alerta de Alergia Sobreposto com Justificativa:</strong>
                     {presc.alerts.map((a) => (
-                      <div key={a.id} style={{ fontSize: 12, color: '#7f1d1d', marginTop: 2 }}>
+                      <div key={a.id} className="mt-0.5 text-xs text-[var(--color-danger)]">
                         • Alérgeno: <strong>{a.allergen}</strong> | Motivo médico: <em>"{a.overrideReason}"</em>
                       </div>
                     ))}
@@ -82,24 +75,24 @@ export const PrescricoesTab: React.FC<Props> = ({ prescriptions, form }) => {
                 )}
 
                 {presc.items && presc.items.length > 0 && (
-                  <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse', marginBottom: 10 }}>
+                  <table className="mb-2.5 w-full border-collapse text-left text-sm">
                     <thead>
-                      <tr style={{ backgroundColor: '#e2e8f0', textAlign: 'left' }}>
-                        <th style={{ padding: 6 }}>Medicamento</th>
-                        <th style={{ padding: 6 }}>Dose</th>
-                        <th style={{ padding: 6 }}>Via</th>
-                        <th style={{ padding: 6 }}>Frequência</th>
-                        <th style={{ padding: 6 }}>Duração</th>
+                      <tr className="bg-muted text-xs uppercase text-muted-foreground">
+                        <th className="p-1.5 font-medium">Medicamento</th>
+                        <th className="p-1.5 font-medium">Dose</th>
+                        <th className="p-1.5 font-medium">Via</th>
+                        <th className="p-1.5 font-medium">Frequência</th>
+                        <th className="p-1.5 font-medium">Duração</th>
                       </tr>
                     </thead>
                     <tbody>
                       {presc.items.map((item) => (
-                        <tr key={item.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                          <td style={{ padding: 6, fontWeight: 'bold' }}>{item.medicationName}</td>
-                          <td style={{ padding: 6 }}>{item.dose} {item.doseUnit}</td>
-                          <td style={{ padding: 6 }}>{item.route}</td>
-                          <td style={{ padding: 6 }}>{item.frequency}</td>
-                          <td style={{ padding: 6 }}>{item.duration || '-'}</td>
+                        <tr key={item.id} className="border-b border-border last:border-0">
+                          <td className="p-1.5 font-semibold text-foreground">{item.medicationName}</td>
+                          <td className="p-1.5">{item.dose} {item.doseUnit}</td>
+                          <td className="p-1.5">{item.route}</td>
+                          <td className="p-1.5">{item.frequency}</td>
+                          <td className="p-1.5">{item.duration || '-'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -109,44 +102,36 @@ export const PrescricoesTab: React.FC<Props> = ({ prescriptions, form }) => {
                 {presc.status === 'active' && (
                   <div>
                     {cancelingPrescId === presc.id ? (
-                      <div style={{ marginTop: 8, padding: 10, backgroundColor: '#fff1f2', borderRadius: 4 }}>
-                        <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold', color: '#9f1239' }}>Motivo do cancelamento *</label>
-                        <input
+                      <div className="mt-2 space-y-2 rounded-md bg-destructive/10 p-2.5">
+                        <Label className="text-xs text-[var(--color-danger)]">Motivo do cancelamento *</Label>
+                        <Input
                           type="text"
                           value={cancelReason}
                           onChange={(e) => setCancelReason(e.target.value)}
                           placeholder="Informe o motivo médico do cancelamento..."
-                          style={{ width: '100%', padding: 6, margin: '4px 0 8px 0', borderRadius: 4, border: '1px solid #ccc' }}
                           required
                         />
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button
-                            type="button"
-                            onClick={() => handleCancelPrescription(presc.id)}
-                            style={{ padding: '4px 10px', backgroundColor: '#e11d48', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                          >
+                        <div className="flex gap-2">
+                          <Button type="button" size="sm" variant="destructive" onClick={() => handleCancelPrescription(presc.id)}>
                             Confirmar Cancelamento
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setCancelingPrescId(null)}
-                            style={{ padding: '4px 10px', backgroundColor: '#94a3b8', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                          >
+                          </Button>
+                          <Button type="button" size="sm" variant="secondary" onClick={() => setCancelingPrescId(null)}>
                             Voltar
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     ) : (
-                      <button
+                      <Button
                         type="button"
+                        size="sm"
+                        variant="destructive"
                         onClick={() => {
                           setCancelingPrescId(presc.id);
                           setCancelReason('');
                         }}
-                        style={{ padding: '4px 10px', backgroundColor: '#dc2626', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
                       >
                         Cancelar Prescrição
-                      </button>
+                      </Button>
                     )}
                   </div>
                 )}
@@ -158,151 +143,137 @@ export const PrescricoesTab: React.FC<Props> = ({ prescriptions, form }) => {
         )}
       </div>
 
-      {/* Formulário de nova prescrição médica */}
-      <form onSubmit={handleCreatePrescription} style={{ backgroundColor: '#f0fdf4', padding: 15, borderRadius: 6, border: '1px solid #bbf7d0' }}>
-        <h5 style={{ margin: '0 0 10px 0', color: '#15803d' }}>Nova Prescrição Médica</h5>
+      <Card>
+        <CardContent className="space-y-4 pt-6">
+          <h5 className="text-sm font-semibold text-foreground">Nova Prescrição Médica</h5>
 
-        <div style={{ marginBottom: 15, padding: 10, backgroundColor: '#fff', borderRadius: 4, border: '1px solid #e2e8f0' }}>
-          <h6 style={{ margin: '0 0 8px 0' }}>Adicionar Medicamento à Prescrição</h6>
-          <div style={{ marginBottom: 10 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold', marginBottom: 4 }}>Medicamento *</label>
-            <MedicationSearchInput
-              selectedItem={selectedMedication}
-              onSelect={(item) => {
-                setSelectedMedication(item);
-                if (item.defaultRoute) setItemRoute(item.defaultRoute);
-              }}
-              onClear={() => setSelectedMedication(null)}
-            />
-          </div>
+          <form onSubmit={handleCreatePrescription} className="space-y-4">
+            <div className="space-y-3 rounded-md border border-border p-3">
+              <h6 className="text-sm font-semibold text-foreground">Adicionar Medicamento à Prescrição</h6>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Medicamento *</Label>
+                <MedicationSearchInput
+                  selectedItem={selectedMedication}
+                  onSelect={(item) => {
+                    setSelectedMedication(item);
+                    if (item.defaultRoute) setItemRoute(item.defaultRoute);
+                  }}
+                  onClear={() => setSelectedMedication(null)}
+                />
+              </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 12 }}>Dose *</label>
-              <input
-                type="number"
-                step="any"
-                value={itemDose}
-                onChange={(e) => setItemDose(Number.parseFloat(e.target.value) || 0)}
-                style={{ width: '100%', padding: 6 }}
-              />
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-normal">Dose *</Label>
+                  <Input
+                    type="number"
+                    step="any"
+                    value={itemDose}
+                    onChange={(e) => setItemDose(Number.parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-normal">Unidade *</Label>
+                  <Input
+                    type="text"
+                    value={itemDoseUnit}
+                    onChange={(e) => setItemDoseUnit(e.target.value)}
+                    placeholder="mg, ml, gotas"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-normal">Via *</Label>
+                  <Select value={itemRoute} onChange={(e) => setItemRoute(e.target.value as RouteOfAdministration)}>
+                    <option value="VO">VO (Via Oral)</option>
+                    <option value="EV">EV (Endovenoso)</option>
+                    <option value="IM">IM (Intramuscular)</option>
+                    <option value="SC">SC (Subcutâneo)</option>
+                    <option value="SL">SL (Sublingual)</option>
+                    <option value="Inalatoria">Inalatória</option>
+                    <option value="Topica">Tópica</option>
+                    <option value="Outra">Outra</option>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-normal">Frequência *</Label>
+                  <Input
+                    type="text"
+                    value={itemFrequency}
+                    onChange={(e) => setItemFrequency(e.target.value)}
+                    placeholder="6/6h, 12/12h"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-normal">Duração</Label>
+                  <Input
+                    type="text"
+                    value={itemDuration}
+                    onChange={(e) => setItemDuration(e.target.value)}
+                    placeholder="Ex: 7 dias, dose única"
+                  />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label className="text-xs font-normal">Orientações</Label>
+                  <Input
+                    type="text"
+                    value={itemInstructions}
+                    onChange={(e) => setItemInstructions(e.target.value)}
+                    placeholder="Ex: Tomar após as refeições"
+                  />
+                </div>
+              </div>
+
+              <Button type="button" size="sm" variant="secondary" onClick={handleAddItemToPrescription}>
+                + Adicionar Item à Lista
+              </Button>
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12 }}>Unidade *</label>
-              <input
-                type="text"
-                value={itemDoseUnit}
-                onChange={(e) => setItemDoseUnit(e.target.value)}
-                placeholder="mg, ml, gotas"
-                style={{ width: '100%', padding: 6 }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12 }}>Via *</label>
-              <select
-                value={itemRoute}
-                onChange={(e) => setItemRoute(e.target.value as RouteOfAdministration)}
-                style={{ width: '100%', padding: 6 }}
-              >
-                <option value="VO">VO (Via Oral)</option>
-                <option value="EV">EV (Endovenoso)</option>
-                <option value="IM">IM (Intramuscular)</option>
-                <option value="SC">SC (Subcutâneo)</option>
-                <option value="SL">SL (Sublingual)</option>
-                <option value="Inalatoria">Inalatória</option>
-                <option value="Topica">Tópica</option>
-                <option value="Outra">Outra</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12 }}>Frequência *</label>
-              <input
-                type="text"
-                value={itemFrequency}
-                onChange={(e) => setItemFrequency(e.target.value)}
-                placeholder="6/6h, 12/12h"
-                style={{ width: '100%', padding: 6 }}
-              />
-            </div>
-          </div>
 
-          <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontSize: 12 }}>Duração</label>
-              <input
-                type="text"
-                value={itemDuration}
-                onChange={(e) => setItemDuration(e.target.value)}
-                placeholder="Ex: 7 dias, dose única"
-                style={{ width: '100%', padding: 6 }}
-              />
-            </div>
-            <div style={{ flex: 2 }}>
-              <label style={{ display: 'block', fontSize: 12 }}>Orientações</label>
-              <input
-                type="text"
-                value={itemInstructions}
-                onChange={(e) => setItemInstructions(e.target.value)}
-                placeholder="Ex: Tomar após as refeições"
-                style={{ width: '100%', padding: 6 }}
-              />
-            </div>
-          </div>
+            {prescriptionItems.length > 0 && (
+              <div className="space-y-1.5">
+                <h6 className="text-sm font-semibold text-foreground">Itens a Prescrever ({prescriptionItems.length})</h6>
+                <ul className="list-disc space-y-1 pl-5 text-sm">
+                  {prescriptionItems.map((item, idx) => (
+                    <li key={idx}>
+                      <strong>{item.medicationName}</strong> - {item.dose} {item.doseUnit} via {item.route} ({item.frequency})
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePrescriptionItem(idx)}
+                        className="ml-2.5 border-0 bg-transparent text-[var(--color-danger)] hover:underline"
+                      >
+                        [Remover]
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-          <button
-            type="button"
-            onClick={handleAddItemToPrescription}
-            style={{ padding: '6px 12px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
-          >
-            + Adicionar Item à Lista
-          </button>
-        </div>
+            {showAllergyModal && (
+              <div className="space-y-2 rounded-md border-2 border-destructive bg-destructive/10 p-3">
+                <h5 className="text-sm font-semibold text-[var(--color-danger)]">🚨 Alerta Crítico de Alergia do Paciente</h5>
+                <p className="text-xs text-[var(--color-danger)]">{allergyModalMessage}</p>
+                <Label className="text-xs text-[var(--color-danger)]">
+                  Justificativa Médica de Sobreposição (Mínimo 10 caracteres) *
+                </Label>
+                <Textarea
+                  value={overrideJustification}
+                  onChange={(e) => setOverrideJustification(e.target.value)}
+                  rows={2}
+                  placeholder="Descreva detalhadamente a justificativa técnica médica para prescrever o medicamento..."
+                  required
+                />
+              </div>
+            )}
 
-        {/* Lista temporária de itens adicionados */}
-        {prescriptionItems.length > 0 && (
-          <div style={{ marginBottom: 15 }}>
-            <h6>Itens a Prescrever ({prescriptionItems.length})</h6>
-            <ul style={{ paddingLeft: 20 }}>
-              {prescriptionItems.map((item, idx) => (
-                <li key={idx} style={{ marginBottom: 4 }}>
-                  <strong>{item.medicationName}</strong> - {item.dose} {item.doseUnit} via {item.route} ({item.frequency})
-                  <button
-                    type="button"
-                    onClick={() => handleRemovePrescriptionItem(idx)}
-                    style={{ marginLeft: 10, color: '#ef4444', border: 'none', background: 'none', cursor: 'pointer' }}
-                  >
-                    [Remover]
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {showAllergyModal && (
-          <div style={{ padding: 12, backgroundColor: '#fff1f2', border: '2px solid #e11d48', borderRadius: 6, marginBottom: 15 }}>
-            <h5 style={{ color: '#9f1239', margin: '0 0 6px 0' }}>🚨 Alerta Crítico de Alergia do Paciente</h5>
-            <p style={{ color: '#881337', fontSize: 13, margin: '0 0 10px 0' }}>{allergyModalMessage}</p>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold', color: '#9f1239' }}>Justificativa Médica de Sobreposição (Mínimo 10 caracteres) *</label>
-            <textarea
-              value={overrideJustification}
-              onChange={(e) => setOverrideJustification(e.target.value)}
-              rows={2}
-              placeholder="Descreva detalhadamente a justificativa técnica médica para prescrever o medicamento..."
-              style={{ width: '100%', padding: 8, margin: '4px 0 10px 0', borderRadius: 4, border: '1px solid #fda4af' }}
-              required
-            />
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={submitting || prescriptionItems.length === 0}
-          style={{ padding: '10px 20px', backgroundColor: '#16a34a', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}
-        >
-          Emitir Prescrição Médica
-        </button>
-      </form>
+            <Button type="submit" disabled={submitting || prescriptionItems.length === 0}>
+              Emitir Prescrição Médica
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };

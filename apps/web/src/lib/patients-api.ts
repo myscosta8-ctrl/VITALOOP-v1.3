@@ -14,6 +14,17 @@ export type AllergyStatus = 'active' | 'resolved' | 'entered_in_error';
 export type DuplicateMatchStrength = 'strong' | 'weak' | 'conflict';
 export type DuplicateReviewStatus = 'open' | 'confirmed_duplicate' | 'confirmed_distinct' | 'dismissed';
 export type MergeRequestStatus = 'requested' | 'approved' | 'rejected' | 'executed';
+export type PatientRaceColor = 'branca' | 'preta' | 'parda' | 'amarela' | 'indigena' | 'nao_informado';
+export type PatientEducationLevel =
+  | 'nao_alfabetizado'
+  | 'fundamental_incompleto'
+  | 'fundamental_completo'
+  | 'medio_incompleto'
+  | 'medio_completo'
+  | 'superior_incompleto'
+  | 'superior_completo'
+  | 'pos_graduacao'
+  | 'nao_informado';
 
 export interface Patient {
   readonly id: string;
@@ -21,7 +32,9 @@ export interface Patient {
   readonly fullName: string;
   readonly socialName: string | null;
   readonly motherName: string | null;
+  readonly fatherName: string | null;
   readonly birthDate: string | null;
+  readonly birthCity: string | null;
   readonly sex: PatientSex | null;
   readonly cpf: string | null;
   readonly cns: string | null;
@@ -30,6 +43,9 @@ export interface Patient {
   readonly address: string | null;
   readonly city: string | null;
   readonly state: string | null;
+  readonly raceColor: PatientRaceColor | null;
+  readonly religion: string | null;
+  readonly educationLevel: PatientEducationLevel | null;
   readonly institutionId: string | null;
   readonly status: 'active' | 'inactive' | 'suspended';
   readonly createdAt: string;
@@ -108,7 +124,9 @@ export interface PatientCreateInput {
   readonly fullName: string;
   readonly socialName?: string | null;
   readonly motherName?: string | null;
+  readonly fatherName?: string | null;
   readonly birthDate?: string | null;
+  readonly birthCity?: string | null;
   readonly sex?: PatientSex | null;
   readonly cpf?: string | null;
   readonly cns?: string | null;
@@ -117,6 +135,9 @@ export interface PatientCreateInput {
   readonly address?: string | null;
   readonly city?: string | null;
   readonly state?: string | null;
+  readonly raceColor?: PatientRaceColor | null;
+  readonly religion?: string | null;
+  readonly educationLevel?: PatientEducationLevel | null;
   readonly confirmDuplicate?: boolean;
 }
 

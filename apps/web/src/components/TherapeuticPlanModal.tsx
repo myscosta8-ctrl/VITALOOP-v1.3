@@ -3,6 +3,7 @@ import { useSession } from '../context/session-context.js';
 import { createTherapeuticPlanApi } from '../lib/therapeutic-plan-api.js';
 import type { ClinicalFormSchema } from '../lib/clinical-form-types.js';
 import { DynamicClinicalForm } from './DynamicClinicalForm.js';
+import { Button } from './ui/button.js';
 
 interface TherapeuticPlanModalProps {
   encounterId: string;
@@ -42,18 +43,17 @@ export const TherapeuticPlanModal: React.FC<TherapeuticPlanModalProps> = ({ enco
 
   return (
     <div data-testid="therapeutic-plan-modal">
-      <h3>Plano Terapêutico</h3>
-      {msg && <p data-testid="therapeutic-plan-status-msg">{msg}</p>}
+      {msg && <p data-testid="therapeutic-plan-status-msg" className="mb-3 text-sm text-muted-foreground">{msg}</p>}
 
       {!schema ? (
-        <p role="status">Carregando…</p>
+        <p role="status" className="text-sm text-muted-foreground">Carregando…</p>
       ) : (
-        <form onSubmit={handleSubmit} data-testid="therapeutic-plan-form">
+        <form onSubmit={handleSubmit} data-testid="therapeutic-plan-form" className="max-w-none border-0 bg-transparent p-0 shadow-none">
           <DynamicClinicalForm schema={schema} values={formFields} onChange={setFormFields} />
 
-          <button type="submit" data-testid="submit-therapeutic-plan-btn">
+          <Button type="submit" className="mt-4" data-testid="submit-therapeutic-plan-btn">
             Registrar Plano
-          </button>
+          </Button>
         </form>
       )}
     </div>

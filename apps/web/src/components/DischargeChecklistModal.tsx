@@ -3,6 +3,7 @@ import { useSession } from '../context/session-context.js';
 import { createDischargeChecklistApi } from '../lib/discharge-checklist-api.js';
 import type { ClinicalFormSchema } from '../lib/clinical-form-types.js';
 import { DynamicClinicalForm } from './DynamicClinicalForm.js';
+import { Button } from './ui/button.js';
 
 interface DischargeChecklistModalProps {
   encounterId: string;
@@ -46,18 +47,17 @@ export const DischargeChecklistModal: React.FC<DischargeChecklistModalProps> = (
 
   return (
     <div data-testid="discharge-checklist-modal">
-      <h3>Checklist de Alta</h3>
-      {msg && <p data-testid="discharge-checklist-status-msg">{msg}</p>}
+      {msg && <p data-testid="discharge-checklist-status-msg" className="mb-3 text-sm text-muted-foreground">{msg}</p>}
 
       {!schema ? (
-        <p role="status">Carregando…</p>
+        <p role="status" className="text-sm text-muted-foreground">Carregando…</p>
       ) : (
-        <form onSubmit={handleSubmit} data-testid="discharge-checklist-form">
+        <form onSubmit={handleSubmit} data-testid="discharge-checklist-form" className="max-w-none border-0 bg-transparent p-0 shadow-none">
           <DynamicClinicalForm schema={schema} values={formFields} onChange={setFormFields} />
 
-          <button type="submit" data-testid="submit-discharge-checklist-btn">
+          <Button type="submit" className="mt-4" data-testid="submit-discharge-checklist-btn">
             Registrar Checklist
-          </button>
+          </Button>
         </form>
       )}
     </div>

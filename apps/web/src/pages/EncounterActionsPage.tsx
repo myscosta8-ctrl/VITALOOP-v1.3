@@ -106,6 +106,8 @@ const ACTIONS: ReadonlyArray<{ panel: Exclude<OpenPanel, null>; label: string; t
   { panel: 'interop', label: 'Interoperabilidade (RNDS / Lote de AIH)', tab: 'farmacia' },
 ];
 
+import { Button } from '../components/ui/button.js';
+
 const Overlay: React.FC<{ title: string; onClose: () => void; children: React.ReactNode }> = ({
   title,
   onClose,
@@ -124,12 +126,12 @@ const Overlay: React.FC<{ title: string; onClose: () => void; children: React.Re
       zIndex: 100,
     }}
   >
-    <div style={{ background: '#fff', borderRadius: 10, padding: 24, width: 520, maxWidth: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h2 style={{ margin: 0, fontSize: 16 }}>{title}</h2>
-        <button type="button" onClick={onClose} style={{ marginTop: 0 }}>
+    <div className="w-[520px] max-w-full rounded-lg border border-border bg-card p-6 text-card-foreground shadow-lg">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-base font-semibold">{title}</h2>
+        <Button type="button" variant="ghost" size="sm" onClick={onClose}>
           Fechar
-        </button>
+        </Button>
       </div>
       {children}
     </div>

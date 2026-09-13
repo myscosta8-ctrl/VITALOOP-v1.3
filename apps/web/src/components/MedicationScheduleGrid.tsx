@@ -1,5 +1,9 @@
 import React from 'react';
 import { MedicationScheduleData } from '../lib/nursing-api';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card.js';
+import { Badge } from './ui/badge.js';
+import { Button } from './ui/button.js';
+import { EmptyState } from './ui/empty-state.js';
 
 interface MedicationScheduleGridProps {
   schedules: MedicationScheduleData[];
@@ -17,64 +21,65 @@ export const MedicationScheduleGrid: React.FC<MedicationScheduleGridProps> = ({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'administered':
-        return <span className="vl-badge vl-badge-success">Administrado</span>;
+        return <Badge variant="success">Administrado</Badge>;
       case 'refused':
-        return <span className="vl-badge vl-badge-warning">Recusado</span>;
+        return <Badge variant="warning">Recusado</Badge>;
       case 'not_administered':
-        return <span className="vl-badge vl-badge-danger">Não Administrado</span>;
+        return <Badge variant="destructive">Não Administrado</Badge>;
       case 'suspended':
-        return <span className="vl-badge vl-badge-neutral">Suspenso</span>;
+        return <Badge variant="outline">Suspenso</Badge>;
       default:
-        return <span className="vl-badge vl-badge-info">Pendente</span>;
+        return <Badge>Pendente</Badge>;
     }
   };
 
   return (
-    <div className="vl-panel">
-      <div className="vl-panel-head">
-        <h3>Grade de Aprazamento e Checagem Beira-Leito (MEDC-009..011)</h3>
+    <Card>
+      <CardHeader className="flex-row items-center justify-between space-y-0">
+        <CardTitle>Grade de Aprazamento e Checagem Beira-Leito (MEDC-009..011)</CardTitle>
         {onSchedulePrescription && (
-          <button type="button" className="vl-btn vl-btn-sm" onClick={onSchedulePrescription} disabled={disabled}>
+          <Button type="button" size="sm" variant="secondary" onClick={onSchedulePrescription} disabled={disabled}>
             Aprazar Prescrição Ativa
-          </button>
+          </Button>
         )}
-      </div>
+      </CardHeader>
 
-      <div className="vl-panel-body">
+      <CardContent>
         {schedules.length === 0 ? (
-          <p role="status">Nenhum horário aprazado para este atendimento. Clique em "Aprazar Prescrição Ativa".</p>
+          <EmptyState
+            title="Nenhum horário aprazado para este atendimento."
+            description='Clique em "Aprazar Prescrição Ativa" para gerar a grade a partir da prescrição vigente.'
+          />
         ) : (
-          <div className="vl-schedule-grid">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {schedules.map((s) => (
-              <div key={s.id} className="vl-schedule-card">
-                <div className="vl-schedule-card-head">
+              <div key={s.id} className="flex flex-col gap-3 rounded-md border border-border bg-muted/40 p-3">
+                <div className="flex items-start justify-between gap-2">
                   <div>
-                    <h4>{s.medicationName}</h4>
-                    <p className="vl-text-muted">
+                    <h4 className="font-semibold text-foreground">{s.medicationName}</h4>
+                    <p className="text-xs text-muted-foreground">
                       Dose: {s.dose} {s.doseUnit} | Via: {s.route} | Freq: {s.frequency}
                     </p>
                   </div>
                   {getStatusBadge(s.status)}
                 </div>
 
-                <div className="vl-schedule-card-foot">
-                  <span>Horário: <strong>{new Date(s.scheduledTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</strong></span>
+                <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
+                  <span className="text-sm text-foreground">
+                    Horário:{' '}
+                    <strong>{new Date(s.scheduledTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</strong>
+                  </span>
                   {s.status === 'pending' && (
-                    <button
-                      type="button"
-                      className="vl-btn vl-btn-sm vl-btn-success"
-                      onClick={() => onSelectScheduleForAdmin(s)}
-                      disabled={disabled}
-                    >
+                    <Button type="button" size="sm" onClick={() => onSelectScheduleForAdmin(s)} disabled={disabled}>
                       Checar &amp; Administrar
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };

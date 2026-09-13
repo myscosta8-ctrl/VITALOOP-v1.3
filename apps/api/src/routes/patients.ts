@@ -234,7 +234,9 @@ const PatientCreateBody = z.object({
   fullName: z.string().min(1),
   socialName: z.string().optional().nullable(),
   motherName: z.string().optional().nullable(),
+  fatherName: z.string().optional().nullable(),
   birthDate: z.string().optional().nullable(),
+  birthCity: z.string().optional().nullable(),
   sex: z.enum(['female', 'male', 'undetermined']).optional().nullable(),
   cpf: z.string().optional().nullable(),
   cns: z.string().optional().nullable(),
@@ -243,6 +245,13 @@ const PatientCreateBody = z.object({
   address: z.string().optional().nullable(),
   city: z.string().optional().nullable(),
   state: z.string().optional().nullable(),
+  raceColor: z.enum(['branca', 'preta', 'parda', 'amarela', 'indigena', 'nao_informado']).optional().nullable(),
+  religion: z.string().optional().nullable(),
+  educationLevel: z.enum([
+    'nao_alfabetizado', 'fundamental_incompleto', 'fundamental_completo',
+    'medio_incompleto', 'medio_completo', 'superior_incompleto', 'superior_completo',
+    'pos_graduacao', 'nao_informado',
+  ]).optional().nullable(),
   institutionId: z.string().uuid().optional().nullable(),
   /** Confirmação explícita exigida quando há duplicidade forte/conflito (Doc 1 §11). */
   confirmDuplicate: z.boolean().optional(),
@@ -358,7 +367,9 @@ const mapPatientRow = (row: Record<string, unknown>) => ({
   fullName: row.full_name,
   socialName: row.social_name,
   motherName: row.mother_name,
+  fatherName: row.father_name,
   birthDate: row.birth_date,
+  birthCity: row.birth_city,
   sex: row.sex,
   cpf: row.cpf,
   cns: row.cns,
@@ -367,6 +378,9 @@ const mapPatientRow = (row: Record<string, unknown>) => ({
   address: row.address,
   city: row.city,
   state: row.state,
+  raceColor: row.race_color,
+  religion: row.religion,
+  educationLevel: row.education_level,
   institutionId: row.institution_id,
   status: row.status,
   createdBy: row.created_by,
@@ -552,16 +566,18 @@ export const registerPatientRoutes = (app: FastifyInstance, db: pg.Pool | null):
 
           const insertRes = await client.query(
             `insert into app.patients
-               (full_name, social_name, mother_name, birth_date, sex, cpf, cns, rg,
-                phone, address, city, state, institution_id, medical_record_number,
-                created_by, updated_by)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$15)
+               (full_name, social_name, mother_name, father_name, birth_date, birth_city, sex, cpf, cns, rg,
+                phone, address, city, state, race_color, religion, education_level,
+                institution_id, medical_record_number, created_by, updated_by)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$20)
              returning *`,
             [
               normalized.value.fullName,
               normalized.value.socialName ?? null,
               normalized.value.motherName ?? null,
+              normalized.value.fatherName ?? null,
               normalized.value.birthDate,
+              normalized.value.birthCity ?? null,
               normalized.value.sex ?? null,
               normalized.value.cpf,
               normalized.value.cns,
@@ -570,6 +586,9 @@ export const registerPatientRoutes = (app: FastifyInstance, db: pg.Pool | null):
               normalized.value.address ?? null,
               normalized.value.city ?? null,
               normalized.value.state ?? null,
+              normalized.value.raceColor ?? null,
+              normalized.value.religion ?? null,
+              normalized.value.educationLevel ?? null,
               institutionId,
               mrn,
               actorId,
@@ -748,7 +767,9 @@ export const registerPatientRoutes = (app: FastifyInstance, db: pg.Pool | null):
       fullName: 'full_name',
       socialName: 'social_name',
       motherName: 'mother_name',
+      fatherName: 'father_name',
       birthDate: 'birth_date',
+      birthCity: 'birth_city',
       sex: 'sex',
       cpf: 'cpf',
       cns: 'cns',
@@ -757,6 +778,9 @@ export const registerPatientRoutes = (app: FastifyInstance, db: pg.Pool | null):
       address: 'address',
       city: 'city',
       state: 'state',
+      raceColor: 'race_color',
+      religion: 'religion',
+      educationLevel: 'education_level',
       institutionId: 'institution_id',
     };
     const setClauses: string[] = [];

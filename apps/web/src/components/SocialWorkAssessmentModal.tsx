@@ -3,6 +3,7 @@ import { useSession } from '../context/session-context.js';
 import { createSocialWorkApi } from '../lib/social-work-api.js';
 import type { ClinicalFormSchema } from '../lib/clinical-form-types.js';
 import { DynamicClinicalForm } from './DynamicClinicalForm.js';
+import { Button } from './ui/button.js';
 
 interface SocialWorkAssessmentModalProps {
   encounterId: string;
@@ -46,18 +47,17 @@ export const SocialWorkAssessmentModal: React.FC<SocialWorkAssessmentModalProps>
 
   return (
     <div data-testid="social-work-assessment-modal">
-      <h3>Evolução de Serviço Social</h3>
-      {msg && <p data-testid="social-work-status-msg">{msg}</p>}
+      {msg && <p data-testid="social-work-status-msg" className="mb-3 text-sm text-muted-foreground">{msg}</p>}
 
       {!schema ? (
-        <p role="status">Carregando…</p>
+        <p role="status" className="text-sm text-muted-foreground">Carregando…</p>
       ) : (
-        <form onSubmit={handleSubmit} data-testid="social-work-form">
+        <form onSubmit={handleSubmit} data-testid="social-work-form" className="max-w-none border-0 bg-transparent p-0 shadow-none">
           <DynamicClinicalForm schema={schema} values={formFields} onChange={setFormFields} />
 
-          <button type="submit" data-testid="submit-social-work-btn">
+          <Button type="submit" className="mt-4" data-testid="submit-social-work-btn">
             Registrar Avaliação
-          </button>
+          </Button>
         </form>
       )}
     </div>

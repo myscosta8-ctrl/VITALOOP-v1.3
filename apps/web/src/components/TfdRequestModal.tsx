@@ -3,6 +3,7 @@ import { useSession } from '../context/session-context.js';
 import { createTfdApi } from '../lib/tfd-api.js';
 import type { ClinicalFormSchema } from '../lib/clinical-form-types.js';
 import { DynamicClinicalForm } from './DynamicClinicalForm.js';
+import { Button } from './ui/button.js';
 
 interface TfdRequestModalProps {
   encounterId: string;
@@ -42,18 +43,17 @@ export const TfdRequestModal: React.FC<TfdRequestModalProps> = ({ encounterId, p
 
   return (
     <div data-testid="tfd-request-modal">
-      <h3>Laudo Médico LM/TFD (Tratamento Fora de Domicílio)</h3>
-      {msg && <p data-testid="tfd-status-msg">{msg}</p>}
+      {msg && <p data-testid="tfd-status-msg" className="mb-3 text-sm text-muted-foreground">{msg}</p>}
 
       {!schema ? (
-        <p role="status">Carregando…</p>
+        <p role="status" className="text-sm text-muted-foreground">Carregando…</p>
       ) : (
-        <form onSubmit={handleSubmit} data-testid="tfd-form">
+        <form onSubmit={handleSubmit} data-testid="tfd-form" className="max-w-none border-0 bg-transparent p-0 shadow-none">
           <DynamicClinicalForm schema={schema} values={formFields} onChange={setFormFields} />
 
-          <button type="submit" data-testid="submit-tfd-btn">
+          <Button type="submit" className="mt-4" data-testid="submit-tfd-btn">
             Registrar Laudo
-          </button>
+          </Button>
         </form>
       )}
     </div>

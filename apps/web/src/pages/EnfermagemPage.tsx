@@ -5,7 +5,7 @@ import { createNursingApi, type NursingRecordData, type MedicationScheduleData }
 import { NursingRecordsView } from '../components/NursingRecordsView.js';
 import { MedicationScheduleGrid } from '../components/MedicationScheduleGrid.js';
 import { BedsideCheckModal } from '../components/BedsideCheckModal.js';
-import { VitalSignsPanel } from '../components/VitalSignsPanel.js';
+import { toast } from '../lib/toast.js';
 
 interface Props {
   encounterId: string;
@@ -19,11 +19,9 @@ export const EnfermagemPage: React.FC<Props> = ({ encounterId }) => {
   const [schedules, setSchedules] = useState<MedicationScheduleData[]>([]);
   const [scheduleForAdmin, setScheduleForAdmin] = useState<MedicationScheduleData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    setErrorMessage(null);
     try {
       const [recordsData, schedulesData] = await Promise.all([
         nursingApi.getNursingRecords(encounterId),
@@ -32,7 +30,7 @@ export const EnfermagemPage: React.FC<Props> = ({ encounterId }) => {
       setRecords(recordsData);
       setSchedules(schedulesData);
     } catch (e) {
-      setErrorMessage(e instanceof ApiError ? e.message : 'Falha ao carregar dados de enfermagem.');
+      toast.error(e instanceof ApiError ? e.message : 'Falha ao carregar dados de enfermagem.');
     } finally {
       setLoading(false);
     }
@@ -47,6 +45,7 @@ export const EnfermagemPage: React.FC<Props> = ({ encounterId }) => {
     content: string,
   ): Promise<void> => {
     await nursingApi.createNursingRecord(encounterId, { recordType, content });
+    toast.success('Registro de enfermagem salvo.');
     await load();
   };
 
@@ -60,17 +59,21 @@ export const EnfermagemPage: React.FC<Props> = ({ encounterId }) => {
     if (!scheduleForAdmin) return;
     await nursingApi.administerMedication(scheduleForAdmin.id, payload);
     setScheduleForAdmin(null);
+    toast.success('Checagem beira-leito registrada.');
     await load();
   };
 
   return (
-    <main>
-      <h1>Enfermagem — registros e prescrição aprazada</h1>
-      {errorMessage && <p role="alert">{errorMessage}</p>}
+    <main aria-labelledby="enfermagem-heading">
+      <div className="vl-page-head">
+        <div>
+          <h1 id="enfermagem-heading">Enfermagem — registros e prescrição aprazada</h1>
+        </div>
+      </div>
       {loading ? (
-        <p role="status">Carregando…</p>
+        <p role="status" className="text-sm text-muted-foreground">Carregando…</p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <NursingRecordsView records={records} onAddRecord={handleAddRecord} />
           <MedicationScheduleGrid
             schedules={schedules}
@@ -78,7 +81,6 @@ export const EnfermagemPage: React.FC<Props> = ({ encounterId }) => {
           />
         </div>
       )}
-      <VitalSignsPanel encounterId={encounterId} source="enfermagem" />
       {scheduleForAdmin && (
         <BedsideCheckModal
           schedule={scheduleForAdmin}

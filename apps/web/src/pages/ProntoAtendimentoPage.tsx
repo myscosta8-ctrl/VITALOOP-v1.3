@@ -14,7 +14,7 @@ import { Button } from '../components/ui/button.js';
 import { EmptyState } from '../components/ui/empty-state.js';
 import { toast } from '../lib/toast.js';
 import { Overlay } from '../components/BedAllocationModal.js';
-import { EncounterOpenForm } from '../components/EncounterOpenForm.js';
+import { ReceptionIntakeForm } from '../components/ReceptionIntakeForm.js';
 import { MANCHESTER_BADGE_STYLE } from './QueueDashboardPage.js';
 
 const errMsg = (err: unknown, fallback: string): string => (err instanceof ApiError ? err.message : fallback);
@@ -24,7 +24,7 @@ const errMsg = (err: unknown, fallback: string): string => (err instanceof ApiEr
  * reconstrução de 12/09/2026 a partir de achado de auditoria (Recepção,
  * Triagem e Consultório viviam em 3 telas/rotas desconectadas: `/atendimentos/
  * novo`, `/filas`, `/atendimentos`). Reaproveita `queues-api`/`encounters-api`
- * e os componentes já existentes (`EncounterOpenForm`, `Overlay`,
+ * e os componentes já existentes (`ReceptionIntakeForm`, `Overlay`,
  * `MANCHESTER_BADGE_STYLE`) — não recria a lógica de fila nem de abertura de
  * atendimento, só as compõe numa única tela operacional.
  */
@@ -267,9 +267,10 @@ export const ProntoAtendimentoPage: React.FC = () => {
       </Card>
 
       {showOpenForm && (
-        <Overlay title="Nova Recepção (abre atendimento e já entra na fila)" onClose={() => setShowOpenForm(false)}>
-          <EncounterOpenForm
+        <Overlay title="Nova Recepção (cadastro do paciente + abertura do atendimento)" onClose={() => setShowOpenForm(false)}>
+          <ReceptionIntakeForm
             onSuccess={() => {
+              setShowOpenForm(false);
               invalidateAll();
             }}
           />

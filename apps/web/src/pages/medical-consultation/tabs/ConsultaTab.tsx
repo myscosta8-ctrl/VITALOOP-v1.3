@@ -1,6 +1,11 @@
 import React from 'react';
 import type { ConsultationForm } from '../hooks/useConsultationForm.js';
 import { EmptyState } from '../../../components/ui/empty-state.js';
+import { Card, CardContent } from '../../../components/ui/card.js';
+import { Button } from '../../../components/ui/button.js';
+import { Input } from '../../../components/ui/input.js';
+import { Textarea } from '../../../components/ui/textarea.js';
+import { Label } from '../../../components/ui/label.js';
 import { VitalSignsPanel } from '../../../components/VitalSignsPanel.js';
 
 interface Props {
@@ -32,27 +37,29 @@ export const ConsultaTab: React.FC<Props> = ({ encounterId, form }) => {
 
   if (existingConsultation) {
     return (
-      <div>
-        <div style={{ padding: 15, backgroundColor: '#f1f5f9', borderRadius: 6, marginBottom: 20 }}>
-          <h3 style={{ margin: '0 0 10px 0', color: '#0f172a' }}>Consulta Médica Registrada</h3>
-          <p><strong>Queixa Principal:</strong> {existingConsultation.chiefComplaint}</p>
-          <p><strong>HMA:</strong> {existingConsultation.historyPresentIllness}</p>
-          {existingConsultation.pastMedicalHistory && <p><strong>Antecedentes:</strong> {existingConsultation.pastMedicalHistory}</p>}
-          <p><strong>Exame Físico Geral:</strong> {existingConsultation.generalExam}</p>
-          <p><strong>Hipótese Diagnóstica:</strong> {existingConsultation.diagnosticHypothesis}</p>
-          {existingConsultation.initialConduct && <p><strong>Conduta Inicial:</strong> {existingConsultation.initialConduct}</p>}
-        </div>
+      <div className="space-y-5">
+        <Card>
+          <CardContent className="space-y-1.5 pt-6 text-sm">
+            <h3 className="mb-2 text-base font-semibold text-foreground">Consulta Médica Registrada</h3>
+            <p><strong>Queixa Principal:</strong> {existingConsultation.chiefComplaint}</p>
+            <p><strong>HMA:</strong> {existingConsultation.historyPresentIllness}</p>
+            {existingConsultation.pastMedicalHistory && <p><strong>Antecedentes:</strong> {existingConsultation.pastMedicalHistory}</p>}
+            <p><strong>Exame Físico Geral:</strong> {existingConsultation.generalExam}</p>
+            <p><strong>Hipótese Diagnóstica:</strong> {existingConsultation.diagnosticHypothesis}</p>
+            {existingConsultation.initialConduct && <p><strong>Conduta Inicial:</strong> {existingConsultation.initialConduct}</p>}
+          </CardContent>
+        </Card>
 
-        <div style={{ marginTop: 20, borderTop: '2px solid #e2e8f0', paddingTop: 15 }}>
-          <h4>Evoluções / Reavaliações Médicas Sequenciais</h4>
+        <div className="space-y-3 border-t border-border pt-4">
+          <h4 className="text-sm font-semibold text-foreground">Evoluções / Reavaliações Médicas Sequenciais</h4>
           {existingConsultation.evolutions && existingConsultation.evolutions.length > 0 ? (
-            <div style={{ marginBottom: 15 }}>
+            <div className="space-y-2.5">
               {existingConsultation.evolutions.map((evo) => (
-                <div key={evo.id} style={{ padding: 10, borderLeft: '4px solid #2563eb', backgroundColor: '#f8fafc', marginBottom: 10 }}>
-                  <div style={{ fontSize: 12, color: '#64748b' }}>
+                <div key={evo.id} className="rounded-md border-l-4 border-primary bg-muted/40 p-2.5">
+                  <div className="text-xs text-muted-foreground">
                     {new Date(evo.createdAt).toLocaleString()} | Status: {evo.clinicalStatus || 'Estável'}
                   </div>
-                  <div style={{ marginTop: 5 }}>{evo.evolutionText}</div>
+                  <div className="mt-1 text-sm text-foreground">{evo.evolutionText}</div>
                 </div>
               ))}
             </div>
@@ -60,34 +67,33 @@ export const ConsultaTab: React.FC<Props> = ({ encounterId, form }) => {
             <EmptyState className="p-4" title="Nenhuma evolução adicional registrada" />
           )}
 
-          <form onSubmit={handleAddEvolution} style={{ display: 'flex', flexDirection: 'column', gap: 10, backgroundColor: '#f8fafc', padding: 15, borderRadius: 6 }}>
-            <h5>Adicionar Nova Evolução Médica</h5>
-            <textarea
-              value={evolutionText}
-              onChange={(e) => setEvolutionText(e.target.value)}
-              placeholder="Descreva a reavaliação ou evolução clínica do paciente..."
-              rows={3}
-              style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
-              required
-            />
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <label style={{ fontSize: 13, fontWeight: 'bold' }}>Status Clínico:</label>
-              <input
-                type="text"
-                value={clinicalStatus}
-                onChange={(e) => setClinicalStatus(e.target.value)}
-                placeholder="Ex.: estável, em melhora"
-                style={{ padding: 6, borderRadius: 4, border: '1px solid #ccc' }}
-              />
-              <button
-                type="submit"
-                disabled={submitting}
-                style={{ padding: '6px 14px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Adicionar Evolução
-              </button>
-            </div>
-          </form>
+          <Card>
+            <CardContent className="space-y-3 pt-6">
+              <h5 className="text-sm font-semibold text-foreground">Adicionar Nova Evolução Médica</h5>
+              <form onSubmit={handleAddEvolution} className="space-y-3">
+                <Textarea
+                  value={evolutionText}
+                  onChange={(e) => setEvolutionText(e.target.value)}
+                  placeholder="Descreva a reavaliação ou evolução clínica do paciente..."
+                  rows={3}
+                  required
+                />
+                <div className="flex flex-wrap items-center gap-3">
+                  <Label className="whitespace-nowrap">Status Clínico:</Label>
+                  <Input
+                    type="text"
+                    value={clinicalStatus}
+                    onChange={(e) => setClinicalStatus(e.target.value)}
+                    placeholder="Ex.: estável, em melhora"
+                    className="w-auto flex-1"
+                  />
+                  <Button type="submit" disabled={submitting}>
+                    Adicionar Evolução
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
 
         <VitalSignsPanel encounterId={encounterId} source="consulta" />
@@ -96,159 +102,150 @@ export const ConsultaTab: React.FC<Props> = ({ encounterId, form }) => {
   }
 
   return (
-    <form onSubmit={handleSubmitConsultation}>
-      <fieldset style={{ marginBottom: 15, padding: 15, borderRadius: 6, borderColor: '#ddd' }}>
-        <legend><strong>1. Anamnese Médica</strong></legend>
-        <div style={{ marginBottom: 10 }}>
-          <label htmlFor="chiefComplaint" style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Queixa Principal *</label>
-          <input
+    <form onSubmit={handleSubmitConsultation} className="space-y-4">
+      <fieldset className="space-y-3 rounded-md border border-border p-4">
+        <legend className="px-2 font-semibold text-foreground">1. Anamnese Médica</legend>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="chiefComplaint">Queixa Principal *</Label>
+          <Input
             id="chiefComplaint"
             type="text"
             value={chiefComplaint}
             onChange={(e) => setChiefComplaint(e.target.value)}
             placeholder="Queixa relatada pelo paciente"
-            style={{ width: '100%', padding: 8 }}
             required
           />
         </div>
-        <div style={{ marginBottom: 10 }}>
-          <label htmlFor="historyPresentIllness" style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>História da Moléstia Atual (HMA) *</label>
-          <textarea
+
+        <div className="space-y-1.5">
+          <Label htmlFor="historyPresentIllness">História da Moléstia Atual (HMA) *</Label>
+          <Textarea
             id="historyPresentIllness"
             value={historyPresentIllness}
             onChange={(e) => setHistoryPresentIllness(e.target.value)}
             rows={4}
             placeholder="Detalhamento cronológico da evolução dos sintomas..."
-            style={{ width: '100%', padding: 8 }}
             required
           />
         </div>
-        <div style={{ display: 'flex', gap: 15, marginBottom: 10 }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', marginBottom: 4 }}>Antecedentes Pessoais / Comorbidades</label>
-            <textarea
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>Antecedentes Pessoais / Comorbidades</Label>
+            <Textarea
               value={pastMedicalHistory}
               onChange={(e) => setPastMedicalHistory(e.target.value)}
               rows={2}
               placeholder="HAS, DM, Cirurgias anteriores..."
-              style={{ width: '100%', padding: 8 }}
             />
           </div>
-          <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', marginBottom: 4 }}>Revisão de Sistemas</label>
-            <textarea
+          <div className="space-y-1.5">
+            <Label>Revisão de Sistemas</Label>
+            <Textarea
               value={systemReview}
               onChange={(e) => setSystemReview(e.target.value)}
               rows={2}
               placeholder="Sintomas gerais por aparelhos..."
-              style={{ width: '100%', padding: 8 }}
             />
           </div>
         </div>
       </fieldset>
 
-      <fieldset style={{ marginBottom: 15, padding: 15, borderRadius: 6, borderColor: '#ddd' }}>
-        <legend><strong>2. Exame Físico</strong></legend>
-        <div style={{ marginBottom: 10 }}>
-          <label htmlFor="generalExam" style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Exame Físico Geral *</label>
-          <textarea
+      <fieldset className="space-y-3 rounded-md border border-border p-4">
+        <legend className="px-2 font-semibold text-foreground">2. Exame Físico</legend>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="generalExam">Exame Físico Geral *</Label>
+          <Textarea
             id="generalExam"
             value={generalExam}
             onChange={(e) => setGeneralExam(e.target.value)}
             rows={2}
             placeholder="BEG, acianótico, anictérico, corado, hidratado..."
-            style={{ width: '100%', padding: 8 }}
             required
           />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 13 }}>Aparelho Cardiovascular</label>
-            <input
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-normal">Aparelho Cardiovascular</Label>
+            <Input
               type="text"
               value={cvExam}
               onChange={(e) => setCvExam(e.target.value)}
               placeholder="RCR 2T BNF sem sopros"
-              style={{ width: '100%', padding: 6 }}
             />
           </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 13 }}>Aparelho Respiratório</label>
-            <input
+          <div className="space-y-1.5">
+            <Label className="text-xs font-normal">Aparelho Respiratório</Label>
+            <Input
               type="text"
               value={respExam}
               onChange={(e) => setRespExam(e.target.value)}
               placeholder="MV+ sem ruídos adventícios"
-              style={{ width: '100%', padding: 6 }}
             />
           </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 13 }}>Abdômen</label>
-            <input
+          <div className="space-y-1.5">
+            <Label className="text-xs font-normal">Abdômen</Label>
+            <Input
               type="text"
               value={abdExam}
               onChange={(e) => setAbdExam(e.target.value)}
               placeholder="Atípico, RHA+, flácido, indolor"
-              style={{ width: '100%', padding: 6 }}
             />
           </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 13 }}>Neurológico</label>
-            <input
+          <div className="space-y-1.5">
+            <Label className="text-xs font-normal">Neurológico</Label>
+            <Input
               type="text"
               value={neuroExam}
               onChange={(e) => setNeuroExam(e.target.value)}
               placeholder="Consciente, orientado, sem déficits"
-              style={{ width: '100%', padding: 6 }}
             />
           </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 13 }}>Membros / Extremidades</label>
-            <input
+          <div className="space-y-1.5">
+            <Label className="text-xs font-normal">Membros / Extremidades</Label>
+            <Input
               type="text"
               value={extExam}
               onChange={(e) => setExtExam(e.target.value)}
               placeholder="Sem edemas, pulsos presentes e simétricos"
-              style={{ width: '100%', padding: 6 }}
             />
           </div>
         </div>
       </fieldset>
 
-      <fieldset style={{ marginBottom: 15, padding: 15, borderRadius: 6, borderColor: '#ddd' }}>
-        <legend><strong>3. Hipótese Diagnóstica & Conduta</strong></legend>
-        <div style={{ marginBottom: 10 }}>
-          <label htmlFor="diagnosticHypothesis" style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Hipótese Diagnóstica Clínica *</label>
-          <input
+      <fieldset className="space-y-3 rounded-md border border-border p-4">
+        <legend className="px-2 font-semibold text-foreground">3. Hipótese Diagnóstica &amp; Conduta</legend>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="diagnosticHypothesis">Hipótese Diagnóstica Clínica *</Label>
+          <Input
             id="diagnosticHypothesis"
             type="text"
             value={diagnosticHypothesis}
             onChange={(e) => setDiagnosticHypothesis(e.target.value)}
             placeholder="Hipótese clínica formulada pelo médico"
-            style={{ width: '100%', padding: 8 }}
             required
           />
         </div>
-        <div>
-          <label style={{ display: 'block', marginBottom: 4 }}>Plano de Conduta Inicial</label>
-          <textarea
+
+        <div className="space-y-1.5">
+          <Label>Plano de Conduta Inicial</Label>
+          <Textarea
             value={initialConduct}
             onChange={(e) => setInitialConduct(e.target.value)}
             rows={2}
             placeholder="Orientação, medicação sintomática, exames..."
-            style={{ width: '100%', padding: 8 }}
           />
         </div>
       </fieldset>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-        <button
-          type="submit"
-          disabled={submitting}
-          style={{ padding: '10px 20px', backgroundColor: '#16a34a', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}
-        >
+      <div className="flex justify-end">
+        <Button type="submit" disabled={submitting}>
           Registrar Consulta Médica
-        </button>
+        </Button>
       </div>
     </form>
   );

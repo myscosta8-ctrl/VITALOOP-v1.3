@@ -35,6 +35,21 @@ export type DuplicateReviewStatus =
 /** Igual a `app.merge_request_status` (migration 0017). */
 export type MergeRequestStatus = 'requested' | 'approved' | 'rejected' | 'executed';
 
+/** Igual às categorias IBGE de cor/raça (migration 0088). */
+export type PatientRaceColor = 'branca' | 'preta' | 'parda' | 'amarela' | 'indigena' | 'nao_informado';
+
+/** Igual às faixas de escolaridade usadas no cadastro (migration 0088). */
+export type PatientEducationLevel =
+  | 'nao_alfabetizado'
+  | 'fundamental_incompleto'
+  | 'fundamental_completo'
+  | 'medio_incompleto'
+  | 'medio_completo'
+  | 'superior_incompleto'
+  | 'superior_completo'
+  | 'pos_graduacao'
+  | 'nao_informado';
+
 /**
  * Paciente (`app.patients`). CPF/CNS armazenados normalizados (somente
  * dígitos) — ver `patient/identifiers.ts`. Ausência de CPF/CNS é permitida
@@ -46,7 +61,9 @@ export interface Patient {
   readonly fullName: string;
   readonly socialName: string | null;
   readonly motherName: string | null;
+  readonly fatherName: string | null;
   readonly birthDate: string | null; // ISO date (YYYY-MM-DD), não timestamp
+  readonly birthCity: string | null; // naturalidade — distinto de `city` (residência)
   readonly sex: PatientSex | null;
   readonly cpf: string | null; // 11 dígitos, normalizado
   readonly cns: string | null; // 15 dígitos, normalizado
@@ -55,6 +72,9 @@ export interface Patient {
   readonly address: string | null;
   readonly city: string | null;
   readonly state: string | null;
+  readonly raceColor: PatientRaceColor | null;
+  readonly religion: string | null;
+  readonly educationLevel: PatientEducationLevel | null;
   readonly institutionId: UUID | null;
   readonly status: EntityStatus;
   readonly createdBy: UUID | null;
@@ -68,7 +88,9 @@ export interface PatientCreateInput {
   readonly fullName: string;
   readonly socialName?: string | null;
   readonly motherName?: string | null;
+  readonly fatherName?: string | null;
   readonly birthDate?: string | null;
+  readonly birthCity?: string | null;
   readonly sex?: PatientSex | null;
   readonly cpf?: string | null; // aceita formatado ou não; normalizado internamente
   readonly cns?: string | null;
@@ -77,6 +99,9 @@ export interface PatientCreateInput {
   readonly address?: string | null;
   readonly city?: string | null;
   readonly state?: string | null;
+  readonly raceColor?: PatientRaceColor | null;
+  readonly religion?: string | null;
+  readonly educationLevel?: PatientEducationLevel | null;
   readonly institutionId?: UUID | null;
 }
 

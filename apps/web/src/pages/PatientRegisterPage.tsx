@@ -15,6 +15,8 @@ import {
   createPatientsApi,
   parseDuplicateMatches,
   type Patient,
+  type PatientEducationLevel,
+  type PatientRaceColor,
   type PatientSex,
 } from '../lib/patients-api.js';
 import { DuplicateWarning } from '../components/DuplicateWarning.js';
@@ -25,7 +27,9 @@ interface FormFields {
   fullName: string;
   socialName: string;
   motherName: string;
+  fatherName: string;
   birthDate: string;
+  birthCity: string;
   sex: PatientSex | '';
   cpf: string;
   cns: string;
@@ -34,13 +38,18 @@ interface FormFields {
   address: string;
   city: string;
   state: string;
+  raceColor: PatientRaceColor | '';
+  religion: string;
+  educationLevel: PatientEducationLevel | '';
 }
 
 const emptyForm: FormFields = {
   fullName: '',
   socialName: '',
   motherName: '',
+  fatherName: '',
   birthDate: '',
+  birthCity: '',
   sex: '',
   cpf: '',
   cns: '',
@@ -49,7 +58,31 @@ const emptyForm: FormFields = {
   address: '',
   city: '',
   state: '',
+  raceColor: '',
+  religion: '',
+  educationLevel: '',
 };
+
+const RACE_COLOR_OPTIONS: ReadonlyArray<{ value: PatientRaceColor; label: string }> = [
+  { value: 'branca', label: 'Branca' },
+  { value: 'preta', label: 'Preta' },
+  { value: 'parda', label: 'Parda' },
+  { value: 'amarela', label: 'Amarela' },
+  { value: 'indigena', label: 'Indígena' },
+  { value: 'nao_informado', label: 'Não informado' },
+];
+
+const EDUCATION_OPTIONS: ReadonlyArray<{ value: PatientEducationLevel; label: string }> = [
+  { value: 'nao_alfabetizado', label: 'Não alfabetizado' },
+  { value: 'fundamental_incompleto', label: 'Fundamental incompleto' },
+  { value: 'fundamental_completo', label: 'Fundamental completo' },
+  { value: 'medio_incompleto', label: 'Médio incompleto' },
+  { value: 'medio_completo', label: 'Médio completo' },
+  { value: 'superior_incompleto', label: 'Superior incompleto' },
+  { value: 'superior_completo', label: 'Superior completo' },
+  { value: 'pos_graduacao', label: 'Pós-graduação' },
+  { value: 'nao_informado', label: 'Não informado' },
+];
 
 type FieldErrors = Partial<Record<keyof FormFields, string>>;
 
@@ -75,7 +108,9 @@ export const PatientRegisterPage = (): JSX.Element => {
     fullName: form.fullName.trim(),
     socialName: form.socialName || null,
     motherName: form.motherName || null,
+    fatherName: form.fatherName || null,
     birthDate: form.birthDate || null,
+    birthCity: form.birthCity || null,
     sex: form.sex || null,
     cpf: form.cpf || null,
     cns: form.cns || null,
@@ -84,6 +119,9 @@ export const PatientRegisterPage = (): JSX.Element => {
     address: form.address || null,
     city: form.city || null,
     state: form.state || null,
+    raceColor: form.raceColor || null,
+    religion: form.religion || null,
+    educationLevel: form.educationLevel || null,
     ...(confirmDuplicate ? { confirmDuplicate: true } : {}),
   });
 
@@ -190,12 +228,26 @@ export const PatientRegisterPage = (): JSX.Element => {
             onChange={(e) => setField('motherName', e.target.value)}
           />
 
+          <label htmlFor="fatherName">Nome do pai</label>
+          <input
+            id="fatherName"
+            value={form.fatherName}
+            onChange={(e) => setField('fatherName', e.target.value)}
+          />
+
           <label htmlFor="birthDate">Data de nascimento</label>
           <input
             id="birthDate"
             type="date"
             value={form.birthDate}
             onChange={(e) => setField('birthDate', e.target.value)}
+          />
+
+          <label htmlFor="birthCity">Cidade de origem (naturalidade)</label>
+          <input
+            id="birthCity"
+            value={form.birthCity}
+            onChange={(e) => setField('birthCity', e.target.value)}
           />
 
           <label htmlFor="sex">Sexo</label>
@@ -228,6 +280,29 @@ export const PatientRegisterPage = (): JSX.Element => {
 
           <label htmlFor="state">Estado</label>
           <input id="state" value={form.state} onChange={(e) => setField('state', e.target.value)} />
+
+          <label htmlFor="raceColor">Cor/Raça</label>
+          <select
+            id="raceColor"
+            value={form.raceColor}
+            onChange={(e) => setField('raceColor', e.target.value as PatientRaceColor | '')}
+          >
+            <option value="">Não informado</option>
+            {RACE_COLOR_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+
+          <label htmlFor="religion">Religião</label>
+          <input id="religion" value={form.religion} onChange={(e) => setField('religion', e.target.value)} />
+
+          <label htmlFor="educationLevel">Escolaridade</label>
+          <select
+            id="educationLevel"
+            value={form.educationLevel}
+            onChange={(e) => setField('educationLevel', e.target.value as PatientEducationLevel | '')}
+          >
+            <option value="">Não informado</option>
+            {EDUCATION_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
 
           <Button type="submit" className="mt-4" disabled={createMutation.isPending}>
             {createMutation.isPending ? 'Cadastrando…' : 'Cadastrar paciente'}

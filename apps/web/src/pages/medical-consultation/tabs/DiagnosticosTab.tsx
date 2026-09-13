@@ -3,6 +3,12 @@ import type { EncounterDiagnosis, DiagnosisType } from '../../../lib/diagnoses-a
 import { CidSearchInput } from '../../../components/CidSearchInput.js';
 import type { DiagnosesForm } from '../hooks/useDiagnoses.js';
 import { EmptyState } from '../../../components/ui/empty-state.js';
+import { Card, CardContent } from '../../../components/ui/card.js';
+import { Badge } from '../../../components/ui/badge.js';
+import { Button } from '../../../components/ui/button.js';
+import { Input } from '../../../components/ui/input.js';
+import { Label } from '../../../components/ui/label.js';
+import { Select } from '../../../components/ui/select.js';
 
 interface Props {
   diagnoses: readonly EncounterDiagnosis[];
@@ -22,105 +28,68 @@ export const DiagnosticosTab: React.FC<Props> = ({ diagnoses, form }) => {
   } = form;
 
   return (
-    <div style={{ marginTop: 20, borderTop: '2px solid #2563eb', paddingTop: 15, marginBottom: 20 }}>
-      <h4 style={{ color: '#1e40af' }}>Diagnósticos Clínicos e Catálogo CID-10 (MED-005, MED-006)</h4>
+    <div className="space-y-5">
+      <h4 className="text-sm font-semibold text-foreground">Diagnósticos Clínicos e Catálogo CID-10 (MED-005, MED-006)</h4>
 
-      <div style={{ marginBottom: 15 }}>
-        <h5>Diagnósticos Registrados no Atendimento</h5>
+      <div className="space-y-3">
+        <h5 className="text-sm font-semibold text-foreground">Diagnósticos Registrados no Atendimento</h5>
         {diagnoses.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="flex flex-col gap-2.5">
             {diagnoses.map((diag) => (
               <div
                 key={diag.id}
-                style={{
-                  padding: 12,
-                  borderRadius: 6,
-                  borderLeft: diag.diagnosisType === 'principal' ? '6px solid #dc2626' : '6px solid #64748b',
-                  backgroundColor: diag.status === 'refuted' ? '#fecdd3' : '#f8fafc',
-                }}
+                className={`rounded-md border-l-4 p-3 ${diag.diagnosisType === 'principal' ? 'border-l-destructive' : 'border-l-border'} ${diag.status === 'refuted' ? 'bg-destructive/10' : 'bg-muted/40'}`}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="flex items-center justify-between gap-2">
                   <div>
-                    <span
-                      style={{
-                        padding: '2px 6px',
-                        borderRadius: 4,
-                        fontSize: 11,
-                        fontWeight: 'bold',
-                        textTransform: 'uppercase',
-                        marginRight: 8,
-                        backgroundColor: diag.diagnosisType === 'principal' ? '#fee2e2' : '#e2e8f0',
-                        color: diag.diagnosisType === 'principal' ? '#991b1b' : '#334155',
-                      }}
-                    >
+                    <Badge variant={diag.diagnosisType === 'principal' ? 'destructive' : 'secondary'} className="mr-2 uppercase">
                       {diag.diagnosisType === 'principal' ? 'Diagnóstico Principal' : 'Diagnóstico Secundário'}
-                    </span>
-                    <strong style={{ color: '#0f172a', fontSize: 15 }}>[{diag.cidCode}]</strong>{' '}
-                    <span style={{ fontSize: 14 }}>{diag.cidDescription || ''}</span>
+                    </Badge>
+                    <strong className="text-[15px] text-foreground">[{diag.cidCode}]</strong>{' '}
+                    <span className="text-sm">{diag.cidDescription || ''}</span>
                   </div>
-                  <span
-                    style={{
-                      padding: '3px 8px',
-                      borderRadius: 4,
-                      fontSize: 12,
-                      fontWeight: 'bold',
-                      backgroundColor: diag.status === 'active' ? '#dcfce7' : diag.status === 'resolved' ? '#e0f2fe' : '#ffe4e6',
-                      color: diag.status === 'active' ? '#166534' : diag.status === 'resolved' ? '#0369a1' : '#9f1239',
-                    }}
-                  >
+                  <Badge variant={diag.status === 'active' ? 'success' : diag.status === 'resolved' ? 'outline' : 'destructive'}>
                     {diag.status === 'active' ? 'Ativo' : diag.status === 'resolved' ? 'Resolvido' : 'Refutado'}
-                  </span>
+                  </Badge>
                 </div>
-                {diag.notes && <div style={{ fontSize: 13, color: '#475569', marginTop: 4 }}>Nota: {diag.notes}</div>}
+                {diag.notes && <div className="mt-1 text-xs text-muted-foreground">Nota: {diag.notes}</div>}
 
                 {diag.status === 'active' && (
-                  <div style={{ display: 'flex', gap: 10, marginTop: 8, fontSize: 12 }}>
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateDiagnosisStatus(diag.id, 'resolved')}
-                      style={{ padding: '3px 8px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                    >
+                  <div className="mt-2 flex gap-2.5">
+                    <Button type="button" size="sm" variant="secondary" onClick={() => handleUpdateDiagnosisStatus(diag.id, 'resolved')}>
                       Marcar Resolvido
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      size="sm"
+                      variant="destructive"
                       onClick={() => {
                         setRefutingDiagId(diag.id);
                         setRefutationNotes('');
                       }}
-                      style={{ padding: '3px 8px', backgroundColor: '#e11d48', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                     >
                       Refutar Diagnóstico
-                    </button>
+                    </Button>
                   </div>
                 )}
 
                 {refutingDiagId === diag.id && (
-                  <div style={{ marginTop: 8, padding: 10, backgroundColor: '#fff1f2', borderRadius: 4, border: '1px solid #fda4af' }}>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold', color: '#9f1239' }}>Justificativa médica para refutar *</label>
-                    <input
+                  <div className="mt-2 space-y-2 rounded-md border border-destructive/40 bg-destructive/10 p-2.5">
+                    <Label className="text-xs text-[var(--color-danger)]">Justificativa médica para refutar *</Label>
+                    <Input
                       type="text"
                       value={refutationNotes}
                       onChange={(e) => setRefutationNotes(e.target.value)}
                       placeholder="Descreva o motivo clínico da refutação..."
-                      style={{ width: '100%', padding: 6, margin: '4px 0 8px 0', borderRadius: 4, border: '1px solid #ccc' }}
                       required
                     />
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateDiagnosisStatus(diag.id, 'refuted')}
-                        style={{ padding: '4px 10px', backgroundColor: '#e11d48', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                      >
+                    <div className="flex gap-2">
+                      <Button type="button" size="sm" variant="destructive" onClick={() => handleUpdateDiagnosisStatus(diag.id, 'refuted')}>
                         Confirmar Refutação
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRefutingDiagId(null)}
-                        style={{ padding: '4px 10px', backgroundColor: '#94a3b8', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                      >
+                      </Button>
+                      <Button type="button" size="sm" variant="secondary" onClick={() => setRefutingDiagId(null)}>
                         Cancelar
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -132,49 +101,44 @@ export const DiagnosticosTab: React.FC<Props> = ({ diagnoses, form }) => {
         )}
       </div>
 
-      <form onSubmit={handleAddDiagnosis} style={{ backgroundColor: '#eff6ff', padding: 15, borderRadius: 6, border: '1px solid #bfdbfe' }}>
-        <h5 style={{ margin: '0 0 10px 0', color: '#1e40af' }}>Adicionar Novo Diagnóstico CID-10</h5>
-        <div style={{ marginBottom: 10 }}>
-          <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold', fontSize: 13 }}>Pesquisar CID-10 *</label>
-          <CidSearchInput
-            selectedItem={selectedCid}
-            onSelect={(item) => setSelectedCid(item)}
-            onClear={() => setSelectedCid(null)}
-          />
-        </div>
+      <Card>
+        <CardContent className="space-y-3 pt-6">
+          <h5 className="text-sm font-semibold text-foreground">Adicionar Novo Diagnóstico CID-10</h5>
+          <form onSubmit={handleAddDiagnosis} className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Pesquisar CID-10 *</Label>
+              <CidSearchInput
+                selectedItem={selectedCid}
+                onSelect={(item) => setSelectedCid(item)}
+                onClear={() => setSelectedCid(null)}
+              />
+            </div>
 
-        <div style={{ display: 'flex', gap: 15, marginBottom: 10 }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold', fontSize: 13 }}>Tipo de Diagnóstico</label>
-            <select
-              value={diagType}
-              onChange={(e) => setDiagType(e.target.value as DiagnosisType)}
-              style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
-            >
-              <option value="principal">Diagnóstico Principal (Único ativo)</option>
-              <option value="secondary">Diagnóstico Secundário / Comórbido</option>
-            </select>
-          </div>
-          <div style={{ flex: 2 }}>
-            <label style={{ display: 'block', marginBottom: 4, fontSize: 13 }}>Observações / Notas</label>
-            <input
-              type="text"
-              value={diagNotes}
-              onChange={(e) => setDiagNotes(e.target.value)}
-              placeholder="Notas complementares sobre o diagnóstico..."
-              style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
-            />
-          </div>
-        </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5 sm:col-span-1">
+                <Label>Tipo de Diagnóstico</Label>
+                <Select value={diagType} onChange={(e) => setDiagType(e.target.value as DiagnosisType)}>
+                  <option value="principal">Diagnóstico Principal (Único ativo)</option>
+                  <option value="secondary">Diagnóstico Secundário / Comórbido</option>
+                </Select>
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label className="font-normal">Observações / Notas</Label>
+                <Input
+                  type="text"
+                  value={diagNotes}
+                  onChange={(e) => setDiagNotes(e.target.value)}
+                  placeholder="Notas complementares sobre o diagnóstico..."
+                />
+              </div>
+            </div>
 
-        <button
-          type="submit"
-          disabled={submitting}
-          style={{ padding: '8px 16px', backgroundColor: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}
-        >
-          Vincular Diagnóstico CID-10
-        </button>
-      </form>
+            <Button type="submit" disabled={submitting}>
+              Vincular Diagnóstico CID-10
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };

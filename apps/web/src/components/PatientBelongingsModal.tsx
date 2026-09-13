@@ -3,6 +3,7 @@ import { useSession } from '../context/session-context.js';
 import { createPatientBelongingsApi } from '../lib/patient-belongings-api.js';
 import type { ClinicalFormSchema } from '../lib/clinical-form-types.js';
 import { DynamicClinicalForm } from './DynamicClinicalForm.js';
+import { Button } from './ui/button.js';
 
 interface PatientBelongingsModalProps {
   encounterId: string;
@@ -42,18 +43,17 @@ export const PatientBelongingsModal: React.FC<PatientBelongingsModalProps> = ({
 
   return (
     <div data-testid="patient-belongings-modal">
-      <h3>Inventário de Pertences do Paciente</h3>
-      {msg && <p data-testid="patient-belongings-status-msg">{msg}</p>}
+      {msg && <p data-testid="patient-belongings-status-msg" className="mb-3 text-sm text-muted-foreground">{msg}</p>}
 
       {!schema ? (
-        <p role="status">Carregando…</p>
+        <p role="status" className="text-sm text-muted-foreground">Carregando…</p>
       ) : (
-        <form onSubmit={handleSubmit} data-testid="patient-belongings-form">
+        <form onSubmit={handleSubmit} data-testid="patient-belongings-form" className="max-w-none border-0 bg-transparent p-0 shadow-none">
           <DynamicClinicalForm schema={schema} values={formFields} onChange={setFormFields} />
 
-          <button type="submit" data-testid="submit-patient-belongings-btn">
+          <Button type="submit" className="mt-4" data-testid="submit-patient-belongings-btn">
             Registrar Inventário
-          </button>
+          </Button>
         </form>
       )}
     </div>

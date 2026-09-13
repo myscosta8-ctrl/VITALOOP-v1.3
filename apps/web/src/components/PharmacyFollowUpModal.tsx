@@ -3,6 +3,7 @@ import { useSession } from '../context/session-context.js';
 import { createPharmacyFollowUpApi } from '../lib/pharmacy-followup-api.js';
 import type { ClinicalFormSchema } from '../lib/clinical-form-types.js';
 import { DynamicClinicalForm } from './DynamicClinicalForm.js';
+import { Button } from './ui/button.js';
 
 interface PharmacyFollowUpModalProps {
   encounterId: string;
@@ -46,18 +47,17 @@ export const PharmacyFollowUpModal: React.FC<PharmacyFollowUpModalProps> = ({
 
   return (
     <div data-testid="pharmacy-followup-modal">
-      <h3>Acompanhamento Farmacêutico</h3>
-      {msg && <p data-testid="pharmacy-followup-status-msg">{msg}</p>}
+      {msg && <p data-testid="pharmacy-followup-status-msg" className="mb-3 text-sm text-muted-foreground">{msg}</p>}
 
       {!schema ? (
-        <p role="status">Carregando…</p>
+        <p role="status" className="text-sm text-muted-foreground">Carregando…</p>
       ) : (
-        <form onSubmit={handleSubmit} data-testid="pharmacy-followup-form">
+        <form onSubmit={handleSubmit} data-testid="pharmacy-followup-form" className="max-w-none border-0 bg-transparent p-0 shadow-none">
           <DynamicClinicalForm schema={schema} values={formFields} onChange={setFormFields} />
 
-          <button type="submit" data-testid="submit-pharmacy-followup-btn">
+          <Button type="submit" className="mt-4" data-testid="submit-pharmacy-followup-btn">
             Registrar
-          </button>
+          </Button>
         </form>
       )}
     </div>

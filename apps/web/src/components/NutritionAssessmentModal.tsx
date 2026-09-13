@@ -3,6 +3,7 @@ import { useSession } from '../context/session-context.js';
 import { createNutritionApi } from '../lib/nutrition-api.js';
 import type { ClinicalFormSchema } from '../lib/clinical-form-types.js';
 import { DynamicClinicalForm } from './DynamicClinicalForm.js';
+import { Button } from './ui/button.js';
 
 interface NutritionAssessmentModalProps {
   encounterId: string;
@@ -46,18 +47,17 @@ export const NutritionAssessmentModal: React.FC<NutritionAssessmentModalProps> =
 
   return (
     <div data-testid="nutrition-assessment-modal">
-      <h3>Avaliação Nutricional</h3>
-      {msg && <p data-testid="nutrition-status-msg">{msg}</p>}
+      {msg && <p data-testid="nutrition-status-msg" className="mb-3 text-sm text-muted-foreground">{msg}</p>}
 
       {!schema ? (
-        <p role="status">Carregando…</p>
+        <p role="status" className="text-sm text-muted-foreground">Carregando…</p>
       ) : (
-        <form onSubmit={handleSubmit} data-testid="nutrition-form">
+        <form onSubmit={handleSubmit} data-testid="nutrition-form" className="max-w-none border-0 bg-transparent p-0 shadow-none">
           <DynamicClinicalForm schema={schema} values={formFields} onChange={setFormFields} />
 
-          <button type="submit" data-testid="submit-nutrition-btn">
+          <Button type="submit" className="mt-4" data-testid="submit-nutrition-btn">
             Registrar Avaliação
-          </button>
+          </Button>
         </form>
       )}
     </div>
