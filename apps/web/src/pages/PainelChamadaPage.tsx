@@ -20,7 +20,7 @@ export const PainelChamadaPage: React.FC = () => {
   const queuesApi = createQueuesApi(api);
   const [selectedQueueId, setSelectedQueueId] = useState<string>('');
 
-  const queuesQuery = useQuery({
+  useQuery({
     queryKey: ['queues'],
     queryFn: async () => {
       const data = await queuesApi.listQueues();

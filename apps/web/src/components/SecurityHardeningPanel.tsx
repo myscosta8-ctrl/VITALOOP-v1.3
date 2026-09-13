@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useSession } from '../context/session-context.js';
 import { createSecurityApi } from '../lib/security-api.js';
-import { Card, CardContent, CardHeader } from './ui/card.js';
+import { Card, CardContent } from './ui/card.js';
 import { Button } from './ui/button.js';
 
 export const SecurityHardeningPanel: React.FC = () => {
