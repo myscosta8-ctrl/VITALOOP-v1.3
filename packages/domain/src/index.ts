@@ -40,6 +40,8 @@ export * from './discharge-checklist/index.js';
 export * from './patient-belongings/index.js';
 export * from './referral-form/index.js';
 export * from './controlled-medication/index.js';
+export * from './pharmacy-stock/index.js';
+export * from './shift-handover/index.js';
 
 
 

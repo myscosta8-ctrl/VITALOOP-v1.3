@@ -30,6 +30,9 @@ import { EncounterOpenPage } from './pages/EncounterOpenPage.js';
 import { TriageOpenPage } from './pages/TriageOpenPage.js';
 import { QueueDashboardPage } from './pages/QueueDashboardPage.js';
 import { ProntoAtendimentoPage } from './pages/ProntoAtendimentoPage.js';
+import { PharmacyStockPage } from './pages/PharmacyStockPage.js';
+import { PainelChamadaPage } from './pages/PainelChamadaPage.js';
+import { ShiftHandoverPage } from './pages/ShiftHandoverPage.js';
 import { MedicalConsultationPage } from './pages/MedicalConsultationPage.js';
 import { EnfermagemPage } from './pages/EnfermagemPage.js';
 import { BedMapPage } from './pages/BedMapPage.js';
@@ -155,6 +158,24 @@ const Shell = (): JSX.Element => {
       return (
         <RequireSession roles={['assistencial', 'recepcao']}>
           <ProntoAtendimentoPage />
+        </RequireSession>
+      );
+    case '/farmacia/estoque':
+      return (
+        <RequireSession roles={['assistencial']}>
+          <PharmacyStockPage />
+        </RequireSession>
+      );
+    case '/painel-chamada':
+      return (
+        <RequireSession roles={['assistencial', 'recepcao']}>
+          <PainelChamadaPage />
+        </RequireSession>
+      );
+    case '/passagem-plantao':
+      return (
+        <RequireSession roles={['assistencial']}>
+          <ShiftHandoverPage />
         </RequireSession>
       );
     case '/leitos':

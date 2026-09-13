@@ -1374,3 +1374,26 @@ Conforme auditado e registrado formalmente em `docs/GO_LIVE_REAL_VALIDATION_REPO
 >   painel de TV (chamada pública), passagem de plantão estruturada.
 > - Migration 0086 (aditiva). Build+testes limpos: `packages/domain`, `apps/api`, `apps/web`
 >   (107 arquivos, 477 testes).
+
+---
+
+> ## 🟢 FASE 5 (CONCLUÍDA) DO PLANO DE RECONSTRUÇÃO ASSISTENCIAL — 12/09/2026
+> Últimos 3 gaps administrativos/operacionais do mapa Emergency Care → Vitaloop:
+> - **Estoque de Farmácia**: novo `app.pharmacy_stock_batches`/`app.pharmacy_stock_movements`
+>   (entrada/saída/ajuste, com regra própria — saída não pode deixar o estoque negativo). Nova
+>   tela `#/farmacia/estoque`, reaproveita `MedicationSearchInput.tsx` já existente pro seletor de
+>   medicamento. Permissões novas `pharmacy.stock_read`/`pharmacy.stock_write`.
+> - **Painel de TV (chamada pública)**: **sem migration** — reaproveita 100%
+>   `app.queue_tickets`/`app.queues` já existentes. Nova tela `#/painel-chamada`, fonte grande,
+>   auto-atualização a cada 5s. Simplificação assumida e documentada no código: como o Vitaloop
+>   não tem modo de acesso anônimo/kiosk, a tela continua atrás de login como o resto do app (um
+>   terminal loga e fica apontado pra TV — mesma solução usada em UPAs reais sem esse modo).
+> - **Passagem de Plantão Estruturada**: novo `app.shift_handovers` (censo, alertas críticos,
+>   pendências, resumo) — diferente do SBAR (que é por paciente), este é o resumo de setor/turno
+>   inteiro entre equipes. Nova tela `#/passagem-plantao`. Permissões novas
+>   `shift_handover.read`/`shift_handover.write`.
+> - Migration 0087 (aditiva). Build+testes limpos: `packages/domain`, `apps/api`, `apps/web`
+>   (109 arquivos, 487 testes).
+> - **Fase 5 do plano de reconstrução assistencial está 100% concluída** — as 5 fases do plano
+>   aprovado em 12/09/2026 (Enfermagem estruturada, reavaliação de sinais vitais, escalas de
+>   risco, checklist de alta/óbito estruturado, gaps administrativos) foram todas entregues.

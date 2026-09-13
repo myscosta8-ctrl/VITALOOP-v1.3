@@ -135,6 +135,9 @@ const NAV_GROUPS: readonly NavGroup[] = [
       { href: '#/pacientes', label: 'Pacientes', icon: IconPatients },
       { href: '#/atendimentos', label: 'Atendimentos', icon: IconEncounters },
       { href: '#/leitos', label: 'Prontuário de Internação', icon: IconBeds },
+      { href: '#/painel-chamada', label: 'Painel de Chamada (TV)', icon: IconQueue },
+      { href: '#/farmacia/estoque', label: 'Estoque de Farmácia', icon: IconBeds },
+      { href: '#/passagem-plantao', label: 'Passagem de Plantão', icon: IconSchedule },
     ],
   },
   {

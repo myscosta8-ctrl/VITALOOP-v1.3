@@ -34,6 +34,8 @@ import { registerDischargeChecklistRoutes } from './routes/discharge-checklist.j
 import { registerPatientBelongingsRoutes } from './routes/patient-belongings.js';
 import { registerReferralFormRoutes } from './routes/referral-form.js';
 import { registerControlledMedicationRoutes } from './routes/controlled-medications.js';
+import { registerPharmacyStockRoutes } from './routes/pharmacy-stock.js';
+import { registerShiftHandoverRoutes } from './routes/shift-handover.js';
 import { registerBedRoutes } from './routes/beds.js';
 import { registerAdmissionRoutes } from './routes/admissions.js';
 import { registerDocumentRoutes } from './routes/documents.js';
@@ -139,6 +141,8 @@ export const buildServer = (config: LoadedConfig): BuiltServer => {
   registerPatientBelongingsRoutes(app, db);
   registerReferralFormRoutes(app, db);
   registerControlledMedicationRoutes(app, db);
+  registerPharmacyStockRoutes(app, db);
+  registerShiftHandoverRoutes(app, db);
   registerBedRoutes(app, db);
   registerAdmissionRoutes(app, db);
   registerDocumentRoutes(app, db);
