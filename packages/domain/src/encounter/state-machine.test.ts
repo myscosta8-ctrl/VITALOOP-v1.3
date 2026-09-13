@@ -26,6 +26,26 @@ describe('Encounter State Machine (ENC-006)', () => {
     expect(isValidEncounterStatusTransition('post_consultation', 'canceled')).toBe(true);
   });
 
+  // 'admitted' (internado): estado ativo de cuidado contínuo (migration
+  // 0081/0082) — cobre o que ficou sem teste desde que o estado foi
+  // introduzido: pode ser alcançado de in_consultation OU post_consultation,
+  // permite auto-transição (evolução/reavaliação sem trocar de estado), só
+  // sai para completed (nunca canceled — internação se encerra por alta/
+  // óbito/transferência, não se "cancela"). A trava real de "precisa de
+  // leito ativo" mora no banco (trigger guard_encounter_admission_transition,
+  // não neste código puro), então não é testada aqui.
+  it('permite internar (admitted) a partir de in_consultation ou post_consultation, e evoluir sem trocar de estado', () => {
+    expect(isValidEncounterStatusTransition('in_consultation', 'admitted')).toBe(true);
+    expect(isValidEncounterStatusTransition('post_consultation', 'admitted')).toBe(true);
+    expect(isValidEncounterStatusTransition('admitted', 'admitted')).toBe(true);
+  });
+
+  it('só permite sair de admitted para completed (alta hospitalar) — nunca para canceled', () => {
+    expect(isValidEncounterStatusTransition('admitted', 'completed')).toBe(true);
+    expect(isValidEncounterStatusTransition('admitted', 'canceled')).toBe(false);
+    expect(isValidEncounterStatusTransition('admitted', 'triage_pending')).toBe(false);
+  });
+
   it('rejeita transições de estado inválidas', () => {
     expect(isValidEncounterStatusTransition('created', 'completed')).toBe(false);
     expect(isValidEncounterStatusTransition('triaged', 'in_consultation')).toBe(false);
@@ -53,5 +73,12 @@ describe('Encounter State Machine (ENC-006)', () => {
     expect(() =>
       assertValidEncounterStatusTransition('in_consultation', 'post_consultation', null, 'medicando'),
     ).not.toThrow();
+  });
+
+  it('permite concluir (completed) um atendimento internado sem exigir motivo de cancelamento ou sub-status', () => {
+    expect(() => assertValidEncounterStatusTransition('admitted', 'completed')).not.toThrow();
+    expect(() => assertValidEncounterStatusTransition('admitted', 'canceled', 'Qualquer motivo')).toThrow(
+      AppError,
+    );
   });
 });
