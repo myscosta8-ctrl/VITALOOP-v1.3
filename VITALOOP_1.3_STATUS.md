@@ -1352,3 +1352,25 @@ Conforme auditado e registrado formalmente em `docs/GO_LIVE_REAL_VALIDATION_REPO
 >   Fase 1 (Internação como estado de 1ª classe). Fora de escopo desta fase, sinalizado à parte.
 > - Nenhuma migration quebra compatibilidade — tudo aditivo. Build+testes limpos: `packages/domain`,
 >   `apps/api`, `apps/web` (106 arquivos, 473 testes).
+
+---
+
+> ## 🟢 FASE 5 (PARCIAL) DO PLANO DE RECONSTRUÇÃO ASSISTENCIAL — 12/09/2026
+> 3 dos 6 gaps administrativos/operacionais do mapa Emergency Care → Vitaloop, priorizados pelo
+> usuário:
+> - **Inventário de Pertences do Paciente**: novo `app.patient_belongings_inventories`
+>   (form_fields jsonb via engine clinical-forms), reaproveita `nursing.read`/`nursing.write`.
+>   Botão na aba Enfermagem/Multidisciplinar.
+> - **Medicamentos Controlados**: coluna `controlled_class` no catálogo (Portaria SVS/MS 344/98 —
+>   Tramadol/MED-009 marcado A1), nova tabela `app.controlled_medication_dispensations` com
+>   colunas relacionais reais (não form_fields, porque tem regra própria: número da notificação de
+>   receita obrigatório pras listas A/B) vinculada a `app.prescription_items`. Reaproveita
+>   `medication.administer`/`nursing.read`. Botão na aba Farmácia.
+> - **Ficha de Referência**: novo `app.referral_forms` (form_fields jsonb), complementa
+>   `app.external_regulations` (que só cobre a solicitação de vaga) com o resumo clínico
+>   estruturado que acompanha o paciente. Reaproveita `regulation.read`/`regulation.manage`.
+>   Botão na aba de Solicitações Médicas.
+> - **Ainda pendentes da Fase 5** (não pedidos nesta rodada): estoque de farmácia (lote/validade),
+>   painel de TV (chamada pública), passagem de plantão estruturada.
+> - Migration 0086 (aditiva). Build+testes limpos: `packages/domain`, `apps/api`, `apps/web`
+>   (107 arquivos, 477 testes).

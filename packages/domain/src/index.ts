@@ -37,6 +37,9 @@ export * from './nursing-therapeutic-plan/index.js';
 export * from './pharmacy-followup/index.js';
 export * from './vital-signs/index.js';
 export * from './discharge-checklist/index.js';
+export * from './patient-belongings/index.js';
+export * from './referral-form/index.js';
+export * from './controlled-medication/index.js';
 
 
 

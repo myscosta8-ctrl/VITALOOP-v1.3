@@ -22,6 +22,9 @@ import { SocialWorkAssessmentModal } from '../components/SocialWorkAssessmentMod
 import { NutritionAssessmentModal } from '../components/NutritionAssessmentModal.js';
 import { NursingAdmissionFormModal } from '../components/NursingAdmissionFormModal.js';
 import { DischargeChecklistModal } from '../components/DischargeChecklistModal.js';
+import { PatientBelongingsModal } from '../components/PatientBelongingsModal.js';
+import { ReferralFormModal } from '../components/ReferralFormModal.js';
+import { ControlledMedicationModal } from '../components/ControlledMedicationModal.js';
 import { PhysiotherapyAssessmentModal } from '../components/PhysiotherapyAssessmentModal.js';
 import { FluidBalanceModal } from '../components/FluidBalanceModal.js';
 import { PharmacyFollowUpModal } from '../components/PharmacyFollowUpModal.js';
@@ -51,6 +54,9 @@ type OpenPanel =
   | 'nutricao'
   | 'ficha_enfermagem'
   | 'checklist_alta'
+  | 'pertences'
+  | 'ficha_referencia'
+  | 'medicamento_controlado'
   | 'fisioterapia'
   | 'balanco_hidrico'
   | 'acompanhamento_farmaceutico'
@@ -81,6 +87,7 @@ const ACTIONS: ReadonlyArray<{ panel: Exclude<OpenPanel, null>; label: string; t
   { panel: 'evento', label: 'Reportar evento adverso', tab: 'medicas' },
   { panel: 'checklist_alta', label: 'Checklist de Alta', tab: 'medicas' },
   { panel: 'regulacao', label: 'Regulação externa (SISREG/CROSS)', tab: 'medicas' },
+  { panel: 'ficha_referencia', label: 'Ficha de Referência (contrarreferência)', tab: 'medicas' },
 
   { panel: 'ficha_enfermagem', label: 'Ficha de Atendimento de Enfermagem', tab: 'enfermagem' },
   { panel: 'ser', label: 'Atualizar quadro clínico (SER)', tab: 'enfermagem' },
@@ -91,8 +98,10 @@ const ACTIONS: ReadonlyArray<{ panel: Exclude<OpenPanel, null>; label: string; t
   { panel: 'nutricao', label: 'Avaliação Nutricional', tab: 'enfermagem' },
   { panel: 'fisioterapia', label: 'Avaliação Fisioterapêutica', tab: 'enfermagem' },
   { panel: 'notificacao', label: 'Notificar agravo compulsório', tab: 'enfermagem' },
+  { panel: 'pertences', label: 'Inventário de Pertences do Paciente', tab: 'enfermagem' },
 
   { panel: 'farmacia', label: 'Solicitar dispensação (Farmácia)', tab: 'farmacia' },
+  { panel: 'medicamento_controlado', label: 'Medicamentos Controlados (rastreio especial)', tab: 'farmacia' },
   { panel: 'acompanhamento_farmaceutico', label: 'Acompanhamento Farmacêutico', tab: 'farmacia' },
   { panel: 'interop', label: 'Interoperabilidade (RNDS / Lote de AIH)', tab: 'farmacia' },
 ];
@@ -291,6 +300,21 @@ export const EncounterActionsPage: React.FC<Props> = ({ encounterId }) => {
       {open === 'sbar' && patientId && (
         <Overlay title="Transferência Interna (SBAR)" onClose={() => setOpen(null)}>
           <SbarTransferModal encounterId={encounterId} patientId={patientId} onSuccess={() => setOpen(null)} />
+        </Overlay>
+      )}
+      {open === 'ficha_referencia' && patientId && (
+        <Overlay title="Ficha de Referência (contrarreferência)" onClose={() => setOpen(null)}>
+          <ReferralFormModal encounterId={encounterId} patientId={patientId} onSuccess={() => setOpen(null)} />
+        </Overlay>
+      )}
+      {open === 'pertences' && patientId && (
+        <Overlay title="Inventário de Pertences do Paciente" onClose={() => setOpen(null)}>
+          <PatientBelongingsModal encounterId={encounterId} patientId={patientId} onSuccess={() => setOpen(null)} />
+        </Overlay>
+      )}
+      {open === 'medicamento_controlado' && (
+        <Overlay title="Medicamentos Controlados" onClose={() => setOpen(null)}>
+          <ControlledMedicationModal encounterId={encounterId} onSuccess={() => setOpen(null)} />
         </Overlay>
       )}
       {open === 'checklist_alta' && patientId && (
