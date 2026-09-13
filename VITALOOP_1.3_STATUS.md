@@ -1283,3 +1283,29 @@ Conforme auditado e registrado formalmente em `docs/GO_LIVE_REAL_VALIDATION_REPO
 > (cabeçalho+corpo) pronto pra impressão. Restam só as 5 doenças da Trilha 2, sem PDF oficial
 > disponível: ZIKA, HANSENIASE, SIFILIS, TETANO_ACIDENTAL, INTOXICACAO_EXOGENA — bloqueadas,
 > sem previsão, até o documento chegar.
+
+> ## 🟢 Estado "Internado" de primeira classe — ADM-001..008 (12/09/2026)
+> Handoff recebido de sessão separada (`docs/handoffs/HANDOFF_2026-09-12_ESTADO_INTERNADO.md`)
+> com banco/domínio já prontos e aplicados ao vivo no Supabase real. Verifiquei (não assumi)
+> que as migrations `0081_encounter_admitted_status`/`0082_admissions` já estavam aplicadas
+> (`enum admitted`, tabela `app.admissions`, trigger `guard_encounter_admission_transition`
+> confirmados via `execute_sql`) mas sem registro em `app.schema_migrations` — registrei os
+> dois checksums pra não haver reaplicação quebrada por `migrate.ts` no futuro.
+>
+> **Completei a parte que faltava (API + tela)**:
+> - Novo módulo de domínio `packages/domain/src/admission/` (types/rules/events, 7 testes),
+>   mesmo padrão de `bed/`.
+> - Rotas `apps/api/src/routes/admissions.ts`: `GET/POST/PATCH /api/v1/encounters/:id/admission`
+>   + `POST .../admission/discharge`. Propaga o erro 23514 do gatilho do banco como 409 com a
+>   mensagem em português já pronta.
+> - `InternacaoTab.tsx` deixou de ser só leitura: agora tem formulário de internar (diagnóstico +
+>   justificativa, só aparece com leito ativo alocado), evolução da internação, e encerramento
+>   (alta/transferência/óbito) — que só fecha `app.admissions`, o desfecho final do atendimento
+>   continua exigindo a aba "Desfecho" já existente (outcomeType `admission_bed`), como o handoff
+>   pediu pra não duplicar.
+> - Build+testes limpos: `packages/domain` (354 testes), `apps/api` (385 no total com domain),
+>   `apps/web` (44 arquivos, 80 testes) — todos passando.
+>
+> **Gaps que continuam em aberto** (fora de escopo deste handoff, já documentados): escala de
+> enfermagem por leito, regulação de leito entre unidades, RLS por setor além de
+> `nursing_technician`.

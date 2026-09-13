@@ -26,6 +26,7 @@ import { success } from '../http/envelope.js';
 import { requirePermission } from '../security/require-auth.js';
 import { withSecurityContext } from '../db/security-context.js';
 import { sha256Hex } from '../security/hash.js';
+import { resolveDefaultQueueId, enqueueEncounterTicket } from '../services/queue-enqueue.js';
 
 const requireReadAndWrite = (db: pg.Pool | null, writePerm: string, readPerm: string) => [
   requirePermission(db, writePerm),
@@ -240,6 +241,18 @@ export const registerEncounterRoutes = (app: FastifyInstance, pool: pg.Pool | nu
           }
 
           const enc = mapRowToEncounter(encRow);
+
+          // Auto-enfileiramento (achado de auditoria do fluxo Pronto Atendimento,
+          // 12/09/2026): abrir o atendimento já entra na fila de espera sozinho —
+          // antes disso era uma segunda ação manual em `/filas`, fácil de esquecer.
+          const queueId = await resolveDefaultQueueId(client, enc.institutionId);
+          if (queueId) {
+            await enqueueEncounterTicket(client, {
+              queueId,
+              encounterId: enc.id,
+              patientId: enc.patientId,
+            });
+          }
 
           // Evento de domínio + Auditoria
           const openedEvent = createEncounterOpenedEvent(enc, appUserId as UUID);

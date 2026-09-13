@@ -46,11 +46,14 @@ export const EncounterListPage: React.FC = () => {
     setSelectedEncounter(encounter);
     setCancelReason('');
     setPostConsultationDetail('');
+    // 'triage_pending→triaged' e 'consultation_pending→in_consultation' saíram
+    // do sugestor: viram automáticas (triagem salva / paciente chamado na fila),
+    // então o próximo passo manual sugerido pula direto pra depois delas.
     const statusMap: Record<EncounterStatus, EncounterStatus> = {
       created: 'triage_pending',
-      triage_pending: 'triaged',
+      triage_pending: 'triage_pending',
       triaged: 'consultation_pending',
-      consultation_pending: 'in_consultation',
+      consultation_pending: 'consultation_pending',
       in_consultation: 'post_consultation',
       post_consultation: 'completed',
       completed: 'completed',
@@ -184,11 +187,13 @@ export const EncounterListPage: React.FC = () => {
 
           <form onSubmit={handleUpdateStatus} style={{ border: 'none', padding: 0, boxShadow: 'none', maxWidth: '100%' }}>
             <label htmlFor="nextStatus">Novo Status</label>
+            {/* 'triaged' e 'in_consultation' saíram desta lista (12/09/2026): salvar a
+                triagem e chamar o paciente na fila (Pronto Atendimento) já avançam o
+                status sozinhos (ver apps/api/src/services/encounter-status.ts) — manter
+                aqui geraria uma transição manual concorrendo com a automática. */}
             <select id="nextStatus" value={nextStatus} onChange={(e) => setNextStatus(e.target.value as EncounterStatus)}>
               <option value="triage_pending">Aguardando Triagem (triage_pending)</option>
-              <option value="triaged">Triado (triaged)</option>
               <option value="consultation_pending">Aguardando Consulta (consultation_pending)</option>
-              <option value="in_consultation">Em Atendimento (in_consultation)</option>
               <option value="post_consultation">Pós-Avaliação Médica (post_consultation)</option>
               <option value="completed">Concluído (completed)</option>
               <option value="canceled">Cancelado (canceled)</option>

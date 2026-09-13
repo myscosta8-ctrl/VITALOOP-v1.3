@@ -29,6 +29,7 @@ import { EncounterListPage } from './pages/EncounterListPage.js';
 import { EncounterOpenPage } from './pages/EncounterOpenPage.js';
 import { TriageOpenPage } from './pages/TriageOpenPage.js';
 import { QueueDashboardPage } from './pages/QueueDashboardPage.js';
+import { ProntoAtendimentoPage } from './pages/ProntoAtendimentoPage.js';
 import { MedicalConsultationPage } from './pages/MedicalConsultationPage.js';
 import { EnfermagemPage } from './pages/EnfermagemPage.js';
 import { BedMapPage } from './pages/BedMapPage.js';
@@ -88,7 +89,7 @@ const LoginOrRedirect = (): JSX.Element => {
   const { identity, status } = useSession();
   useEffect(() => {
     if (identity && status === 'authenticated') {
-      window.location.hash = '#/filas';
+      window.location.hash = '#/pronto-atendimento';
     }
   }, [identity, status]);
 
@@ -148,6 +149,12 @@ const Shell = (): JSX.Element => {
       return (
         <RequireSession roles={['assistencial', 'recepcao']}>
           <QueueDashboardPage />
+        </RequireSession>
+      );
+    case '/pronto-atendimento':
+      return (
+        <RequireSession roles={['assistencial', 'recepcao']}>
+          <ProntoAtendimentoPage />
         </RequireSession>
       );
     case '/leitos':

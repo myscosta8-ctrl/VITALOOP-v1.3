@@ -70,7 +70,7 @@ describe('EncounterOpenPage UI Component', () => {
         chiefComplaint: 'Febre alta',
       });
       expect(screen.getByRole('status')).toHaveTextContent(
-        'Atendimento aberto com sucesso! ID: enc-uuid-123',
+        'Atendimento aberto com sucesso! Já entrou na fila. ID: enc-uuid-123',
       );
     });
   });

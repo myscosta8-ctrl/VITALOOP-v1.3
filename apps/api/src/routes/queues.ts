@@ -17,7 +17,6 @@ import {
   createPatientMarkedAbsentEvent,
   isWaitTimeExceeded,
   validateTicketCallInput,
-  validateTicketEnqueueInput,
   type ManchesterRiskColor,
   type Queue,
   type QueueTicket,
@@ -28,6 +27,8 @@ import { success } from '../http/envelope.js';
 import { requirePermission } from '../security/require-auth.js';
 import { withSecurityContext } from '../db/security-context.js';
 import { sha256Hex } from '../security/hash.js';
+import { transitionEncounterStatus } from '../services/encounter-status.js';
+import { enqueueEncounterTicket } from '../services/queue-enqueue.js';
 
 const requireReadAndWrite = (db: pg.Pool | null, writePerm: string, readPerm: string) => [
   requirePermission(db, writePerm),
@@ -279,45 +280,17 @@ export const registerQueueRoutes = (app: FastifyInstance, pool: pg.Pool | null):
 
           const enc = encRes.rows[0];
 
-          // 2. Valida entrada e gera prioridade
-          const validated = validateTicketEnqueueInput({
+          // 2/3. Valida entrada, gera prioridade e insere o ticket (núcleo compartilhado
+          // com o auto-enfileiramento disparado na abertura do atendimento, ver encounters.ts)
+          const insertedRow = await enqueueEncounterTicket(client, {
             queueId,
             encounterId: parsed.encounterId,
             patientId: enc.patient_id,
-            ticketNumber: parsed.ticketNumber ?? null,
             riskColor: enc.risk_color ?? null,
+            ticketNumber: parsed.ticketNumber ?? null,
           });
 
-          // 3. Inserção na tabela app.queue_tickets (com checagem de unicidade via index)
-          let insertRes;
-          try {
-            insertRes = await client.query<DbTicketRow>(
-              `insert into app.queue_tickets (
-                 queue_id, encounter_id, patient_id, ticket_number, priority_score, risk_color, status
-               ) values ($1, $2, $3, $4, $5, $6, 'waiting')
-               returning *`,
-              [
-                queueId,
-                parsed.encounterId,
-                enc.patient_id,
-                validated.formattedTicketNumber,
-                validated.priorityScore,
-                validated.riskColor ?? null,
-              ],
-            );
-          } catch (err: unknown) {
-            const pgErr = err as { code?: string };
-            if (pgErr.code === '23505') {
-              throw new AppError({
-                category: ErrorCategory.CONFLICT,
-                code: 'TICKET_ACTIVE_EXISTS',
-                message: 'Já existe uma senha/ticket ativo em fila para este atendimento.',
-              });
-            }
-            throw err;
-          }
-
-          const newTicket = mapRowToTicket(insertRes.rows[0]!);
+          const newTicket = mapRowToTicket(insertedRow as DbTicketRow);
 
           // 4. Auditoria de Enfileiramento
           await auditAction(client, appUserId, 'create', 'queue_ticket', newTicket.id, req, {
@@ -563,10 +536,11 @@ export const registerQueueRoutes = (app: FastifyInstance, pool: pg.Pool | null):
             });
 
             // Transita atendimento para 'in_consultation'
-            await client.query(
-              `update app.encounters set status = 'in_consultation', updated_by = $1, updated_at = now() where id = $2`,
-              [appUserId, updatedTicket.encounterId],
-            );
+            await transitionEncounterStatus(client, {
+              encounterId: updatedTicket.encounterId,
+              toStatus: 'in_consultation',
+              actorUserId: appUserId as UUID,
+            });
           }
 
           await auditAction(client, appUserId, 'update', 'queue_ticket_status', updatedTicket.id, req, {

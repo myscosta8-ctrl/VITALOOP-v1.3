@@ -23,6 +23,7 @@ import { success } from '../http/envelope.js';
 import { requirePermission } from '../security/require-auth.js';
 import { withSecurityContext } from '../db/security-context.js';
 import { sha256Hex } from '../security/hash.js';
+import { transitionEncounterStatus } from '../services/encounter-status.js';
 
 const requireReadAndWrite = (db: pg.Pool | null, writePerm: string, readPerm: string) => [
   requirePermission(db, writePerm),
@@ -272,10 +273,11 @@ export const registerTriageRoutes = (app: FastifyInstance, pool: pg.Pool | null)
           const newTriage = mapRowToTriage(insertRes.rows[0]!);
 
           // 4. Transição automática de status do atendimento para 'triaged' (ENC-006)
-          await client.query(
-            `update app.encounters set status = 'triaged', updated_by = $1, updated_at = now() where id = $2`,
-            [appUserId, encounterId],
-          );
+          await transitionEncounterStatus(client, {
+            encounterId,
+            toStatus: 'triaged',
+            actorUserId: appUserId as UUID,
+          });
 
           // 5. Emissão de Eventos de Domínio (TRI-017)
           const triageEvent = createTriageRecordedEvent(newTriage, appUserId as UUID);

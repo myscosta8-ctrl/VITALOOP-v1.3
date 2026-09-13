@@ -131,7 +131,7 @@ const NAV_GROUPS: readonly NavGroup[] = [
       // e Prontuário de Internação (Sala Vermelha, Internação Adulto,
       // Observação Pediátrica/Adulto — setores com leito). Mesmas rotas de
       // sempre, só o rótulo do menu que ficava genérico e desatualizado.
-      { href: '#/filas', label: 'Pronto Atendimento', icon: IconQueue },
+      { href: '#/pronto-atendimento', label: 'Pronto Atendimento', icon: IconQueue },
       { href: '#/pacientes', label: 'Pacientes', icon: IconPatients },
       { href: '#/atendimentos', label: 'Atendimentos', icon: IconEncounters },
       { href: '#/leitos', label: 'Prontuário de Internação', icon: IconBeds },
@@ -228,7 +228,7 @@ export const AppShell = ({ children }: { children: ReactNode }): JSX.Element => 
               <path d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </Button>
-          <a href="#/filas" className="vl-topbar-title" onClick={() => setNavOpen(false)}>
+          <a href="#/pronto-atendimento" className="vl-topbar-title" onClick={() => setNavOpen(false)}>
             <VitaloopMark size={26} />
             Vitaloop
           </a>
