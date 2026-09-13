@@ -1,12 +1,14 @@
 import React from 'react';
 import type { ConsultationForm } from '../hooks/useConsultationForm.js';
 import { EmptyState } from '../../../components/ui/empty-state.js';
+import { VitalSignsPanel } from '../../../components/VitalSignsPanel.js';
 
 interface Props {
+  encounterId: string;
   form: ConsultationForm;
 }
 
-export const ConsultaTab: React.FC<Props> = ({ form }) => {
+export const ConsultaTab: React.FC<Props> = ({ encounterId, form }) => {
   const {
     existingConsultation,
     chiefComplaint, setChiefComplaint,
@@ -87,6 +89,8 @@ export const ConsultaTab: React.FC<Props> = ({ form }) => {
             </div>
           </form>
         </div>
+
+        <VitalSignsPanel encounterId={encounterId} source="consulta" />
       </div>
     );
   }

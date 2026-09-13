@@ -5,6 +5,7 @@ import { createNursingApi, type NursingRecordData, type MedicationScheduleData }
 import { NursingRecordsView } from '../components/NursingRecordsView.js';
 import { MedicationScheduleGrid } from '../components/MedicationScheduleGrid.js';
 import { BedsideCheckModal } from '../components/BedsideCheckModal.js';
+import { VitalSignsPanel } from '../components/VitalSignsPanel.js';
 
 interface Props {
   encounterId: string;
@@ -77,6 +78,7 @@ export const EnfermagemPage: React.FC<Props> = ({ encounterId }) => {
           />
         </div>
       )}
+      <VitalSignsPanel encounterId={encounterId} source="enfermagem" />
       {scheduleForAdmin && (
         <BedsideCheckModal
           schedule={scheduleForAdmin}

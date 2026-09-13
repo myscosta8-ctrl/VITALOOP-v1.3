@@ -106,7 +106,7 @@ export const MedicalConsultationPage: React.FC<Props> = ({ encounterId }) => {
           <div className="mt-4">
             {activeTab === 'triagem' && <TriagemTab triage={data.triage} />}
 
-            {activeTab === 'consulta' && <ConsultaTab form={consultationForm} />}
+            {activeTab === 'consulta' && <ConsultaTab encounterId={encounterId} form={consultationForm} />}
 
             {requiresConsultationFirst ? (
               <p className="text-sm text-muted-foreground">
