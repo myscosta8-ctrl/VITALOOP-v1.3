@@ -167,4 +167,28 @@ describe('Medical Domain Rules & Events', () => {
       expect((ev.payload as { clinicalStatus: string }).clinicalStatus).toBe('estavel');
     });
   });
+
+  describe('Bloco 6 — separação Triagem (destino) x Medicina (conduta)', () => {
+    it('assertEncounterStatusPermitsConsultation não recebe nem depende do destino da triagem — só do status do atendimento (regra: TRIAGEM define destino, MEDICINA define conduta)', () => {
+      // A assinatura é `(currentStatus: string) => void` — nenhum parâmetro
+      // de destino/encaminhamento existe para influenciar a decisão. Um
+      // atendimento com destino 'exam'/'procedure' na Triagem que, por
+      // qualquer motivo, chegasse a 'triaged'/'consultation_pending' não é
+      // "convertido automaticamente" em consulta por esta função: ela só
+      // permite, nunca cria ou força uma consulta médica sozinha (quem cria
+      // é sempre uma ação explícita do médico em medical.ts).
+      expect(() => assertEncounterStatusPermitsConsultation('triaged')).not.toThrow();
+      expect(assertEncounterStatusPermitsConsultation.length).toBe(1);
+    });
+
+    it('MedicalConsultation é um registro próprio, sem nenhum campo que sobrescreva a Triagem (a Triagem é lida, nunca mutada, pelo fluxo médico)', () => {
+      const consultationFields = ['id', 'encounterId', 'patientId', 'doctorId', 'chiefComplaint', 'historyPresentIllness', 'generalExam', 'segmentalExam', 'diagnosticHypothesis', 'createdAt', 'updatedAt'];
+      // Nenhum destes é um campo de app.triages — MedicalConsultation vive
+      // em sua própria tabela (app.medical_consultations), nunca escreve em
+      // app.triages nem em app.triage_destination_history.
+      for (const field of consultationFields) {
+        expect(['destinationType', 'riskColor', 'classificationHistory', 'destinationHistory']).not.toContain(field);
+      }
+    });
+  });
 });

@@ -13,6 +13,9 @@ import {
 import { createOutcomesApi, type EncounterOutcome, type EncounterSummary } from '../../../lib/outcomes-api.js';
 import { createBedApi, type BedData } from '../../../lib/bed-api.js';
 import { createAdmissionApi, type Admission } from '../../../lib/admission-api.js';
+import { createEncountersApi, type Encounter } from '../../../lib/encounters-api.js';
+import { createConsultationRoomsApi, type ConsultationRoom } from '../../../lib/consultation-rooms-api.js';
+import { createPatientsApi, type PatientAllergy } from '../../../lib/patients-api.js';
 
 /**
  * Carrega e mantém tudo que a Ficha Clínica precisa ler para as 7 abas
@@ -31,7 +34,13 @@ export const useEncounterClinicalData = (api: ApiClient, encounterId: string) =>
   const outcomesApi = createOutcomesApi(api);
   const bedApi = createBedApi(api);
   const admissionApi = createAdmissionApi(api);
+  const encountersApi = createEncountersApi(api);
+  const consultationRoomsApi = createConsultationRoomsApi(api);
+  const patientsApi = createPatientsApi(api);
 
+  const [encounter, setEncounter] = useState<Encounter | null>(null);
+  const [rooms, setRooms] = useState<readonly ConsultationRoom[]>([]);
+  const [allergies, setAllergies] = useState<readonly PatientAllergy[]>([]);
   const [triage, setTriage] = useState<Triage | null>(null);
   const [bedInfo, setBedInfo] = useState<BedData | null>(null);
   const [admission, setAdmission] = useState<Admission | null>(null);
@@ -51,10 +60,37 @@ export const useEncounterClinicalData = (api: ApiClient, encounterId: string) =>
     setLoading(true);
     setErrorMessage(null);
     try {
+      let loadedEncounter: Encounter | null = null;
       try {
-        setTriage(await triagesApi.getTriage(encounterId));
+        loadedEncounter = await encountersApi.getEncounter(encounterId);
+        setEncounter(loadedEncounter);
+      } catch {
+        setEncounter(null);
+      }
+
+      let loadedTriage: Triage | null = null;
+      try {
+        loadedTriage = await triagesApi.getTriage(encounterId);
+        setTriage(loadedTriage);
       } catch {
         /* sem triagem */
+      }
+
+      try {
+        setRooms(await consultationRoomsApi.listRooms());
+      } catch {
+        setRooms([]);
+      }
+
+      // Bloco 6 (item 2) — alergias fazem parte do "resumo da triagem" na
+      // tela médica (mesma fonte já usada em TriageOpenPage.tsx); não exige
+      // endpoint novo. Sem patientId (triagem/atendimento não carregados),
+      // não há como buscar — fica vazio, não é erro.
+      try {
+        const pid = loadedTriage?.patientId ?? loadedEncounter?.patientId;
+        setAllergies(pid ? await patientsApi.listAllergies(pid) : []);
+      } catch {
+        setAllergies([]);
       }
 
       try {
@@ -103,6 +139,10 @@ export const useEncounterClinicalData = (api: ApiClient, encounterId: string) =>
   }, [reload]);
 
   return {
+    encounter,
+    setEncounter,
+    rooms,
+    allergies,
     triage,
     bedInfo,
     admission,

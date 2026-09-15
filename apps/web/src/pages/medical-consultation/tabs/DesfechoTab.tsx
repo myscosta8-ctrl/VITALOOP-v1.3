@@ -1,7 +1,9 @@
 import React from 'react';
 import type { EncounterOutcome, EncounterSummary, OutcomeType } from '../../../lib/outcomes-api.js';
+import type { Encounter } from '../../../lib/encounters-api.js';
 import { MedicalSummaryView } from '../../../components/MedicalSummaryView.js';
 import type { OutcomeForm } from '../hooks/useOutcome.js';
+import type { InterimDecisionForm } from '../hooks/useInterimDecision.js';
 import { Card, CardContent } from '../../../components/ui/card.js';
 import { Badge } from '../../../components/ui/badge.js';
 import { Button } from '../../../components/ui/button.js';
@@ -11,12 +13,25 @@ import { Label } from '../../../components/ui/label.js';
 import { Select } from '../../../components/ui/select.js';
 
 interface Props {
+  encounter: Encounter | null;
   outcome: EncounterOutcome | null;
   summary: EncounterSummary | null;
   form: OutcomeForm;
+  interimForm: InterimDecisionForm;
+  onGoToExamsTab: () => void;
 }
 
-export const DesfechoTab: React.FC<Props> = ({ outcome, summary, form }) => {
+// Bloco 7 (Fase 6) — "Observação" continua sendo um clique direto (não tem
+// entidade operacional própria: reaproveita post_consultation_detail
+// exatamente como o Bloco 6 definiu). "Exame"/"Procedimento" NÃO são mais
+// botões de 1 clique aqui — fechavam a pendência do Bloco 6 ("marcado como
+// conduta intermediária mas sem módulo operacional") justamente porque só
+// marcavam a flag sem nenhuma solicitação real por trás. Agora a própria
+// criação do ExamRequest/ProcedureRequest (aba "Exames") já avança o
+// atendimento — então o botão aqui leva pra lá, sem duplicar UI.
+const OBSERVATION_OPTION = { detail: 'aguardando_reavaliacao_medica' as const, label: 'Observação (aguardando reavaliação)' };
+
+export const DesfechoTab: React.FC<Props> = ({ encounter, outcome, summary, form, interimForm, onGoToExamsTab }) => {
   const {
     selectedOutcomeType, setSelectedOutcomeType,
     outcomeNotes, setOutcomeNotes,
@@ -60,7 +75,50 @@ export const DesfechoTab: React.FC<Props> = ({ outcome, summary, form }) => {
           </CardContent>
         </Card>
       ) : (
-        <Card>
+        <>
+          {/* Bloco 6 — conduta pós-consulta NÃO conclusiva (o atendimento
+              continua ativo): distinta do Desfecho abaixo, que encerra o
+              atendimento. Reaproveita encounter.status='post_consultation'
+              + postConsultationDetail (já existente antes deste bloco). */}
+          <Card>
+            <CardContent className="space-y-3 pt-6">
+              <h5 className="text-sm font-semibold text-foreground">Conduta Pós-Consulta (atendimento continua ativo)</h5>
+              {encounter?.status === 'post_consultation' && encounter.postConsultationDetail && (
+                <Badge variant="outline">
+                  Conduta atual: {encounter.postConsultationDetail === 'aguardando_reavaliacao_medica' ? OBSERVATION_OPTION.label
+                    : encounter.postConsultationDetail === 'aguardando_exames_laboratoriais' ? 'Aguardando exame (ver aba Exames)'
+                    : 'Aguardando procedimento (ver aba Exames)'}
+                </Badge>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={interimForm.submitting !== null || !encounter}
+                  onClick={() => interimForm.handleSetInterimDecision(OBSERVATION_OPTION.detail)}
+                >
+                  {OBSERVATION_OPTION.label}
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={onGoToExamsTab}>
+                  Solicitar Exame Laboratorial/Imagem →
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={onGoToExamsTab}>
+                  Solicitar Procedimento →
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Observação é um clique direto. Exame e Procedimento exigem uma solicitação real — a aba &quot;Exames&quot; registra a solicitação e o atendimento avança automaticamente para o fluxo correspondente.
+              </p>
+              {encounter?.postConsultationDetail === 'aguardando_reavaliacao_medica' && (
+                <p className="text-xs text-muted-foreground">
+                  Paciente em observação: registre a evolução clínica na aba &quot;Consulta Médica&quot; e, quando reavaliar, registre uma nova conduta aqui (alta, exame, procedimento, internação, transferência etc.).
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
           <CardContent className="space-y-4 pt-6">
             <h5 className="text-sm font-semibold text-foreground">Registrar Desfecho Assistencial</h5>
             <form onSubmit={handleCreateOutcome} className="space-y-4">
@@ -162,7 +220,8 @@ export const DesfechoTab: React.FC<Props> = ({ outcome, summary, form }) => {
               </Button>
             </form>
           </CardContent>
-        </Card>
+          </Card>
+        </>
       )}
     </div>
   );

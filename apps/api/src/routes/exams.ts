@@ -10,6 +10,10 @@ import { z } from 'zod';
 import type pg from 'pg';
 import { AppError, ErrorCategory, type UUID } from '@vitaloop/shared';
 import {
+  assertExamStatusAllowsCollection,
+  assertExamStatusAllowsResult,
+  assertProcedureStatusAllowsExecution,
+  assertProcedureStatusAllowsStart,
   createExamRequestedEvent,
   createExamResultRecordedEvent,
   createInterconsultationAnsweredEvent,
@@ -37,6 +41,7 @@ import { success } from '../http/envelope.js';
 import { requirePermission } from '../security/require-auth.js';
 import { withSecurityContext } from '../db/security-context.js';
 import { sha256Hex } from '../security/hash.js';
+import { transitionEncounterStatus } from '../services/encounter-status.js';
 
 const requireExamWriteAndRead = (db: pg.Pool | null) => [
   requirePermission(db, 'exam.write'),
@@ -71,6 +76,71 @@ const persistDomainEvent = async (client: pg.PoolClient, ev: DomainEventRecord):
   );
 };
 
+/**
+ * Bloco 7 (Fase 2/6) — fecha a pendência deixada pelo Bloco 6: solicitar um
+ * exame/procedimento agora GERA fluxo operacional real (o atendimento
+ * avança para 'post_consultation' com o sub-status correspondente), em vez
+ * de depender de um clique manual separado em "Conduta Pós-Consulta"
+ * (Bloco 6, `useInterimDecision`). Só avança quando o atendimento ainda
+ * está 'in_consultation' — uma segunda solicitação (ou uma solicitação
+ * feita depois que o médico já registrou outra conduta) não deve
+ * retroceder/sobrescrever um estado mais avançado.
+ */
+interface ExamProcedureOrigin {
+  readonly consultationId: string | null;
+  readonly patientId: string;
+}
+
+/**
+ * Bloco 7.2 — resolve de onde vem a solicitação de exame/procedimento:
+ * (a) durante uma consulta médica já registrada (fluxo normal, igual antes
+ * deste bloco); ou (b) diretamente do encaminhamento da Triagem, quando
+ * `app.triages.destination_type` para este atendimento já é exatamente
+ * 'exam' ou 'procedure' (Bloco 3/4) — exceção expressamente permitida pelo
+ * Bloco 7 para não obrigar avaliação médica antes de um exame/procedimento
+ * que a própria Triagem já decidiu. Fora desses dois casos, rejeita (não
+ * permite criar solicitação "solta", sem nenhuma origem clínica válida).
+ */
+const resolveExamProcedureOrigin = async (
+  client: pg.PoolClient,
+  encounterId: string,
+  triageDestinationType: 'exam' | 'procedure',
+): Promise<ExamProcedureOrigin> => {
+  const consRes = await client.query<{ id: string; patient_id: string }>(
+    'select id, patient_id from app.medical_consultations where encounter_id = $1',
+    [encounterId],
+  );
+  if (consRes.rowCount! > 0) {
+    return { consultationId: consRes.rows[0]!.id, patientId: consRes.rows[0]!.patient_id };
+  }
+
+  const triageRes = await client.query<{ patient_id: string; destination_type: string | null }>(
+    'select patient_id, destination_type from app.triages where encounter_id = $1 order by created_at desc limit 1',
+    [encounterId],
+  );
+  if (triageRes.rowCount! > 0 && triageRes.rows[0]!.destination_type === triageDestinationType) {
+    return { consultationId: null, patientId: triageRes.rows[0]!.patient_id };
+  }
+
+  throw new AppError({
+    category: ErrorCategory.NOT_FOUND,
+    code: 'CONSULTATION_NOT_FOUND',
+    message: 'Consulta médica não encontrada, e o encaminhamento da Triagem para este atendimento não corresponde a este tipo de solicitação.',
+  });
+};
+
+const advanceToPostConsultation = async (
+  client: pg.PoolClient,
+  encounterId: string,
+  detail: 'aguardando_exames_laboratoriais' | 'medicando',
+  actorUserId: UUID,
+): Promise<void> => {
+  const encRes = await client.query<{ status: string }>('select status from app.encounters where id = $1', [encounterId]);
+  if (encRes.rows[0]?.status === 'in_consultation') {
+    await transitionEncounterStatus(client, { encounterId, toStatus: 'post_consultation', actorUserId, postConsultationDetail: detail });
+  }
+};
+
 const auditAction = async (
   client: pg.PoolClient,
   actorUserId: string,
@@ -92,7 +162,7 @@ const auditAction = async (
 
 interface DbExamRow {
   id: string;
-  consultation_id: string;
+  consultation_id: string | null;
   encounter_id: string;
   patient_id: string;
   requested_by: string;
@@ -114,7 +184,7 @@ interface DbExamRow {
 
 interface DbProcedureRow {
   id: string;
-  consultation_id: string;
+  consultation_id: string | null;
   encounter_id: string;
   patient_id: string;
   requested_by: string;
@@ -223,9 +293,21 @@ const createExamBodySchema = z.object({
   clinicalIndication: z.string().min(5, 'Indicação clínica de no mínimo 5 caracteres é obrigatória.'),
 });
 
+// Bloco 7 (Fase 9/12) — expectedUpdatedAt é obrigatório em toda transição de
+// status de exame/procedimento, mesmo padrão de lock otimista já usado em
+// triages.ts/encounters.ts desde o Bloco 2.1. Sem isso, duplo-clique/retry
+// re-executa silenciosamente (achado de auditoria: as rotas .../result e
+// .../execute faziam UPDATE sem checar status nem lock nenhum).
+const expectedUpdatedAtSchema = z.string().datetime('A data expectedUpdatedAt deve estar no formato ISO8601 (UTC).');
+
+const collectExamBodySchema = z.object({
+  expectedUpdatedAt: expectedUpdatedAtSchema,
+});
+
 const recordExamResultBodySchema = z.object({
   resultSummary: z.string().min(1, 'Resumo do resultado é obrigatório.'),
   resultNotes: z.string().optional().nullable(),
+  expectedUpdatedAt: expectedUpdatedAtSchema,
 });
 
 const createProcedureBodySchema = z.object({
@@ -234,8 +316,13 @@ const createProcedureBodySchema = z.object({
   instructions: z.string().optional().nullable(),
 });
 
+const startProcedureBodySchema = z.object({
+  expectedUpdatedAt: expectedUpdatedAtSchema,
+});
+
 const executeProcedureBodySchema = z.object({
   notes: z.string().optional().nullable(),
+  expectedUpdatedAt: expectedUpdatedAtSchema,
 });
 
 const createInterconsultationBodySchema = z.object({
@@ -320,16 +407,12 @@ export const registerExamRoutes = (app: FastifyInstance, pool: pg.Pool | null): 
       const doctorId = identity.appUserId!;
 
       const created = await withSecurityContext(pool!, { userId: doctorId, roles: identity.roles }, async (client) => {
-        const consRes = await client.query('select id, patient_id from app.medical_consultations where encounter_id = $1', [encounterId]);
-        if (consRes.rowCount === 0) {
-          throw new AppError({ category: ErrorCategory.NOT_FOUND, code: 'CONSULTATION_NOT_FOUND', message: 'Consulta médica não encontrada.' });
-        }
-        const cons = consRes.rows[0];
+        const origin = await resolveExamProcedureOrigin(client, encounterId, 'exam');
 
         const validated = validateExamRequestInput({
-          consultationId: cons.id,
+          consultationId: origin.consultationId,
           encounterId,
-          patientId: cons.patient_id,
+          patientId: origin.patientId,
           examId: parsedBody.examId,
           examName: parsedBody.examName,
           examType: parsedBody.examType,
@@ -340,7 +423,7 @@ export const registerExamRoutes = (app: FastifyInstance, pool: pg.Pool | null): 
           `insert into app.exam_requests (consultation_id, encounter_id, patient_id, requested_by, exam_id, exam_name, exam_type, clinical_indication, status)
            values ($1, $2, $3, $4, $5, $6, $7, $8, 'requested')
            returning *`,
-          [cons.id, encounterId, cons.patient_id, doctorId, validated.examId ?? null, validated.examName, validated.examType, validated.clinicalIndication],
+          [origin.consultationId, encounterId, origin.patientId, doctorId, validated.examId ?? null, validated.examName, validated.examType, validated.clinicalIndication],
         );
 
         const examReq = mapRowToExamRequest(insertRes.rows[0]!);
@@ -351,16 +434,73 @@ export const registerExamRoutes = (app: FastifyInstance, pool: pg.Pool | null): 
           aggregateType: ev.aggregateType,
           aggregateId: ev.aggregateId,
           actorUserId: doctorId as UUID,
-          patientId: cons.patient_id as UUID,
+          patientId: origin.patientId as UUID,
           payload: ev.payload,
           schemaVersion: ev.schemaVersion,
         });
 
         await auditAction(client, doctorId, 'create', 'exam_request', examReq.id, req, { encounterId, examName: examReq.examName });
+
+        // Bloco 7 (Fase 2/6) — a solicitação passa a gerar fluxo real: o
+        // atendimento avança para "aguardando exames" em vez de depender de
+        // um clique manual separado. Só se aplica quando nasceu de uma
+        // consulta em andamento (origin.consultationId !== null); quando
+        // nasce direto do encaminhamento da Triagem (Bloco 7.2), o
+        // atendimento propositalmente permanece em 'triaged' — não há
+        // consulta para "avançar a partir de".
+        if (origin.consultationId) {
+          await advanceToPostConsultation(client, encounterId, 'aguardando_exames_laboratoriais', doctorId as UUID);
+        }
+
         return examReq;
       });
 
       return reply.status(201).send(success(created, req.id));
+    },
+  );
+
+  // ---------- PATCH /api/v1/encounters/:encounterId/exams/:examRequestId/collect (Registrar Coleta/Realização — Bloco 7) ----------
+  app.patch(
+    '/api/v1/encounters/:encounterId/exams/:examRequestId/collect',
+    { preHandler: requireExamWriteAndRead(pool) },
+    async (req, reply) => {
+      const { encounterId, examRequestId } = z.object({ encounterId: z.string().uuid(), examRequestId: z.string().uuid() }).parse(req.params);
+      const parsedBody = collectExamBodySchema.parse(req.body);
+      const identity = req.identity!;
+      const userId = identity.appUserId!;
+
+      const updated = await withSecurityContext(pool!, { userId, roles: identity.roles }, async (client) => {
+        const currentRes = await client.query<DbExamRow>(
+          'select * from app.exam_requests where id = $1 and encounter_id = $2 for update',
+          [examRequestId, encounterId],
+        );
+        if (currentRes.rowCount === 0 || !currentRes.rows[0]) {
+          throw new AppError({ category: ErrorCategory.NOT_FOUND, code: 'EXAM_NOT_FOUND', message: 'Solicitação de exame não encontrada.' });
+        }
+        const current = currentRes.rows[0];
+        assertExamStatusAllowsCollection(current.status);
+
+        const updateRes = await client.query<DbExamRow>(
+          `update app.exam_requests set status = 'collected', updated_at = now()
+           where id = $1 and (updated_at = $2::timestamptz or date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', $2::timestamptz))
+           returning *`,
+          [examRequestId, parsedBody.expectedUpdatedAt],
+        );
+
+        if (updateRes.rowCount === 0 || !updateRes.rows[0]) {
+          throw new AppError({
+            category: ErrorCategory.CONFLICT,
+            code: 'CONCURRENCY_CONFLICT',
+            message: 'Este exame foi alterado por outro profissional. Atualize os dados antes de continuar.',
+          });
+        }
+
+        const examReq = mapRowToExamRequest(updateRes.rows[0]);
+        await auditAction(client, userId, 'update', 'exam_request', examRequestId, req, { status: 'collected' });
+        return examReq;
+      });
+
+      return reply.send(success(updated, req.id));
     },
   );
 
@@ -390,19 +530,34 @@ export const registerExamRoutes = (app: FastifyInstance, pool: pg.Pool | null): 
       const updated = await withSecurityContext(pool!, { userId, roles: identity.roles }, async (client) => {
         const validated = validateExamResultInput({ examRequestId, resultSummary: parsedBody.resultSummary, resultNotes: parsedBody.resultNotes });
 
+        const currentRes = await client.query<DbExamRow>(
+          'select * from app.exam_requests where id = $1 and encounter_id = $2 for update',
+          [examRequestId, encounterId],
+        );
+        if (currentRes.rowCount === 0 || !currentRes.rows[0]) {
+          throw new AppError({ category: ErrorCategory.NOT_FOUND, code: 'EXAM_NOT_FOUND', message: 'Solicitação de exame não encontrada.' });
+        }
+        const current = currentRes.rows[0];
+        assertExamStatusAllowsResult(current.status);
+
         const updateRes = await client.query<DbExamRow>(
           `update app.exam_requests
            set status = 'completed', result_summary = $1, result_notes = $2, performed_at = now(), performed_by = $3, updated_at = now()
            where id = $4 and encounter_id = $5
+             and (updated_at = $6::timestamptz or date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', $6::timestamptz))
            returning *`,
-          [validated.resultSummary, validated.resultNotes ?? null, userId, examRequestId, encounterId],
+          [validated.resultSummary, validated.resultNotes ?? null, userId, examRequestId, encounterId, parsedBody.expectedUpdatedAt],
         );
 
-        if (updateRes.rowCount === 0) {
-          throw new AppError({ category: ErrorCategory.NOT_FOUND, code: 'EXAM_NOT_FOUND', message: 'Solicitação de exame não encontrada.' });
+        if (updateRes.rowCount === 0 || !updateRes.rows[0]) {
+          throw new AppError({
+            category: ErrorCategory.CONFLICT,
+            code: 'CONCURRENCY_CONFLICT',
+            message: 'Este exame foi alterado por outro profissional. Atualize os dados antes de continuar.',
+          });
         }
 
-        const examReq = mapRowToExamRequest(updateRes.rows[0]!);
+        const examReq = mapRowToExamRequest(updateRes.rows[0]);
         const ev = createExamResultRecordedEvent(examReq, userId as UUID);
         await persistDomainEvent(client, {
           id: ev.eventId,
@@ -434,16 +589,12 @@ export const registerExamRoutes = (app: FastifyInstance, pool: pg.Pool | null): 
       const doctorId = identity.appUserId!;
 
       const created = await withSecurityContext(pool!, { userId: doctorId, roles: identity.roles }, async (client) => {
-        const consRes = await client.query('select id, patient_id from app.medical_consultations where encounter_id = $1', [encounterId]);
-        if (consRes.rowCount === 0) {
-          throw new AppError({ category: ErrorCategory.NOT_FOUND, code: 'CONSULTATION_NOT_FOUND', message: 'Consulta médica não encontrada.' });
-        }
-        const cons = consRes.rows[0];
+        const origin = await resolveExamProcedureOrigin(client, encounterId, 'procedure');
 
         const validated = validateProcedureRequestInput({
-          consultationId: cons.id,
+          consultationId: origin.consultationId,
           encounterId,
-          patientId: cons.patient_id,
+          patientId: origin.patientId,
           procedureId: parsedBody.procedureId,
           procedureName: parsedBody.procedureName,
           instructions: parsedBody.instructions,
@@ -453,7 +604,7 @@ export const registerExamRoutes = (app: FastifyInstance, pool: pg.Pool | null): 
           `insert into app.procedure_requests (consultation_id, encounter_id, patient_id, requested_by, procedure_id, procedure_name, instructions, status)
            values ($1, $2, $3, $4, $5, $6, $7, 'requested')
            returning *`,
-          [cons.id, encounterId, cons.patient_id, doctorId, validated.procedureId ?? null, validated.procedureName, validated.instructions ?? null],
+          [origin.consultationId, encounterId, origin.patientId, doctorId, validated.procedureId ?? null, validated.procedureName, validated.instructions ?? null],
         );
 
         const procReq = mapRowToProcedureRequest(insertRes.rows[0]!);
@@ -464,16 +615,71 @@ export const registerExamRoutes = (app: FastifyInstance, pool: pg.Pool | null): 
           aggregateType: ev.aggregateType,
           aggregateId: ev.aggregateId,
           actorUserId: doctorId as UUID,
-          patientId: cons.patient_id as UUID,
+          patientId: origin.patientId as UUID,
           payload: ev.payload,
           schemaVersion: ev.schemaVersion,
         });
 
         await auditAction(client, doctorId, 'create', 'procedure_request', procReq.id, req, { encounterId, procedureName: procReq.procedureName });
+
+        // Bloco 7 (Fase 2/6) — mesma lógica do exame: solicitar procedimento
+        // gera fluxo real ("medicando" é o sub-status já usado desde o
+        // Bloco 6 para representar conduta de procedimento em andamento).
+        // Só se aplica quando nasceu de consulta em andamento (Bloco 7.2:
+        // triagem-direto mantém o atendimento em 'triaged').
+        if (origin.consultationId) {
+          await advanceToPostConsultation(client, encounterId, 'medicando', doctorId as UUID);
+        }
+
         return procReq;
       });
 
       return reply.status(201).send(success(created, req.id));
+    },
+  );
+
+  // ---------- PATCH /api/v1/encounters/:encounterId/procedures/:procedureRequestId/start (Iniciar Execução — Bloco 7) ----------
+  app.patch(
+    '/api/v1/encounters/:encounterId/procedures/:procedureRequestId/start',
+    { preHandler: requireExamWriteAndRead(pool) },
+    async (req, reply) => {
+      const { encounterId, procedureRequestId } = z.object({ encounterId: z.string().uuid(), procedureRequestId: z.string().uuid() }).parse(req.params);
+      const parsedBody = startProcedureBodySchema.parse(req.body);
+      const identity = req.identity!;
+      const userId = identity.appUserId!;
+
+      const updated = await withSecurityContext(pool!, { userId, roles: identity.roles }, async (client) => {
+        const currentRes = await client.query<DbProcedureRow>(
+          'select * from app.procedure_requests where id = $1 and encounter_id = $2 for update',
+          [procedureRequestId, encounterId],
+        );
+        if (currentRes.rowCount === 0 || !currentRes.rows[0]) {
+          throw new AppError({ category: ErrorCategory.NOT_FOUND, code: 'PROCEDURE_NOT_FOUND', message: 'Procedimento não encontrado.' });
+        }
+        const current = currentRes.rows[0];
+        assertProcedureStatusAllowsStart(current.status);
+
+        const updateRes = await client.query<DbProcedureRow>(
+          `update app.procedure_requests set status = 'in_progress', updated_at = now()
+           where id = $1 and (updated_at = $2::timestamptz or date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', $2::timestamptz))
+           returning *`,
+          [procedureRequestId, parsedBody.expectedUpdatedAt],
+        );
+
+        if (updateRes.rowCount === 0 || !updateRes.rows[0]) {
+          throw new AppError({
+            category: ErrorCategory.CONFLICT,
+            code: 'CONCURRENCY_CONFLICT',
+            message: 'Este procedimento foi alterado por outro profissional. Atualize os dados antes de continuar.',
+          });
+        }
+
+        const procReq = mapRowToProcedureRequest(updateRes.rows[0]);
+        await auditAction(client, userId, 'update', 'procedure_request', procedureRequestId, req, { status: 'in_progress' });
+        return procReq;
+      });
+
+      return reply.send(success(updated, req.id));
     },
   );
 
@@ -503,19 +709,34 @@ export const registerExamRoutes = (app: FastifyInstance, pool: pg.Pool | null): 
       const updated = await withSecurityContext(pool!, { userId, roles: identity.roles }, async (client) => {
         const validated = validateProcedureExecuteInput({ procedureRequestId, notes: parsedBody.notes });
 
+        const currentRes = await client.query<DbProcedureRow>(
+          'select * from app.procedure_requests where id = $1 and encounter_id = $2 for update',
+          [procedureRequestId, encounterId],
+        );
+        if (currentRes.rowCount === 0 || !currentRes.rows[0]) {
+          throw new AppError({ category: ErrorCategory.NOT_FOUND, code: 'PROCEDURE_NOT_FOUND', message: 'Procedimento não encontrado.' });
+        }
+        const current = currentRes.rows[0];
+        assertProcedureStatusAllowsExecution(current.status);
+
         const updateRes = await client.query<DbProcedureRow>(
           `update app.procedure_requests
            set status = 'completed', notes = $1, performed_at = now(), performed_by = $2, updated_at = now()
            where id = $3 and encounter_id = $4
+             and (updated_at = $5::timestamptz or date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', $5::timestamptz))
            returning *`,
-          [validated.notes ?? null, userId, procedureRequestId, encounterId],
+          [validated.notes ?? null, userId, procedureRequestId, encounterId, parsedBody.expectedUpdatedAt],
         );
 
-        if (updateRes.rowCount === 0) {
-          throw new AppError({ category: ErrorCategory.NOT_FOUND, code: 'PROCEDURE_NOT_FOUND', message: 'Procedimento não encontrado.' });
+        if (updateRes.rowCount === 0 || !updateRes.rows[0]) {
+          throw new AppError({
+            category: ErrorCategory.CONFLICT,
+            code: 'CONCURRENCY_CONFLICT',
+            message: 'Este procedimento foi alterado por outro profissional. Atualize os dados antes de continuar.',
+          });
         }
 
-        const procReq = mapRowToProcedureRequest(updateRes.rows[0]!);
+        const procReq = mapRowToProcedureRequest(updateRes.rows[0]);
         const ev = createProcedureCompletedEvent(procReq, userId as UUID);
         await persistDomainEvent(client, {
           id: ev.eventId,

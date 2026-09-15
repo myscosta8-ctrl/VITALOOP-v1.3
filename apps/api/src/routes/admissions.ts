@@ -156,6 +156,26 @@ export const registerAdmissionRoutes = (app: FastifyInstance, pool: pg.Pool | nu
           });
         }
 
+        // Bloco 8 (regra absoluta: "internação só após avaliação médica") —
+        // achado de auditoria: nem esta rota nem a máquina de estados
+        // exigiam uma consulta médica de fato registrada antes de internar.
+        // `encounter.status` chega a 'in_consultation' assim que o médico
+        // "assume" o atendimento na fila (Bloco 6, antes de preencher
+        // qualquer campo da consulta) — sem esta checagem, seria possível
+        // internar um paciente que nunca foi de fato avaliado. Mesmo padrão
+        // já usado em outcomes.ts para 'admission_bed' (Bloco 6).
+        const { rows: consRows } = await client.query(
+          'select id from app.medical_consultations where encounter_id = $1',
+          [encounterId],
+        );
+        if (consRows.length === 0) {
+          throw new AppError({
+            category: ErrorCategory.VALIDATION,
+            code: 'ADMISSION_REQUIRES_MEDICAL_CONSULTATION',
+            message: 'Internação só pode ser decidida após avaliação médica — registre a consulta médica antes de internar.',
+          });
+        }
+
         assertValidEncounterStatusTransition(enc.status, 'admitted');
 
         const input = {

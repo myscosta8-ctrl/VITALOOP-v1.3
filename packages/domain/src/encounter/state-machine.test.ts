@@ -82,3 +82,75 @@ describe('Encounter State Machine (ENC-006)', () => {
     );
   });
 });
+
+describe('Bloco 6 — fluxo médico pós-triagem', () => {
+  it('atendimento encaminhado para consultório pode entrar no fluxo médico (triaged → consultation_pending → in_consultation)', () => {
+    expect(isValidEncounterStatusTransition('triaged', 'consultation_pending')).toBe(true);
+    expect(isValidEncounterStatusTransition('consultation_pending', 'in_consultation')).toBe(true);
+  });
+
+  it('Sala Vermelha usa exatamente a mesma máquina de estados — nenhuma transição especial/paralela existe para ela (regra: não misturar destino da triagem com estado do atendimento)', () => {
+    // Não há (e não deve haver) um EncounterStatus tipo 'in_red_room' — Sala
+    // Vermelha e consultório compartilham a mesma transição
+    // triaged→consultation_pending→in_consultation (Bloco 5); a distinção
+    // de "para onde o paciente vai" vive só no destino da Triagem
+    // (packages/domain/src/triage), nunca na máquina de estados do
+    // atendimento.
+    expect(isValidEncounterStatusTransition('triaged', 'consultation_pending')).toBe(true);
+    expect(isValidEncounterStatusTransition('consultation_pending', 'in_consultation')).toBe(true);
+  });
+
+  it('leito (admitted) nunca é alcançável a partir de estados anteriores à avaliação médica', () => {
+    expect(isValidEncounterStatusTransition('triage_pending', 'admitted')).toBe(false);
+    expect(isValidEncounterStatusTransition('triaged', 'admitted')).toBe(false);
+    expect(isValidEncounterStatusTransition('consultation_pending', 'admitted')).toBe(false);
+  });
+
+  it('leito (admitted) só é alcançável a partir de estados que já passaram por avaliação médica (in_consultation/post_consultation)', () => {
+    expect(isValidEncounterStatusTransition('in_consultation', 'admitted')).toBe(true);
+    expect(isValidEncounterStatusTransition('post_consultation', 'admitted')).toBe(true);
+  });
+});
+
+describe('Bloco 7 — observação/exame/procedimento pós-consulta', () => {
+  it('observação/exame/procedimento (post_consultation) exige ter passado por avaliação médica — nunca alcançável direto de triaged/consultation_pending', () => {
+    expect(isValidEncounterStatusTransition('triaged', 'post_consultation')).toBe(false);
+    expect(isValidEncounterStatusTransition('consultation_pending', 'post_consultation')).toBe(false);
+    expect(isValidEncounterStatusTransition('in_consultation', 'post_consultation')).toBe(true);
+  });
+
+  it('post_consultation_detail exige um valor válido para alcançar post_consultation (assertValidEncounterStatusTransition)', () => {
+    expect(() => assertValidEncounterStatusTransition('in_consultation', 'post_consultation')).toThrow(AppError);
+    expect(() =>
+      assertValidEncounterStatusTransition('in_consultation', 'post_consultation', null, 'aguardando_exames_laboratoriais'),
+    ).not.toThrow();
+  });
+
+  it('"observação não vira internação automaticamente": post_consultation → admitted é uma transição MANUAL válida, mas post_consultation nunca aparece como estado terminal nem se auto-transiciona (isTerminalEncounterStatus é falso e a máquina não define nenhuma transição automática — toda mudança de status exige uma chamada explícita)', () => {
+    expect(isTerminalEncounterStatus('post_consultation')).toBe(false);
+    // A única forma de sair de post_consultation é uma chamada explícita
+    // (decisão médica) para um dos estados abaixo — nunca implícita.
+    expect(isValidEncounterStatusTransition('post_consultation', 'admitted')).toBe(true);
+    expect(isValidEncounterStatusTransition('post_consultation', 'completed')).toBe(true);
+    expect(isValidEncounterStatusTransition('post_consultation', 'canceled')).toBe(true);
+  });
+});
+
+describe('Bloco 8 — internação/leito: nenhum caminho estrutural sem avaliação médica', () => {
+  it('exame/procedimento direto da Triagem (Bloco 7) NUNCA alcança admitted sem passar por in_consultation/post_consultation', () => {
+    // Um atendimento com destino 'exam'/'procedure' na Triagem permanece em
+    // 'triaged' (Bloco 5/7 — nenhuma transição automática o move daí).
+    // A única porta de entrada estrutural para 'admitted' continua sendo
+    // in_consultation/post_consultation.
+    expect(isValidEncounterStatusTransition('triaged', 'admitted')).toBe(false);
+    expect(isValidEncounterStatusTransition('triage_pending', 'admitted')).toBe(false);
+  });
+
+  it('Sala Vermelha não tem nenhuma transição especial para admitted — usa exatamente os mesmos predecessores de qualquer outro destino', () => {
+    // Não existe (nem deve existir) diferenciação por destino da triagem na
+    // máquina de estados do atendimento — Sala Vermelha e consultório
+    // compartilham as mesmas regras de chegada a 'admitted'.
+    expect(isValidEncounterStatusTransition('consultation_pending', 'admitted')).toBe(false);
+    expect(isValidEncounterStatusTransition('in_consultation', 'admitted')).toBe(true);
+  });
+});

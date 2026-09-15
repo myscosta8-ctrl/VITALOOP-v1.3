@@ -25,7 +25,9 @@ export interface ProcedureCatalogItem {
 
 export interface ExamRequest {
   readonly id: string;
-  readonly consultationId: string;
+  // Bloco 7.2 — nulo quando a solicitação vem diretamente do
+  // encaminhamento da Triagem (destination.type='exam'), sem consulta.
+  readonly consultationId?: string | null;
   readonly encounterId: string;
   readonly patientId: string;
   readonly requestedBy: string;
@@ -47,7 +49,9 @@ export interface ExamRequest {
 
 export interface ProcedureRequest {
   readonly id: string;
-  readonly consultationId: string;
+  // Bloco 7.2 — nulo quando a solicitação vem diretamente do
+  // encaminhamento da Triagem (destination.type='procedure').
+  readonly consultationId?: string | null;
   readonly encounterId: string;
   readonly patientId: string;
   readonly requestedBy: string;
@@ -93,9 +97,14 @@ export interface CreateExamPayload {
   clinicalIndication: string;
 }
 
+export interface CollectExamPayload {
+  expectedUpdatedAt: string;
+}
+
 export interface RecordExamResultPayload {
   resultSummary: string;
   resultNotes?: string | null | undefined;
+  expectedUpdatedAt: string;
 }
 
 export interface CreateProcedurePayload {
@@ -104,8 +113,13 @@ export interface CreateProcedurePayload {
   instructions?: string | null | undefined;
 }
 
+export interface StartProcedurePayload {
+  expectedUpdatedAt: string;
+}
+
 export interface ExecuteProcedurePayload {
   notes?: string | null | undefined;
+  expectedUpdatedAt: string;
 }
 
 export interface CreateInterconsultationPayload {
@@ -132,6 +146,9 @@ export const createExamsApi = (api: ApiClient) => ({
   createExamRequest: (encounterId: string, payload: CreateExamPayload) =>
     api.post<ExamRequest>(`/api/v1/encounters/${encounterId}/exams`, payload),
 
+  collectExam: (encounterId: string, examRequestId: string, payload: CollectExamPayload) =>
+    api.patch<ExamRequest>(`/api/v1/encounters/${encounterId}/exams/${examRequestId}/collect`, payload),
+
   recordExamResult: (encounterId: string, examRequestId: string, payload: RecordExamResultPayload) =>
     api.patch<ExamRequest>(`/api/v1/encounters/${encounterId}/exams/${examRequestId}/result`, payload),
 
@@ -140,6 +157,9 @@ export const createExamsApi = (api: ApiClient) => ({
 
   createProcedureRequest: (encounterId: string, payload: CreateProcedurePayload) =>
     api.post<ProcedureRequest>(`/api/v1/encounters/${encounterId}/procedures`, payload),
+
+  startProcedure: (encounterId: string, procedureRequestId: string, payload: StartProcedurePayload) =>
+    api.patch<ProcedureRequest>(`/api/v1/encounters/${encounterId}/procedures/${procedureRequestId}/start`, payload),
 
   executeProcedure: (encounterId: string, procedureRequestId: string, payload: ExecuteProcedurePayload) =>
     api.patch<ProcedureRequest>(`/api/v1/encounters/${encounterId}/procedures/${procedureRequestId}/execute`, payload),

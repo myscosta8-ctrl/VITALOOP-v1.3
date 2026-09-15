@@ -25,6 +25,7 @@ interface DbTicketInsertRow {
   ticket_number: string;
   priority_score: number;
   risk_color: ManchesterRiskColor | null;
+  consultation_room_id: string | null;
 }
 
 interface EnqueueEncounterTicketParams {
@@ -33,15 +34,31 @@ interface EnqueueEncounterTicketParams {
   readonly patientId: string;
   readonly riskColor?: ManchesterRiskColor | null;
   readonly ticketNumber?: string | null;
+  // Bloco 5 — preenchido só quando o ticket nasce já roteado para um
+  // encaminhamento "medical_consultation" (migration 0094).
+  readonly consultationRoomId?: string | null;
 }
 
-export const resolveDefaultQueueId = async (
+/**
+ * Resolve (ou cria, se ainda não existir para a instituição) a fila de um
+ * `queueType` específico — núcleo genérico usado tanto pelo
+ * auto-enfileiramento da Recepção ('medical', via `resolveDefaultQueueId`
+ * abaixo) quanto pelo roteamento pós-Triagem (Bloco 5: 'medical' ou
+ * 'red_room', ver `triage-destination-routing.ts`). Sempre filtra por
+ * `queue_type` — antes do Bloco 5 só existia 1 fila por instituição na
+ * prática, então essa distinção não importava; agora que uma segunda fila
+ * (Sala Vermelha) pode coexistir, pegar "a primeira fila da instituição"
+ * sem filtrar por tipo arriscaria devolver a fila errada.
+ */
+export const resolveQueueIdByType = async (
   client: pg.PoolClient,
   institutionId: string,
-): Promise<string | null> => {
+  queueType: 'medical' | 'red_room',
+  defaultName: string,
+): Promise<string> => {
   const existing = await client.query<{ id: string }>(
-    'select id from app.queues where institution_id = $1 order by created_at asc limit 1',
-    [institutionId],
+    'select id from app.queues where institution_id = $1 and queue_type = $2 order by created_at asc limit 1',
+    [institutionId, queueType],
   );
   if (existing.rowCount! > 0) {
     return existing.rows[0]!.id;
@@ -49,12 +66,18 @@ export const resolveDefaultQueueId = async (
 
   const created = await client.query<{ id: string }>(
     `insert into app.queues (institution_id, name, queue_type)
-     values ($1, 'Fila Principal de Atendimento Médico', 'medical')
+     values ($1, $2, $3)
      returning id`,
-    [institutionId],
+    [institutionId, defaultName, queueType],
   );
-  return created.rows[0]?.id ?? null;
+  return created.rows[0]!.id;
 };
+
+export const resolveDefaultQueueId = async (
+  client: pg.PoolClient,
+  institutionId: string,
+): Promise<string | null> =>
+  resolveQueueIdByType(client, institutionId, 'medical', 'Fila Principal de Atendimento Médico');
 
 export const enqueueEncounterTicket = async (
   client: pg.PoolClient,
@@ -71,8 +94,8 @@ export const enqueueEncounterTicket = async (
   try {
     const insertRes = await client.query<DbTicketInsertRow>(
       `insert into app.queue_tickets (
-         queue_id, encounter_id, patient_id, ticket_number, priority_score, risk_color, status
-       ) values ($1, $2, $3, $4, $5, $6, 'waiting')
+         queue_id, encounter_id, patient_id, ticket_number, priority_score, risk_color, consultation_room_id, status
+       ) values ($1, $2, $3, $4, $5, $6, $7, 'waiting')
        returning *`,
       [
         params.queueId,
@@ -81,6 +104,7 @@ export const enqueueEncounterTicket = async (
         validated.formattedTicketNumber,
         validated.priorityScore,
         validated.riskColor ?? null,
+        params.consultationRoomId ?? null,
       ],
     );
     return insertRes.rows[0]!;

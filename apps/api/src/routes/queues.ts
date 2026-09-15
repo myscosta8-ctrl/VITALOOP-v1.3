@@ -103,6 +103,7 @@ interface DbTicketRow {
   priority_score: number;
   risk_color: ManchesterRiskColor | null;
   call_room: string | null;
+  consultation_room_id: string | null;
   status: TicketStatus;
   call_count: number;
   called_at: Date | null;
@@ -110,6 +111,12 @@ interface DbTicketRow {
   notes: string | null;
   created_at: Date;
   updated_at: Date;
+  // Bloco 5 (item 10) — colunas adicionadas pelo JOIN da listagem de
+  // tickets (não existem na tabela app.queue_tickets); undefined quando a
+  // query não fizer o join (ex.: outras rotas que só fazem `select *`).
+  patient_name?: string;
+  consultation_room_name?: string | null;
+  destination_type?: string | null;
 }
 
 const mapRowToQueue = (row: DbQueueRow): Queue => ({
@@ -124,7 +131,9 @@ const mapRowToQueue = (row: DbQueueRow): Queue => ({
   updatedAt: new Date(row.updated_at).toISOString(),
 });
 
-const mapRowToTicket = (row: DbTicketRow): QueueTicket & { isExceeded: boolean } => {
+const mapRowToTicket = (
+  row: DbTicketRow,
+): QueueTicket & { isExceeded: boolean; patientName?: string; destinationType?: string | null; consultationRoomName?: string | null } => {
   const createdAtIso = new Date(row.created_at).toISOString();
   return {
     id: row.id,
@@ -135,6 +144,7 @@ const mapRowToTicket = (row: DbTicketRow): QueueTicket & { isExceeded: boolean }
     priorityScore: Number(row.priority_score),
     riskColor: row.risk_color,
     callRoom: row.call_room,
+    consultationRoomId: row.consultation_room_id,
     status: row.status,
     callCount: Number(row.call_count),
     calledAt: row.called_at ? new Date(row.called_at).toISOString() : null,
@@ -143,6 +153,9 @@ const mapRowToTicket = (row: DbTicketRow): QueueTicket & { isExceeded: boolean }
     createdAt: createdAtIso,
     updatedAt: new Date(row.updated_at).toISOString(),
     isExceeded: isWaitTimeExceeded(row.risk_color, createdAtIso),
+    ...(row.patient_name !== undefined ? { patientName: row.patient_name } : {}),
+    destinationType: row.destination_type ?? null,
+    consultationRoomName: row.consultation_room_name ?? null,
   };
 };
 
@@ -223,10 +236,22 @@ export const registerQueueRoutes = (app: FastifyInstance, pool: pg.Pool | null):
         pool!,
         { userId: identity.appUserId, roles: identity.roles },
         async (client) => {
+          // Bloco 5 (item 10) — join com paciente/consultório/triagem só
+          // para exibição no painel de fila; nenhuma dessas colunas
+          // pertence a app.queue_tickets.
           const res = await client.query<DbTicketRow>(
-            `select * from app.queue_tickets
-             where queue_id = $1 and status in ('waiting', 'called', 'in_service')
-             order by priority_score desc, created_at asc`,
+            `select qt.*, p.full_name as patient_name, cr.name as consultation_room_name,
+                    t.destination_type as destination_type
+             from app.queue_tickets qt
+             join app.patients p on p.id = qt.patient_id
+             left join app.consultation_rooms cr on cr.id = qt.consultation_room_id
+             left join lateral (
+               select destination_type from app.triages
+               where encounter_id = qt.encounter_id
+               order by created_at desc limit 1
+             ) t on true
+             where qt.queue_id = $1 and qt.status in ('waiting', 'called', 'in_service')
+             order by qt.priority_score desc, qt.created_at asc`,
             [queueId],
           );
           return res.rows.map(mapRowToTicket);
@@ -541,6 +566,21 @@ export const registerQueueRoutes = (app: FastifyInstance, pool: pg.Pool | null):
               toStatus: 'in_consultation',
               actorUserId: appUserId as UUID,
             });
+
+            // Bloco 6 — "médico assume o atendimento": este É o ponto do
+            // sistema onde isso acontece (a fila já tinha esse botão —
+            // "Iniciar Atendimento" — desde antes deste bloco). Reaproveita
+            // `app.encounters.assigned_user_id`, coluna já existente e usada
+            // hoje só na abertura do atendimento pela Recepção — nenhuma
+            // migration nova. Concorrência já protegida pelo `for update` no
+            // ticket acima + `assertValidTicketStatusTransition` (uma
+            // segunda tentativa simultânea de 'in_service'->'in_service'
+            // não é uma transição válida e é rejeitada com CONFLICT antes de
+            // chegar aqui).
+            await client.query(
+              `update app.encounters set assigned_user_id = $1, updated_by = $1, updated_at = now() where id = $2`,
+              [appUserId, updatedTicket.encounterId],
+            );
           }
 
           await auditAction(client, appUserId, 'update', 'queue_ticket_status', updatedTicket.id, req, {

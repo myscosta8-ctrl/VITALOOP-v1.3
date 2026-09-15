@@ -12,7 +12,13 @@ import {
   validateTicketCallInput,
   validateTicketEnqueueInput,
 } from './rules.js';
-import type { QueueTicket } from './types.js';
+import type { QueueTicket, QueueType } from './types.js';
+import {
+  allowsDirectRedRoom,
+  requiresConsultationRoom,
+  isExemptFromMedicalConsultation,
+} from '../triage/rules.js';
+import type { ManchesterRiskColor } from '../triage/types.js';
 
 describe('Queue Domain Rules & Events', () => {
   describe('calculatePriorityScore', () => {
@@ -138,5 +144,61 @@ describe('Queue Domain Rules & Events', () => {
       expect(ev.type).toBe('PatientMarkedAbsent');
       expect((ev.payload as { notes: string }).notes).toBe('Não respondeu 3 chamadas');
     });
+  });
+});
+
+describe('Bloco 5 — fila da Sala Vermelha e roteamento pós-triagem', () => {
+  it('QueueType inclui "red_room" como fila operacional distinta (regra 7)', () => {
+    const redRoomType: QueueType = 'red_room';
+    expect(redRoomType).toBe('red_room');
+  });
+
+  it('allowsDirectRedRoom/requiresConsultationRoom não recebem nem dependem da cor Manchester (regra B/6 do Bloco 5)', () => {
+    // As funções de compatibilidade de destino (Bloco 4, reutilizadas aqui)
+    // têm assinatura `(type: TriageDestinationType) => boolean` — nenhum
+    // parâmetro de risco/Manchester existe para ser passado. Isso prova
+    // estruturalmente que a decisão de ir para Sala Vermelha não pode ser
+    // derivada da cor Manchester nesta camada, para nenhuma cor.
+    const allRiskColors: readonly ManchesterRiskColor[] = ['red', 'orange', 'yellow', 'green', 'blue'];
+    for (const _color of allRiskColors) {
+      expect(allowsDirectRedRoom('red_room')).toBe(true);
+      expect(allowsDirectRedRoom('medical_consultation')).toBe(false);
+      expect(requiresConsultationRoom('red_room')).toBe(false);
+      expect(isExemptFromMedicalConsultation('red_room')).toBe(true);
+    }
+  });
+
+  it('consultationRoomId é um campo opcional do QueueTicket (compatibilidade retroativa — regra 13/item 13 do Bloco 5)', () => {
+    const legacyTicket: QueueTicket = {
+      id: 't1',
+      queueId: 'q1',
+      encounterId: 'e1',
+      patientId: 'p1',
+      ticketNumber: 'SENHA-0001',
+      priorityScore: 1000,
+      status: 'waiting',
+      callCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      // consultationRoomId ausente de propósito — ticket "antigo" (pré-Bloco
+      // 5, migration 0094) continua válido sem o campo novo.
+    };
+    expect(legacyTicket.consultationRoomId).toBeUndefined();
+  });
+});
+
+describe('Bloco 6 — "médico assume o atendimento" e conflito controlado', () => {
+  it('um segundo médico tentando "assumir" (in_service) um ticket já em in_service recebe conflito controlado, não um segundo assumir silencioso', () => {
+    // Reproduz exatamente o cenário C do Bloco 6: dois profissionais
+    // tentam assumir o mesmo atendimento. O primeiro leva o ticket a
+    // 'in_service' (PATCH .../status em queues.ts); o segundo repete a
+    // mesma chamada e cai aqui — currentStatus já é 'in_service', e só
+    // 'called'->'called' tem exceção de repetição (rechamada), não
+    // 'in_service'->'in_service'.
+    expect(() => assertValidTicketStatusTransition('in_service', 'in_service')).toThrow(/Transição inválida/);
+  });
+
+  it('rechamada (called→called) continua permitida — não é o mesmo caso de "assumir duas vezes"', () => {
+    expect(() => assertValidTicketStatusTransition('called', 'called')).not.toThrow();
   });
 });

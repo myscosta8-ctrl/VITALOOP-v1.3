@@ -23,7 +23,10 @@ export interface ProcedureCatalogItem {
 
 export interface ExamRequest {
   id: string;
-  consultationId: string;
+  // Bloco 7.2 — nulo quando a solicitação nasce diretamente do
+  // encaminhamento da Triagem (destination.type='exam'), sem consulta
+  // médica prévia (exceção expressamente permitida).
+  consultationId?: string | null | undefined;
   encounterId: string;
   patientId: string;
   requestedBy: string;
@@ -44,7 +47,7 @@ export interface ExamRequest {
 }
 
 export interface ExamRequestInput {
-  consultationId: string;
+  consultationId?: string | null | undefined;
   encounterId: string;
   patientId: string;
   examId?: string | null | undefined;
@@ -61,7 +64,7 @@ export interface ExamResultInput {
 
 export interface ProcedureRequest {
   id: string;
-  consultationId: string;
+  consultationId?: string | null | undefined;
   encounterId: string;
   patientId: string;
   requestedBy: string;
@@ -80,7 +83,7 @@ export interface ProcedureRequest {
 }
 
 export interface ProcedureRequestInput {
-  consultationId: string;
+  consultationId?: string | null | undefined;
   encounterId: string;
   patientId: string;
   procedureId?: string | null | undefined;

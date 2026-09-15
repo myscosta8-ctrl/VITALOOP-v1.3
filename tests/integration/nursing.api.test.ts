@@ -124,7 +124,12 @@ describe('API de Enfermagem e Administração de Medicamentos — integração r
       method: 'POST',
       url: `/api/v1/encounters/${testEncounterId}/triage`,
       headers: { 'x-test-identity': 'full' },
-      payload: { chiefComplaint: 'Febre alta 39C', riskColor: 'yellow', systolicBp: 120, diastolicBp: 80, temperature: 39.1 },
+      payload: {
+        chiefComplaint: 'Febre alta 39C',
+        riskColor: 'yellow',
+        vitals: { systolicBp: 120, diastolicBp: 80, temperature: 39.1 },
+        destination: { type: 'red_room' },
+      },
     });
     expect(createTri.statusCode).toBe(201);
 

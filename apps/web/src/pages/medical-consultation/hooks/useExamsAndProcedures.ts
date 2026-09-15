@@ -19,6 +19,8 @@ export const useExamsAndProcedures = (api: ApiClient, encounterId: string, deps:
 
   const [procedureNameInput, setProcedureNameInput] = useState('');
   const [procedureInstructionsInput, setProcedureInstructionsInput] = useState('');
+  const [executingProcedureId, setExecutingProcedureId] = useState<string | null>(null);
+  const [procedureExecutionNotes, setProcedureExecutionNotes] = useState('');
 
   const [interSpecialty, setInterSpecialty] = useState('Cardiologia');
   const [interPriority, setInterPriority] = useState<InterconsultationPriority>('routine');
@@ -58,13 +60,34 @@ export const useExamsAndProcedures = (api: ApiClient, encounterId: string, deps:
     }
   };
 
-  const handleRecordExamResult = async (examRequestId: string) => {
+  // Bloco 7 (Fase 3) — "coletar/realizar" é um passo distinto de "lançar
+  // resultado": não marca o exame como concluído nem inventa um resultado,
+  // só reaproveita o status 'collected' que já existia no enum.
+  const handleCollectExam = async (examRequestId: string, expectedUpdatedAt: string) => {
+    setSubmitting(true);
+    try {
+      await examsApi.collectExam(encounterId, examRequestId, { expectedUpdatedAt });
+      toast.success('Coleta/realização do exame registrada.');
+      await reload();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        toast.error('Este exame foi alterado por outro profissional. Atualize os dados antes de continuar.');
+      } else {
+        toast.error(err instanceof ApiError ? err.message : 'Erro ao registrar coleta do exame.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRecordExamResult = async (examRequestId: string, expectedUpdatedAt: string) => {
     if (!examResultSummary.trim()) { toast.error('Informe o resultado/laudo do exame.'); return; }
 
     setSubmitting(true);
     try {
       await examsApi.recordExamResult(encounterId, examRequestId, {
         resultSummary: examResultSummary.trim(),
+        expectedUpdatedAt,
       });
 
       setRecordingResultExamId(null);
@@ -72,8 +95,11 @@ export const useExamsAndProcedures = (api: ApiClient, encounterId: string, deps:
       toast.success('Resultado do exame lançado com sucesso!');
       await reload();
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Erro ao lançar resultado do exame.';
-      toast.error(msg);
+      if (err instanceof ApiError && err.status === 409) {
+        toast.error('Este exame foi alterado por outro profissional. Atualize os dados antes de continuar.');
+      } else {
+        toast.error(err instanceof ApiError ? err.message : 'Erro ao lançar resultado do exame.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -102,15 +128,43 @@ export const useExamsAndProcedures = (api: ApiClient, encounterId: string, deps:
     }
   };
 
-  const handleExecuteProcedure = async (procedureRequestId: string) => {
+  // Bloco 7 (Fase 3) — "iniciar" é opcional (nursing/executor sinaliza que
+  // começou); "executar" continua podendo ser chamado direto de 'requested'
+  // (compatibilidade com o fluxo de 1 clique já existente).
+  const handleStartProcedure = async (procedureRequestId: string, expectedUpdatedAt: string) => {
     setSubmitting(true);
     try {
-      await examsApi.executeProcedure(encounterId, procedureRequestId, { notes: 'Executado com sucesso' });
+      await examsApi.startProcedure(encounterId, procedureRequestId, { expectedUpdatedAt });
+      toast.success('Execução do procedimento iniciada.');
+      await reload();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        toast.error('Este procedimento foi alterado por outro profissional. Atualize os dados antes de continuar.');
+      } else {
+        toast.error(err instanceof ApiError ? err.message : 'Erro ao iniciar execução do procedimento.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleExecuteProcedure = async (procedureRequestId: string, expectedUpdatedAt: string) => {
+    setSubmitting(true);
+    try {
+      await examsApi.executeProcedure(encounterId, procedureRequestId, {
+        notes: procedureExecutionNotes.trim() || 'Executado com sucesso',
+        expectedUpdatedAt,
+      });
+      setExecutingProcedureId(null);
+      setProcedureExecutionNotes('');
       toast.success('Procedimento marcado como executado/concluído!');
       await reload();
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Erro ao concluir procedimento.';
-      toast.error(msg);
+      if (err instanceof ApiError && err.status === 409) {
+        toast.error('Este procedimento foi alterado por outro profissional. Atualize os dados antes de continuar.');
+      } else {
+        toast.error(err instanceof ApiError ? err.message : 'Erro ao concluir procedimento.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -173,6 +227,8 @@ export const useExamsAndProcedures = (api: ApiClient, encounterId: string, deps:
     examResultSummary, setExamResultSummary,
     procedureNameInput, setProcedureNameInput,
     procedureInstructionsInput, setProcedureInstructionsInput,
+    executingProcedureId, setExecutingProcedureId,
+    procedureExecutionNotes, setProcedureExecutionNotes,
     interSpecialty, setInterSpecialty,
     interPriority, setInterPriority,
     interClinicalSummary, setInterClinicalSummary,
@@ -181,8 +237,10 @@ export const useExamsAndProcedures = (api: ApiClient, encounterId: string, deps:
     interResponseNotes, setInterResponseNotes,
     submitting,
     handleCreateExamRequest,
+    handleCollectExam,
     handleRecordExamResult,
     handleCreateProcedureRequest,
+    handleStartProcedure,
     handleExecuteProcedure,
     handleCreateInterconsultation,
     handleRespondInterconsultation,

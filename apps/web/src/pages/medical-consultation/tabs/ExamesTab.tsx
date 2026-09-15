@@ -26,6 +26,8 @@ export const ExamesTab: React.FC<Props> = ({ examRequests, procedureRequests, in
     examResultSummary, setExamResultSummary,
     procedureNameInput, setProcedureNameInput,
     procedureInstructionsInput, setProcedureInstructionsInput,
+    executingProcedureId, setExecutingProcedureId,
+    procedureExecutionNotes, setProcedureExecutionNotes,
     interSpecialty, setInterSpecialty,
     interPriority, setInterPriority,
     interClinicalSummary, setInterClinicalSummary,
@@ -34,12 +36,30 @@ export const ExamesTab: React.FC<Props> = ({ examRequests, procedureRequests, in
     interResponseNotes, setInterResponseNotes,
     submitting,
     handleCreateExamRequest,
+    handleCollectExam,
     handleRecordExamResult,
     handleCreateProcedureRequest,
+    handleStartProcedure,
     handleExecuteProcedure,
     handleCreateInterconsultation,
     handleRespondInterconsultation,
   } = form;
+
+  // Bloco 7 (Fase 6) — rótulos que deixam clara a distinção entre
+  // "solicitação médica" e "execução assistencial" (nunca a mesma ação).
+  const EXAM_STATUS_LABEL: Record<string, string> = {
+    requested: 'Solicitado — aguardando coleta/realização',
+    collected: 'Coletado/realizado — aguardando resultado',
+    in_analysis: 'Em análise',
+    completed: 'Concluído com resultado',
+    canceled: 'Cancelado',
+  };
+  const PROCEDURE_STATUS_LABEL: Record<string, string> = {
+    requested: 'Solicitado — aguardando execução',
+    in_progress: 'Em execução',
+    completed: 'Executado/concluído',
+    canceled: 'Cancelado',
+  };
 
   return (
     <div className="space-y-6">
@@ -57,24 +77,32 @@ export const ExamesTab: React.FC<Props> = ({ examRequests, procedureRequests, in
                     <strong className="text-sm text-foreground">{exam.examName}</strong>
                     <span className="ml-2 text-xs text-muted-foreground">({exam.examType})</span>
                   </div>
-                  <Badge variant={exam.status === 'completed' ? 'success' : 'warning'}>
-                    {exam.status === 'completed' ? 'Concluído / Resultado' : 'Solicitado'}
+                  <Badge variant={exam.status === 'completed' ? 'success' : exam.status === 'canceled' ? 'outline' : 'warning'}>
+                    {EXAM_STATUS_LABEL[exam.status] ?? exam.status}
                   </Badge>
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  <strong>Indicação Clínica:</strong> {exam.clinicalIndication}
+                  <strong>Indicação Clínica (solicitação médica):</strong> {exam.clinicalIndication}
                 </div>
                 {exam.resultSummary && (
                   <div className="mt-1.5 rounded-md border border-[var(--color-success)]/30 bg-[var(--color-success-soft)] p-2 text-sm">
-                    <strong>Resultado / Laudo:</strong> {exam.resultSummary}
+                    <strong>Resultado / Laudo (execução):</strong> {exam.resultSummary}
                   </div>
                 )}
 
-                {exam.status !== 'completed' && (
+                {exam.status === 'requested' && (
+                  <div className="mt-2">
+                    <Button type="button" size="sm" variant="secondary" onClick={() => handleCollectExam(exam.id, exam.updatedAt)} disabled={submitting}>
+                      Registrar Coleta/Realização
+                    </Button>
+                  </div>
+                )}
+
+                {(exam.status === 'requested' || exam.status === 'collected' || exam.status === 'in_analysis') && (
                   <div className="mt-2">
                     {recordingResultExamId === exam.id ? (
                       <div className="space-y-2 rounded-md border border-border bg-card p-2">
-                        <Label className="text-xs">Lançar Resultado / Laudo Técnico *</Label>
+                        <Label className="text-xs">Lançar Resultado / Laudo Técnico * (execução — só após coleta/realização)</Label>
                         <Input
                           type="text"
                           value={examResultSummary}
@@ -82,7 +110,7 @@ export const ExamesTab: React.FC<Props> = ({ examRequests, procedureRequests, in
                           placeholder="Descreva o laudo/resultado do exame..."
                         />
                         <div className="flex gap-1.5">
-                          <Button type="button" size="sm" onClick={() => handleRecordExamResult(exam.id)}>
+                          <Button type="button" size="sm" onClick={() => handleRecordExamResult(exam.id, exam.updatedAt)} disabled={submitting}>
                             Salvar Resultado
                           </Button>
                           <Button type="button" size="sm" variant="secondary" onClick={() => setRecordingResultExamId(null)}>
@@ -145,20 +173,59 @@ export const ExamesTab: React.FC<Props> = ({ examRequests, procedureRequests, in
         {procedureRequests.length > 0 ? (
           <div className="flex flex-col gap-2">
             {procedureRequests.map((proc) => (
-              <div key={proc.id} className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 p-2.5">
-                <div>
-                  <strong className="text-sm text-foreground">{proc.procedureName}</strong>
-                  {proc.instructions && <div className="text-xs text-muted-foreground">Instr: {proc.instructions}</div>}
+              <div key={proc.id} className="rounded-md border border-border bg-muted/40 p-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <strong className="text-sm text-foreground">{proc.procedureName}</strong>
+                    {proc.instructions && <div className="text-xs text-muted-foreground">Solicitação: {proc.instructions}</div>}
+                  </div>
+                  <Badge variant={proc.status === 'completed' ? 'success' : proc.status === 'canceled' ? 'outline' : 'warning'}>
+                    {PROCEDURE_STATUS_LABEL[proc.status] ?? proc.status}
+                  </Badge>
                 </div>
-                <div>
-                  {proc.status === 'completed' ? (
-                    <Badge variant="success">Executado</Badge>
-                  ) : (
-                    <Button type="button" size="sm" variant="secondary" onClick={() => handleExecuteProcedure(proc.id)}>
-                      Marcar Executado
+                {proc.notes && proc.status === 'completed' && (
+                  <div className="mt-1.5 rounded-md border border-[var(--color-success)]/30 bg-[var(--color-success-soft)] p-2 text-sm">
+                    <strong>Registro da execução:</strong> {proc.notes}
+                  </div>
+                )}
+                {proc.status === 'requested' && (
+                  <div className="mt-2 flex gap-1.5">
+                    <Button type="button" size="sm" variant="secondary" onClick={() => handleStartProcedure(proc.id, proc.updatedAt)} disabled={submitting}>
+                      Iniciar Execução
                     </Button>
-                  )}
-                </div>
+                  </div>
+                )}
+                {(proc.status === 'requested' || proc.status === 'in_progress') && (
+                  <div className="mt-2">
+                    {executingProcedureId === proc.id ? (
+                      <div className="space-y-2 rounded-md border border-border bg-card p-2">
+                        <Label className="text-xs">Observação/registro da execução</Label>
+                        <Input
+                          type="text"
+                          value={procedureExecutionNotes}
+                          onChange={(e) => setProcedureExecutionNotes(e.target.value)}
+                          placeholder="Ex.: Procedimento realizado sem intercorrências."
+                        />
+                        <div className="flex gap-1.5">
+                          <Button type="button" size="sm" onClick={() => handleExecuteProcedure(proc.id, proc.updatedAt)} disabled={submitting}>
+                            Confirmar Execução
+                          </Button>
+                          <Button type="button" size="sm" variant="secondary" onClick={() => setExecutingProcedureId(null)}>
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => { setExecutingProcedureId(proc.id); setProcedureExecutionNotes(''); }}
+                      >
+                        Marcar Executado
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>

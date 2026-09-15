@@ -10,6 +10,7 @@ import { usePrescriptions } from './medical-consultation/hooks/usePrescriptions.
 import { useExamsAndProcedures } from './medical-consultation/hooks/useExamsAndProcedures.js';
 import { useOutcome } from './medical-consultation/hooks/useOutcome.js';
 import { useAdmission } from './medical-consultation/hooks/useAdmission.js';
+import { useInterimDecision } from './medical-consultation/hooks/useInterimDecision.js';
 import { TriagemTab } from './medical-consultation/tabs/TriagemTab.js';
 import { ConsultaTab } from './medical-consultation/tabs/ConsultaTab.js';
 import { DiagnosticosTab } from './medical-consultation/tabs/DiagnosticosTab.js';
@@ -17,6 +18,7 @@ import { PrescricoesTab } from './medical-consultation/tabs/PrescricoesTab.js';
 import { ExamesTab } from './medical-consultation/tabs/ExamesTab.js';
 import { InternacaoTab } from './medical-consultation/tabs/InternacaoTab.js';
 import { DesfechoTab } from './medical-consultation/tabs/DesfechoTab.js';
+import { EncounterFlowNav } from '../components/EncounterFlowNav.js';
 
 interface Props {
   encounterId: string;
@@ -69,16 +71,29 @@ export const MedicalConsultationPage: React.FC<Props> = ({ encounterId }) => {
     reload: data.reload,
     setAdmission: data.setAdmission,
   });
+  const interimDecisionForm = useInterimDecision(api, encounterId, {
+    encounter: data.encounter,
+    setEncounter: data.setEncounter,
+    reload: data.reload,
+  });
 
   if (data.loading) {
     return <div style={{ padding: 20, textAlign: 'center' }}>Carregando prontuário médico...</div>;
   }
 
+  // Bloco 7.2 — "exames" fica acessível mesmo sem consulta médica quando já
+  // existe exame/procedimento vindo direto do encaminhamento da Triagem
+  // (destination.type='exam'/'procedure', sem avaliação médica prévia —
+  // exceção expressamente permitida). As demais abas (diagnósticos,
+  // prescrições, desfecho) continuam exigindo consulta, sem exceção.
+  const hasTriageDirectRequest = data.examRequests.length > 0 || data.procedureRequests.length > 0;
   const requiresConsultationFirst = !data.existingConsultation
-    && (activeTab === 'diagnosticos' || activeTab === 'prescricoes' || activeTab === 'exames' || activeTab === 'desfecho');
+    && ((activeTab === 'exames' && !hasTriageDirectRequest)
+      || activeTab === 'diagnosticos' || activeTab === 'prescricoes' || activeTab === 'desfecho');
 
   return (
     <div className="mx-auto max-w-4xl py-5">
+      <EncounterFlowNav encounterId={encounterId} current="consulta" />
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -104,7 +119,7 @@ export const MedicalConsultationPage: React.FC<Props> = ({ encounterId }) => {
           )}
 
           <div className="mt-4">
-            {activeTab === 'triagem' && <TriagemTab triage={data.triage} />}
+            {activeTab === 'triagem' && <TriagemTab triage={data.triage} rooms={data.rooms} allergies={data.allergies} />}
 
             {activeTab === 'consulta' && <ConsultaTab encounterId={encounterId} form={consultationForm} />}
 
@@ -124,7 +139,16 @@ export const MedicalConsultationPage: React.FC<Props> = ({ encounterId }) => {
                     form={examsForm}
                   />
                 )}
-                {activeTab === 'desfecho' && <DesfechoTab outcome={data.outcome} summary={data.summary} form={outcomeForm} />}
+                {activeTab === 'desfecho' && (
+                  <DesfechoTab
+                    encounter={data.encounter}
+                    outcome={data.outcome}
+                    summary={data.summary}
+                    form={outcomeForm}
+                    interimForm={interimDecisionForm}
+                    onGoToExamsTab={() => setActiveTab('exames')}
+                  />
+                )}
               </>
             )}
 

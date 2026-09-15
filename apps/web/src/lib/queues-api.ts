@@ -1,6 +1,8 @@
 import type { ApiClient } from './api-client.js';
 
-export type QueueType = 'reception' | 'triage' | 'medical' | 'reevaluation';
+// 'red_room' (Bloco 5) — fila operacional da Sala Vermelha, roteada a
+// partir do encaminhamento da Triagem, independente da cor Manchester.
+export type QueueType = 'reception' | 'triage' | 'medical' | 'reevaluation' | 'red_room';
 export type TicketStatus = 'waiting' | 'called' | 'in_service' | 'absent' | 'finished' | 'canceled';
 export type ManchesterRiskColor = 'red' | 'orange' | 'yellow' | 'green' | 'blue';
 
@@ -25,6 +27,7 @@ export interface QueueTicket {
   readonly priorityScore: number;
   readonly riskColor?: ManchesterRiskColor | null;
   readonly callRoom?: string | null;
+  readonly consultationRoomId?: string | null;
   readonly status: TicketStatus;
   readonly callCount: number;
   readonly calledAt?: string | null;
@@ -33,6 +36,11 @@ export interface QueueTicket {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly isExceeded?: boolean;
+  // Bloco 5 (item 10) — só presentes na listagem de tickets de uma fila
+  // (join feito no backend); ausentes na resposta de call/recall/status.
+  readonly patientName?: string;
+  readonly destinationType?: 'medical_consultation' | 'red_room' | 'exam' | 'procedure' | null;
+  readonly consultationRoomName?: string | null;
 }
 
 export interface TicketEnqueuePayload {

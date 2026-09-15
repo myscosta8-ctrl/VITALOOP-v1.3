@@ -22,12 +22,16 @@ import {
   isTerminalEncounterStatus,
   type Encounter,
   type EncounterStatus,
+  type PostConsultationDetail,
 } from '@vitaloop/domain';
 
 interface TransitionEncounterStatusParams {
   readonly encounterId: string;
   readonly toStatus: EncounterStatus;
   readonly actorUserId: UUID;
+  // Bloco 7 — obrigatório pela máquina de estados (assertValidEncounterStatusTransition)
+  // quando toStatus === 'post_consultation'; ignorado para os demais status.
+  readonly postConsultationDetail?: PostConsultationDetail | null;
 }
 
 interface TransitionEncounterStatusResult {
@@ -70,7 +74,7 @@ export const transitionEncounterStatus = async (
   client: pg.PoolClient,
   params: TransitionEncounterStatusParams,
 ): Promise<TransitionEncounterStatusResult> => {
-  const { encounterId, toStatus, actorUserId } = params;
+  const { encounterId, toStatus, actorUserId, postConsultationDetail } = params;
 
   const currentRes = await client.query<{ id: string; patient_id: string; status: EncounterStatus; cancel_reason: string | null }>(
     'select id, patient_id, status, cancel_reason from app.encounters where id = $1 for update',
@@ -88,12 +92,15 @@ export const transitionEncounterStatus = async (
   const current = currentRes.rows[0];
   const oldStatus = current.status;
 
-  assertValidEncounterStatusTransition(oldStatus, toStatus);
+  assertValidEncounterStatusTransition(oldStatus, toStatus, null, postConsultationDetail);
 
   const updateRes = await client.query<{ id: string; patient_id: string; status: EncounterStatus; cancel_reason: string | null }>(
-    `update app.encounters set status = $1, updated_by = $2, updated_at = now() where id = $3
+    `update app.encounters
+     set status = $1, updated_by = $2, updated_at = now(),
+         post_consultation_detail = case when $1 = 'post_consultation' then $4::app.post_consultation_detail else post_consultation_detail end
+     where id = $3
      returning id, patient_id, status, cancel_reason`,
-    [toStatus, actorUserId, encounterId],
+    [toStatus, actorUserId, encounterId, postConsultationDetail ?? null],
   );
   const updated = updateRes.rows[0]!;
 

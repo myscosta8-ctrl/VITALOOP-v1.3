@@ -233,6 +233,23 @@ export const registerOutcomeRoutes = (app: FastifyInstance, pool: pg.Pool | null
           const consRes = await client.query('select id, chief_complaint from app.medical_consultations where encounter_id = $1', [encounterId]);
           const cons = consRes.rowCount! > 0 ? consRes.rows[0] : null;
 
+          // 3b. Bloco 6 (regra crítica: "leito não pode ser destino direto
+          // da Triagem") — achado de auditoria: esta rota, criada numa fase
+          // anterior, aceitava outcomeType='admission_bed' mesmo sem
+          // consulta médica registrada, o que na prática permitiria
+          // internar um atendimento ainda em 'triaged'/'consultation_pending'
+          // sem nenhuma avaliação médica ter ocorrido. Os demais tipos de
+          // desfecho (evasão, alta administrativa etc.) legitimamente
+          // dispensam consulta — só a internação exige, então a checagem é
+          // restrita a esse tipo, não um precondition geral da rota.
+          if (parsedBody.outcomeType === 'admission_bed' && !cons) {
+            throw new AppError({
+              category: ErrorCategory.VALIDATION,
+              code: 'ADMISSION_REQUIRES_MEDICAL_CONSULTATION',
+              message: 'Internação/leito só pode ser decidida após avaliação médica — registre a consulta médica antes de decidir por internação.',
+            });
+          }
+
           // 4. Busca diagnósticos ativos registrados em app.encounter_diagnoses
           let hasPrimaryDiagnosis = false;
           let primaryCidCode: string | null = null;

@@ -1,6 +1,9 @@
 import type { ManchesterRiskColor } from '../triage/types.js';
 
-export type QueueType = 'reception' | 'triage' | 'medical' | 'reevaluation';
+// 'red_room' (Bloco 5): fila operacional da Sala Vermelha, roteada a partir
+// do encaminhamento da Triagem (destination.type === 'red_room') — nunca
+// derivada da cor Manchester (continuam independentes).
+export type QueueType = 'reception' | 'triage' | 'medical' | 'reevaluation' | 'red_room';
 export type TicketStatus = 'waiting' | 'called' | 'in_service' | 'absent' | 'finished' | 'canceled';
 
 export interface Queue {
@@ -24,6 +27,9 @@ export interface QueueTicket {
   priorityScore: number;
   riskColor?: ManchesterRiskColor | null;
   callRoom?: string | null;
+  // Bloco 5 — consultório vinculado ao ticket quando o encaminhamento da
+  // Triagem for "medical_consultation" (migration 0094). NULL nos demais.
+  consultationRoomId?: string | null;
   status: TicketStatus;
   callCount: number;
   calledAt?: string | null;

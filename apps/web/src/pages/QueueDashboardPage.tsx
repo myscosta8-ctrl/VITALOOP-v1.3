@@ -26,6 +26,16 @@ export const MANCHESTER_BADGE_STYLE: Record<ManchesterRiskColor, { label: string
 
 const errMsg = (err: unknown, fallback: string): string => (err instanceof ApiError ? err.message : fallback);
 
+// Bloco 5 (item 10) — rótulo do destino/origem do encaminhamento da
+// Triagem, exibido na fila. Espelha DESTINATION_TYPE_LABEL de
+// TriageOpenPage.tsx (mesma convenção já usada nesta tela para MANCHESTER_BADGE_STYLE).
+const DESTINATION_TICKET_LABEL: Record<string, string> = {
+  medical_consultation: 'Atendimento médico',
+  red_room: 'Sala Vermelha',
+  exam: 'Exame',
+  procedure: 'Procedimento',
+};
+
 /**
  * Primeira página migrada para TanStack Query (Fase 3 da absorção de
  * arquitetura, 11/09/2026) — adoção incremental, ver `lib/query-client.ts`.
@@ -168,8 +178,10 @@ export const QueueDashboardPage: React.FC = () => {
               <thead>
                 <tr className="bg-muted text-left text-xs text-muted-foreground">
                   <th className="p-3 font-semibold">Senha</th>
+                  <th className="p-3 font-semibold">Paciente / Atendimento</th>
                   <th className="p-3 font-semibold">Classificação Manchester</th>
-                  <th className="p-3 font-semibold">Score Prioridade</th>
+                  <th className="p-3 font-semibold">Destino</th>
+                  <th className="p-3 font-semibold">Chegada/Encaminhamento</th>
                   <th className="p-3 font-semibold">Estado</th>
                   <th className="p-3 font-semibold">Chamadas</th>
                   <th className="p-3 font-semibold">Ações de Chamamento</th>
@@ -187,6 +199,10 @@ export const QueueDashboardPage: React.FC = () => {
                     >
                       <td className="p-3 font-mono font-bold">{t.ticketNumber}</td>
                       <td className="p-3">
+                        <div className="text-sm font-medium">{t.patientName ?? '—'}</div>
+                        <div className="font-mono text-xs text-muted-foreground">#{t.encounterId.slice(0, 8)}</div>
+                      </td>
+                      <td className="p-3">
                         {badge ? (
                           <Badge style={{ backgroundColor: badge.bg, color: badge.text }}>{badge.label}</Badge>
                         ) : (
@@ -196,7 +212,11 @@ export const QueueDashboardPage: React.FC = () => {
                           <Badge variant="destructive" className="ml-1.5">TEMPO EXCEDIDO!</Badge>
                         )}
                       </td>
-                      <td className="p-3 font-mono">{t.priorityScore}</td>
+                      <td className="p-3 text-sm">
+                        {DESTINATION_TICKET_LABEL[t.destinationType ?? ''] ?? '—'}
+                        {t.consultationRoomName ? <div className="text-xs text-muted-foreground">{t.consultationRoomName}</div> : null}
+                      </td>
+                      <td className="p-3 text-sm">{new Date(t.createdAt).toLocaleString('pt-BR')}</td>
                       <td className="p-3">
                         <Badge variant={t.status === 'called' ? 'warning' : t.status === 'in_service' ? 'success' : 'outline'}>
                           {t.status === 'called' ? `CHAMADO (${t.callRoom || ''})` : t.status}
